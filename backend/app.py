@@ -7,13 +7,26 @@ import os
 from dotenv import load_dotenv
 from models import User, Shop, Product, Wishlist, Order
 
-load_dotenv()
-
 app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY')
-app.config["MONGO_URI"] = os.getenv('MONGO_URI')
+app.secret_key = os.getenv('SECRET_KEY', 'fallback-secret-key-for-development')
+
+# Configure for production
+mongo_uri = os.getenv('MONGO_URI')
+if not mongo_uri:
+    raise ValueError("No MONGO_URI set for MongoDB connection")
+
+app.config["MONGO_URI"] = mongo_uri
+
+# Configure CORS for production
+frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+CORS(app, resources={r"/api/*": {"origins": frontend_url}}, supports_credentials=True)
+
 mongo = PyMongo(app)
-CORS(app, supports_credentials=True)
+
+# Add this to handle both development and production
+@app.route('/')
+def home():
+    return jsonify({"message": "Shopping App API is running!"})
 
 # Helper function to serialize ObjectId
 def serialize_doc(doc):
