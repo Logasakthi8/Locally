@@ -1,6 +1,6 @@
 const config = {
   apiUrl: process.env.NODE_ENV === 'production' 
-    ? 'https://Locally.onrender.com/api'
+    ? 'https://locally-pd7h.onrender.com/api'
     : 'http://localhost:5000/api'
 };
 
