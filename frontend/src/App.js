@@ -6,7 +6,7 @@ import Shops from './components/Shops';
 import Products from './components/Products';
 import Wishlist from './components/Wishlist';
 import './App.css';
-
+import config from '../config';
 function App() {
   const [user, setUser] = useState(null);
 
@@ -14,7 +14,7 @@ function App() {
     // Check if user is already logged in (session exists)
     const checkSession = async () => {
       try {
-        const response = await fetch('https://locally-pd7h.onrender.com//api/user', {
+        const response = await fetch('${config.apiUrl}', {
           credentials: 'include'
         });
         
