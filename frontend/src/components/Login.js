@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import config from '../config';
 
 function Login({ onLogin }) {
   const [mobile, setMobile] = useState('');
@@ -8,7 +9,7 @@ function Login({ onLogin }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('https://locally-pd7h.onrender.com/api/login', {
+      const response = await fetch(`${config.apiUrl}/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
