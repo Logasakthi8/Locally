@@ -14,7 +14,7 @@ function App() {
     // Check if user is already logged in (session exists)
     const checkSession = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/user', {
+        const response = await fetch('https://locally-pd7h.onrender.com//api/user', {
           credentials: 'include'
         });
         
