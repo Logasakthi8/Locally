@@ -19,4 +19,4 @@ services:
     staticPublishPath: ./frontend/build
     envVars:
       - key: REACT_APP_API_URL
-        value: https://shopping-app-backend.onrender.com/api
+        value: https://locally-pd7h.onrender.com/api
