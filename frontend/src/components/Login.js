@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import config from './config';
+import config from '../config';
 
 function Login({ onLogin }) {
   const [mobile, setMobile] = useState('');
