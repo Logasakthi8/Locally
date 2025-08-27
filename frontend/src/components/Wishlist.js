@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import WishlistItem from './WishlistItem';
+import config from './config';
 
 function Wishlist() {
   const [wishlist, setWishlist] = useState([]);
@@ -13,7 +14,7 @@ function Wishlist() {
 
   const fetchWishlist = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/wishlist', {
+      const response = await fetch(`${config.apiUrl}/wishlist`, {
         credentials: 'include'
       });
       
