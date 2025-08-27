@@ -33,7 +33,7 @@ function Wishlist() {
 
   const removeFromWishlist = async (productId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/wishlist/${productId}`, {
+      const response = await fetch(`${config.apiUrl}/wishlist/${productId}`, {
         method: 'DELETE',
         credentials: 'include'
       });
@@ -52,7 +52,7 @@ function Wishlist() {
   const checkout = async (method) => {
     try {
       const productIds = wishlist.map(item => item._id);
-      const response = await fetch('http://localhost:5000/api/checkout', {
+      const response = await fetch('${config.apiUrl}/checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -94,7 +94,7 @@ function Wishlist() {
 
   const clearCart = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/clear-cart', {
+      const response = await fetch('${config.apiUrl}/clear-cart', {
         method: 'POST',
         credentials: 'include'
       });
