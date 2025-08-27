@@ -7,7 +7,7 @@ function Navbar({ user, onLogout }) {
 
   const handleLogout = async () => {
     try {
-      await fetch(`${config.apiUrl}/logout', {
+      await fetch(`${config.apiUrl}/logout`, {
         method: 'POST',
         credentials: 'include'
       });
