@@ -17,7 +17,7 @@ function Products() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`http://localhost:5000/api/shops/${shopId}/products`);
+      const response = await fetch(`${config.apiUrl}/shops/${shopId}/products`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
