@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ShopCard from './ShopCard';
+import config from './config';
 
 function Shops() {
   const [shops, setShops] = useState([]);
@@ -13,7 +14,7 @@ function Shops() {
 
   const fetchShops = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/shops');
+      const response = await fetch(`${config.apiUrl}/shops`);
       const data = await response.json();
       setShops(data);
       setLoading(false);
