@@ -6,7 +6,7 @@ import Shops from './components/Shops';
 import Products from './components/Products';
 import Wishlist from './components/Wishlist';
 import './App.css';
-import config from './config';
+import config from '../config';
 function App() {
   const [user, setUser] = useState(null);
 
