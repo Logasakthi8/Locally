@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ShopCard from './ShopCard';
-import config from './config';
+import config from '../config';
 
 function Shops() {
   const [shops, setShops] = useState([]);
