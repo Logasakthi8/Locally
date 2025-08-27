@@ -18,7 +18,16 @@ if not mongo_uri:
 app.config["MONGO_URI"] = mongo_uri
 
 # Configure CORS for production
-frontend_url = os.getenv('FRONTEND_URL', 'https://locally-frontend.onrender.com')
+# Configure CORS for multiple origins
+allowed_origins = [
+    'http://localhost:3000',  # Local development
+    'https://locally-frontend.onrender.com',  # Your production frontend
+    
+]
+
+# Use the environment variable if set, otherwise allow all in the list
+frontend_url = os.getenv('FRONTEND_URL', allowed_origins)
+
 CORS(app, resources={r"/api/*": {"origins": frontend_url}}, supports_credentials=True)
 
 mongo = PyMongo(app)
