@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import config from './config';
 
 function ProductCard({ product }) {
   const [isLiked, setIsLiked] = useState(false);
@@ -7,7 +8,7 @@ function ProductCard({ product }) {
   const handleLike = async () => {
     try {
       setIsAdding(true);
-      const response = await fetch('http://localhost:5000/api/wishlist', {
+      const response = await fetch(`${config.apiUrl}/wishlist`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
