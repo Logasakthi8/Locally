@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import config from './config';
+import config from '../config';
 
 function Navbar({ user, onLogout }) {
   const navigate = useNavigate();
