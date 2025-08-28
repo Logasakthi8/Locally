@@ -456,14 +456,7 @@ def debug_checkout():
     except Exception as e:
         debug_info['error'] = str(e)
         return jsonify(debug_info), 500
-@app.before_request
-def handle_options():
-    if request.method == "OPTIONS":
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
-        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        return response
+
 
 if __name__ == '__main__':
     app.run(debug=True)
