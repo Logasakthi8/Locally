@@ -52,7 +52,7 @@ function Wishlist() {
   const checkout = async (method) => {
     try {
       const productIds = wishlist.map(item => item._id);
-      const response = await fetch('${config.apiUrl}/checkout', {
+      const response = await fetch(`${config.apiUrl}/checkout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -94,7 +94,7 @@ function Wishlist() {
 
   const clearCart = async () => {
     try {
-      const response = await fetch('${config.apiUrl}/clear-cart', {
+      const response = await fetch(`${config.apiUrl}/clear-cart`, {
         method: 'POST',
         credentials: 'include'
       });
