@@ -182,7 +182,7 @@ def remove_from_wishlist(product_id):
 @app.route('/api/checkout', methods=['POST'])
 def checkout():
     if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
+       return jsonify({'error': 'Not authenticated', 'code': 'AUTH_REQUIRED'}), 401
     
     data = request.json
     product_ids = data.get('product_ids', [])
@@ -456,6 +456,14 @@ def debug_checkout():
     except Exception as e:
         debug_info['error'] = str(e)
         return jsonify(debug_info), 500
+@app.before_request
+def handle_options():
+    if request.method == "OPTIONS":
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        return response
 
 if __name__ == '__main__':
     app.run(debug=True)
