@@ -10,6 +10,12 @@ from models import User, Shop, Product, Wishlist, Order
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'fallback-secret-key-for-development')
 
+app.config.update(
+    SESSION_COOKIE_SECURE=True,      # Only send over HTTPS
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='None',  # Required for cross-site
+)
+
 # Configure for production
 mongo_uri = os.getenv('MONGO_URI')
 if not mongo_uri:
