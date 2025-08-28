@@ -28,7 +28,11 @@ allowed_origins = [
 # Use the environment variable if set, otherwise allow all in the list
 frontend_url = os.getenv('FRONTEND_URL', allowed_origins)
 
-CORS(app, resources={r"/api/*": {"origins": frontend_url}}, supports_credentials=True)
+CORS(app, 
+     resources={r"/api/*": {"origins": allowed_origins}}, 
+     supports_credentials=True,
+     allow_headers=["Content-Type", "Authorization"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 
 mongo = PyMongo(app)
 
