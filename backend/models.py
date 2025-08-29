@@ -14,13 +14,14 @@ class User:
         }
 
 class Shop:
-    def __init__(self, name, owner_mobile, category, opening_time, closing_time, image_url):
+    def __init__(self, name, owner_mobile, category, opening_time, closing_time, image_url,address):
         self.name = name
         self.owner_mobile = owner_mobile
         self.category = category
         self.opening_time = opening_time
         self.closing_time = closing_time
         self.image_url = image_url
+        self.address=address
     
     def to_dict(self):
         return {
@@ -29,7 +30,8 @@ class Shop:
             "category": self.category,
             "opening_time": self.opening_time,
             "closing_time": self.closing_time,
-            "image_url": self.image_url
+            "image_url": self.image_url,
+            "address":self.address
         }
 
 class Product:
