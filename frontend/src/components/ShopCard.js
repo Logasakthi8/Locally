@@ -12,6 +12,7 @@ function ShopCard({ shop }) {
         <p><strong>Category:</strong> {shop.category}</p>
         <p><strong>Owner:</strong> {shop.owner_mobile}</p>
         <p><strong>Hours:</strong> {shop.opening_time} - {shop.closing_time}</p>
+        <p><strong>Address:</strong> {shop.address}</p>
         <button 
           className="primary-btn"
           onClick={() => navigate(`/products/${shop._id}`)}
