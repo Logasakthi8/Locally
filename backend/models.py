@@ -54,29 +54,35 @@ class Product:
         }
 
 class Wishlist:
-    def __init__(self, user_id, product_id):
+    def __init__(self, user_id, product_id, shop_id, quantity=1):
         self.user_id = user_id
         self.product_id = product_id
-        self.added_at = datetime.utcnow()
+        self.shop_id = shop_id
+        self.quantity = quantity
+        self.created_at = datetime.utcnow()
     
     def to_dict(self):
         return {
-            "user_id": self.user_id,
-            "product_id": self.product_id,
-            "added_at": self.added_at
+            'user_id': self.user_id,
+            'product_id': self.product_id,
+            'shop_id': self.shop_id,
+            'quantity': self.quantity,
+            'created_at': self.created_at
         }
 
 class Order:
-    def __init__(self, user_id, items, status="pending"):
+    def __init__(self, user_id, items, total_amount=0, status='pending'):
         self.user_id = user_id
         self.items = items
+        self.total_amount = total_amount
         self.status = status
         self.created_at = datetime.utcnow()
     
     def to_dict(self):
         return {
-            "user_id": self.user_id,
-            "items": self.items,
-            "status": self.status,
-            "created_at": self.created_at
+            'user_id': self.user_id,
+            'items': self.items,
+            'total_amount': self.total_amount,
+            'status': self.status,
+            'created_at': self.created_at
         }
