@@ -4,16 +4,26 @@ import config from '../config';
 
 function Wishlist() {
   const [wishlist, setWishlist] = useState([]);
+  const [groupedWishlist, setGroupedWishlist] = useState({});
+  const [shops, setShops] = useState({});
   const [loading, setLoading] = useState(true);
+  const [selectedProducts, setSelectedProducts] = useState({});
   const [checkoutStatus, setCheckoutStatus] = useState(null);
-  const [shopOwnerMobiles, setShopOwnerMobiles] = useState([]);
 
   useEffect(() => {
     fetchWishlist();
   }, []);
 
+  useEffect(() => {
+    if (wishlist.length > 0) {
+      groupProductsByShop();
+      initializeSelectedProducts();
+    }
+  }, [wishlist]);
+
   const fetchWishlist = async () => {
     try {
+      setLoading(true);
       const response = await fetch(`${config.apiUrl}/wishlist`, {
         credentials: 'include'
       });
@@ -21,6 +31,10 @@ function Wishlist() {
       if (response.ok) {
         const data = await response.json();
         setWishlist(data);
+        
+        if (data.length > 0) {
+          await fetchShopDetails(data);
+        }
       } else {
         console.error('Failed to fetch wishlist');
       }
@@ -29,6 +43,63 @@ function Wishlist() {
       console.error('Error:', error);
       setLoading(false);
     }
+  };
+
+  const fetchShopDetails = async (products) => {
+    try {
+      const shopIds = [...new Set(products.map(product => product.shop_id))];
+      
+      if (shopIds.length === 0) return;
+      
+      const response = await fetch(`${config.apiUrl}/shops/batch`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ shop_ids: shopIds }),
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const shopsData = await response.json();
+        const shopsMap = {};
+        shopsData.forEach(shop => {
+          shopsMap[shop._id] = shop;
+        });
+        setShops(shopsMap);
+      }
+    } catch (error) {
+      console.error('Error fetching shop details:', error);
+    }
+  };
+
+  const groupProductsByShop = () => {
+    const grouped = {};
+    
+    wishlist.forEach(product => {
+      const shopId = product.shop_id;
+      if (!grouped[shopId]) {
+        grouped[shopId] = [];
+      }
+      grouped[shopId].push(product);
+    });
+    
+    setGroupedWishlist(grouped);
+  };
+
+  const initializeSelectedProducts = () => {
+    const selected = {};
+    wishlist.forEach(product => {
+      selected[product._id] = true;
+    });
+    setSelectedProducts(selected);
+  };
+
+  const toggleProductSelection = (productId) => {
+    setSelectedProducts(prev => ({
+      ...prev,
+      [productId]: !prev[productId]
+    }));
   };
 
   const removeFromWishlist = async (productId) => {
@@ -41,6 +112,10 @@ function Wishlist() {
       if (response.ok) {
         setWishlist(wishlist.filter(item => item._id !== productId));
         setCheckoutStatus(null);
+        
+        const newSelected = {...selectedProducts};
+        delete newSelected[productId];
+        setSelectedProducts(newSelected);
       } else {
         console.error('Failed to remove from wishlist');
       }
@@ -49,47 +124,68 @@ function Wishlist() {
     }
   };
 
-  const checkout = async (method) => {
+  const updateQuantity = async (productId, newQuantity) => {
     try {
-      const productIds = wishlist.map(item => item._id);
-      const response = await fetch(`${config.apiUrl}/checkout`, {
-        method: 'POST',
+      const response = await fetch(`${config.apiUrl}/wishlist/${productId}/quantity`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ product_ids: productIds }),
+        body: JSON.stringify({ quantity: newQuantity }),
         credentials: 'include'
       });
       
       if (response.ok) {
-        const data = await response.json();
-        setShopOwnerMobiles(data.shop_owner_mobiles);
-        
-        if (method === 'whatsapp') {
-          // Create WhatsApp message
-          const productNames = wishlist.map(item => item.name).join(', ');
-          const totalPrice = wishlist.reduce((sum, item) => sum + item.price, 0);
-          const message = `Hello, I would like to place an order for the following products:\n\n${productNames}\n\nTotal Amount: ₹${totalPrice}\n\nPlease confirm my order.`;
-          
-          // Open WhatsApp
-          const whatsappUrl = `https://wa.me/${data.shop_owner_mobiles[0]}?text=${encodeURIComponent(message)}`;
-          const whatsappWindow = window.open(whatsappUrl, '_blank');
-          
-          if (whatsappWindow) {
-            setCheckoutStatus('whatsapp_success');
-          } else {
-            setCheckoutStatus('whatsapp_error');
-          }
-        } else if (method === 'call') {
-          setCheckoutStatus('call_ready');
-        }
+        setWishlist(prevWishlist => 
+          prevWishlist.map(item => 
+            item._id === productId 
+              ? { ...item, quantity: newQuantity }
+              : item
+          )
+        );
       } else {
-        setCheckoutStatus('error');
+        console.error('Failed to update quantity');
       }
     } catch (error) {
-      setCheckoutStatus('error');
       console.error('Error:', error);
     }
+  };
+
+  const handleQuantityChange = (productId, newQuantity) => {
+    if (newQuantity < 1) return;
+    updateQuantity(productId, newQuantity);
+  };
+
+  const checkoutViaWhatsApp = (shopId) => {
+    const shop = shops[shopId];
+    if (!shop) return;
+    
+    const selectedShopProducts = groupedWishlist[shopId].filter(
+      product => selectedProducts[product._id]
+    );
+    
+    if (selectedShopProducts.length === 0) {
+      alert('Please select at least one product to checkout');
+      return;
+    }
+    
+    let message = `Hello ${shop.name}, I would like to order the following products:%0A%0A`;
+    
+    selectedShopProducts.forEach((product, index) => {
+      message += `${index + 1}. ${product.name} - ₹${product.price} x ${product.quantity || 1}%0A`;
+    });
+    
+    const total = selectedShopProducts.reduce(
+      (sum, product) => sum + (product.price * (product.quantity || 1)), 0
+    );
+    
+    message += `%0ATotal: ₹${total}%0A%0APlease confirm availability and proceed with the order.`;
+    
+    window.open(`https://wa.me/${shop.owner_mobile}?text=${message}`, '_blank');
+  };
+
+  const callToOrder = (shopMobile) => {
+    window.location.href = `tel:${shopMobile}`;
   };
 
   const clearCart = async () => {
@@ -101,121 +197,134 @@ function Wishlist() {
       
       if (response.ok) {
         setWishlist([]);
+        setGroupedWishlist({});
+        setSelectedProducts({});
         setCheckoutStatus(null);
-        setShopOwnerMobiles([]);
       }
     } catch (error) {
       console.error('Error clearing cart:', error);
     }
   };
 
+  const calculateShopTotal = (products) => {
+    const selectedProductsList = products.filter(product => selectedProducts[product._id]);
+    return selectedProductsList.reduce((sum, item) => 
+      sum + (item.price * (item.quantity || 1)), 0
+    );
+  };
+
+  const getSelectedProductsCount = (shopId) => {
+    if (!groupedWishlist[shopId]) return 0;
+    
+    return groupedWishlist[shopId].filter(
+      product => selectedProducts[product._id]
+    ).length;
+  };
+
+  const getTotalItemsCount = () => {
+    return wishlist.reduce((sum, item) => sum + (item.quantity || 1), 0);
+  };
+
   if (loading) {
-    return <div className="container">Loading your cart...</div>;
+    return <div className="container"><div className="loading">Loading your wishlist...</div></div>;
   }
 
-  const totalPrice = wishlist.reduce((sum, item) => sum + item.price, 0);
+  const totalItems = getTotalItemsCount();
 
   return (
     <div className="container">
-      <h2 className="page-title">Your Cart</h2>
+      <h2 className="page-title">Your Wishlist</h2>
       
-      {/* Checkout Status Messages */}
-      {checkoutStatus === 'whatsapp_success' && (
-        <div className="checkout-success">
-          <h3>✅ WhatsApp Opened Successfully!</h3>
-          <p>Your order details have been prepared. Please complete your order on WhatsApp.</p>
-          <button onClick={clearCart} className="primary-btn">
-            Clear Cart & Continue Shopping
-          </button>
-        </div>
-      )}
-      
-      {checkoutStatus === 'whatsapp_error' && (
-        <div className="checkout-error">
-          <h3>❌ Couldn't Open WhatsApp</h3>
-          <p>Please make sure WhatsApp is installed or try calling instead.</p>
-          <div className="checkout-actions">
-            <button onClick={() => checkout('whatsapp')} className="primary-btn">
-              Try WhatsApp Again
-            </button>
-            <button onClick={() => checkout('call')} className="secondary-btn">
-              Call to Order Instead
-            </button>
-          </div>
-        </div>
-      )}
-      
-      {checkoutStatus === 'call_ready' && (
-        <div className="checkout-info">
-          <h3>📞 Call to Place Your Order</h3>
-          <p>Please call one of these numbers to complete your order:</p>
-          <div className="phone-numbers">
-            {shopOwnerMobiles.map((number, index) => (
-              <div key={index} className="phone-number">
-                <a href={`tel:${number}`} className="call-link">
-                  {number}
-                </a>
-              </div>
-            ))}
-          </div>
-          <button onClick={clearCart} className="primary-btn">
-            Order Completed - Clear Cart
-          </button>
-        </div>
-      )}
-      
-      {checkoutStatus === 'error' && (
-        <div className="checkout-error">
-          <h3>❌ Checkout Failed</h3>
-          <p>There was an error processing your order. Please try again.</p>
-          <button onClick={() => setCheckoutStatus(null)} className="primary-btn">
-            Try Again
-          </button>
-        </div>
-      )}
-      
-      {/* Cart Items */}
-      {wishlist.length === 0 && checkoutStatus !== 'whatsapp_success' ? (
+      {totalItems === 0 ? (
         <div className="empty-state">
-          <p>Your cart is empty</p>
+          <p>Your wishlist is empty</p>
           <p>Add some products from the shops to see them here!</p>
         </div>
       ) : (
         <>
-          <div className="wishlist-grid">
-            {wishlist.map(product => (
-              <WishlistItem 
-                key={product._id} 
-                product={product} 
-                onRemove={removeFromWishlist}
-              />
-            ))}
-          </div>
-          
-          {wishlist.length > 0 && checkoutStatus !== 'call_ready' && (
-            <div className="cart-summary">
-             
-              <div className="checkout-options">
-                <h3>Choose how you'd like to order:</h3>
+          {Object.keys(groupedWishlist).map(shopId => {
+            const shopProducts = groupedWishlist[shopId];
+            const shop = shops[shopId] || {};
+            const shopTotal = calculateShopTotal(shopProducts);
+            const shopItemsCount = shopProducts.length;
+            const selectedCount = getSelectedProductsCount(shopId);
+            
+            return (
+              <div key={shopId} className="shop-group">
+                <div className="shop-header">
+                  <div className="shop-info">
+                    <h3>{shop.name || `Shop`}</h3>
+                    {shop.category && <span className="shop-category">{shop.category}</span>}
+                    <div className="products-count">{shopItemsCount} product(s)</div>
+                  </div>
+                  <div className="shop-actions">
+                    <button 
+                      onClick={() => checkoutViaWhatsApp(shopId)} 
+                      className="checkout-btn whatsapp-btn"
+                      disabled={selectedCount === 0}
+                    >
+                      <span className="icon">💬</span>
+                      WhatsApp Checkout ({selectedCount})
+                    </button>
+                    {shop.owner_mobile && (
+                      <button 
+                        onClick={() => callToOrder(shop.owner_mobile)} 
+                        className="checkout-btn call-btn"
+                      >
+                        <span className="icon">📞</span>
+                        Call to Order
+                      </button>
+                    )}
+                  </div>
+                </div>
                 
-                <button 
-                  onClick={() => checkout('whatsapp')} 
-                  className="checkout-btn whatsapp-btn"
-                >
-                  <span className="icon">💬</span>
-                  Checkout via WhatsApp
-                </button>
+                <div className="shop-products">
+                  {shopProducts.map(product => (
+                    <WishlistItem 
+                      key={product._id} 
+                      product={product} 
+                      onRemove={removeFromWishlist}
+                      onQuantityChange={handleQuantityChange}
+                      isSelected={selectedProducts[product._id] || false}
+                      onToggleSelection={toggleProductSelection}
+                    />
+                  ))}
+                </div>
                 
-                <button 
-                  onClick={() => checkout('call')} 
-                  className="checkout-btn call-btn"
-                >
-                  <span className="icon">📞</span>
-                  Call to Order
-                </button>
+                {selectedCount > 0 && (
+                  <div className="shop-footer" style={{ 
+                    padding: '15px 20px', 
+                    background: '#f8f9fa', 
+                    borderTop: '1px solid #eee',
+                    textAlign: 'right',
+                    fontWeight: '600',
+                    color: '#2c3e50'
+                  }}>
+                    Selected Total: ₹{shopTotal.toFixed(2)}
+                  </div>
+                )}
               </div>
+            );
+          })}
+          
+          <div className="cart-summary">
+            <div className="summary-row">
+              <span>Total Shops:</span>
+              <span>{Object.keys(groupedWishlist).length}</span>
             </div>
-          )}
+            <div className="summary-row">
+              <span>Total Products:</span>
+              <span>{wishlist.length}</span>
+            </div>
+            <div className="summary-row">
+              <span>Total Items:</span>
+              <span>{totalItems}</span>
+            </div>
+            
+            <button onClick={clearCart} className="clear-cart-btn">
+              Clear Entire Wishlist
+            </button>
+          </div>
         </>
       )}
     </div>
