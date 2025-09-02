@@ -1,10 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import config from '../config';
 
 function Login({ onLogin }) {
   const [mobile, setMobile] = useState('');
+  const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const navigate = useNavigate();
+
+  // Array of startup messages to rotate through
+  const startupMessages = [
+    "Discover the best local shops near you",
+    "Get exclusive deals from your favorite stores",
+    "Fast, convenient, and personalized shopping experience",
+    "Support local businesses with every purchase",
+    "Your one-stop app for all shopping needs",
+    "Buy Products from your Trusted  shops"
+  ];
+
+  useEffect(() => {
+    // Set up interval to rotate messages every 3 seconds
+    const interval = setInterval(() => {
+      setCurrentTextIndex((prevIndex) => 
+        prevIndex === startupMessages.length - 1 ? 0 : prevIndex + 1
+      );
+    }, 3000);
+
+    // Clean up interval on component unmount
+    return () => clearInterval(interval);
+  }, [startupMessages.length]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,6 +69,13 @@ function Login({ onLogin }) {
           />
           <button type="submit">Continue</button>
         </form>
+        
+        {/* Rotating startup messages section */}
+        <div className="startup-messages">
+          <p key={currentTextIndex} className="fade-in">
+            {startupMessages[currentTextIndex]}
+          </p>
+        </div>
       </div>
     </div>
   );
