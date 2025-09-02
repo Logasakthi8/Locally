@@ -55,7 +55,7 @@ function Login({ onLogin }) {
   return (
     <div className="login-container">
       <div className="login-form">
-        <h2>Welcome to ShopApp</h2>
+        <h2>Welcome to Locally</h2>
         <p>Enter your mobile number to get started</p>
         <form onSubmit={handleSubmit}>
           <input
