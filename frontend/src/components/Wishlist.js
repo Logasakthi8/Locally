@@ -8,7 +8,7 @@ function Wishlist() {
   const [shops, setShops] = useState({});
   const [loading, setLoading] = useState(true);
   const [selectedProducts, setSelectedProducts] = useState({});
-  const [checkoutStatus, setCheckoutStatus] = useState(null);
+  const [deliveryCharge] = useState(30);
 
   useEffect(() => {
     fetchWishlist();
@@ -111,7 +111,6 @@ function Wishlist() {
       
       if (response.ok) {
         setWishlist(wishlist.filter(item => item._id !== productId));
-        setCheckoutStatus(null);
         
         const newSelected = {...selectedProducts};
         delete newSelected[productId];
@@ -169,17 +168,24 @@ function Wishlist() {
       return;
     }
     
+    const subtotal = calculateShopSubtotal(selectedShopProducts);
+    if (subtotal < 100) {
+      alert(`Minimum order amount is ₹100. Please add more products to proceed with checkout.`);
+      return;
+    }
+    
+    const total = subtotal + deliveryCharge;
+    
     let message = `Hello ${shop.name}, I would like to order the following products:%0A%0A`;
     
     selectedShopProducts.forEach((product, index) => {
       message += `${index + 1}. ${product.name} - ₹${product.price} x ${product.quantity || 1}%0A`;
     });
     
-    const total = selectedShopProducts.reduce(
-      (sum, product) => sum + (product.price * (product.quantity || 1)), 0
-    );
-    
-    message += `%0ATotal: ₹${total}%0A%0APlease confirm availability and proceed with the order.`;
+    message += `%0ASubtotal: ₹${subtotal}%0A`;
+    message += `Delivery Charge: ₹${deliveryCharge}%0A`;
+    message += `Total: ₹${total}%0A%0A`;
+    message += `Please confirm availability and proceed with the order.`;
     
     window.open(`https://wa.me/${shop.owner_mobile}?text=${message}`, '_blank');
   };
@@ -199,18 +205,27 @@ function Wishlist() {
         setWishlist([]);
         setGroupedWishlist({});
         setSelectedProducts({});
-        setCheckoutStatus(null);
       }
     } catch (error) {
       console.error('Error clearing cart:', error);
     }
   };
 
-  const calculateShopTotal = (products) => {
-    const selectedProductsList = products.filter(product => selectedProducts[product._id]);
-    return selectedProductsList.reduce((sum, item) => 
+  const calculateShopSubtotal = (products) => {
+    return products.reduce((sum, item) => 
       sum + (item.price * (item.quantity || 1)), 0
     );
+  };
+
+  const calculateShopTotal = (products) => {
+    const selectedProductsList = products.filter(product => selectedProducts[product._id]);
+    const subtotal = calculateShopSubtotal(selectedProductsList);
+    
+    if (subtotal >= 100) {
+      return subtotal + deliveryCharge;
+    }
+    
+    return subtotal;
   };
 
   const getSelectedProductsCount = (shopId) => {
@@ -226,81 +241,120 @@ function Wishlist() {
   };
 
   if (loading) {
-    return <div className="container"><div className="loading">Loading your wishlist...</div></div>;
+    return (
+      <div className="container">
+        <div className="loading">Loading your wishlist...</div>
+      </div>
+    );
   }
 
   const totalItems = getTotalItemsCount();
+  const totalProducts = wishlist.length;
+  const totalShops = Object.keys(groupedWishlist).length;
 
   return (
     <div className="container">
-      <h2 className="page-title">Your Wishlist</h2>
+      <div className="page-header">
+        <h1 className="page-title">Your Wishlist</h1>
+        {totalItems > 0 && (
+          <div className="cart-summary-badge">
+            {totalItems} item{totalItems !== 1 ? 's' : ''}
+          </div>
+        )}
+      </div>
       
       {totalItems === 0 ? (
         <div className="empty-state">
-          <p>Your wishlist is empty</p>
-          <p>Add some products from the shops to see them here!</p>
+          <div className="empty-icon">🛒</div>
+          <h2 className="empty-title">Your wishlist is empty</h2>
+          <p className="empty-description">Add some products from the shops to see them here!</p>
         </div>
       ) : (
         <>
           {Object.keys(groupedWishlist).map(shopId => {
             const shopProducts = groupedWishlist[shopId];
             const shop = shops[shopId] || {};
-            const shopTotal = calculateShopTotal(shopProducts);
+            const selectedProductsList = shopProducts.filter(product => selectedProducts[product._id]);
+            const subtotal = calculateShopSubtotal(selectedProductsList);
+            const total = calculateShopTotal(shopProducts);
             const shopItemsCount = shopProducts.length;
             const selectedCount = getSelectedProductsCount(shopId);
+            const meetsMinimum = subtotal >= 100;
             
             return (
               <div key={shopId} className="shop-group">
                 <div className="shop-header">
                   <div className="shop-info">
-                    <h3>{shop.name || `Shop`}</h3>
-                    {shop.category && <span className="shop-category">{shop.category}</span>}
-                    <div className="products-count">{shopItemsCount} product(s)</div>
+                    <h3 className="shop-name">{shop.name || `Shop`}</h3>
+                    <div className="shop-meta">
+                      {shop.category && <span className="shop-category">{shop.category}</span>}
+                      <span className="products-count">
+                        <span>📦</span> {shopItemsCount} product{shopItemsCount !== 1 ? 's' : ''}
+                      </span>
+                    </div>
                   </div>
                   <div className="shop-actions">
                     <button 
                       onClick={() => checkoutViaWhatsApp(shopId)} 
-                      className="checkout-btn whatsapp-btn"
-                      disabled={selectedCount === 0}
+                      className={`btn ${meetsMinimum ? 'btn-whatsapp' : 'btn-disabled'}`}
+                      disabled={selectedCount === 0 || !meetsMinimum}
+                      title={!meetsMinimum ? `Add ₹${100 - subtotal} more to checkout` : ''}
                     >
-                      <span className="icon">💬</span>
-                      WhatsApp Checkout ({selectedCount})
+                      <span>💬</span>
+                      WhatsApp ({selectedCount})
                     </button>
                     {shop.owner_mobile && (
                       <button 
-                        onClick={() => callToOrder(shop.owner_mobile)} 
-                        className="checkout-btn call-btn"
+                        onClick={() => meetsMinimum && callToOrder(shop.owner_mobile)} 
+                        className={`btn ${meetsMinimum ? 'btn-call' : 'btn-disabled'}`}
+                        disabled={!meetsMinimum}
+                        title={!meetsMinimum ? `Add ₹${100 - subtotal} more to call` : ''}
                       >
-                        <span className="icon">📞</span>
+                        <span>📞</span>
                         Call to Order
                       </button>
                     )}
                   </div>
                 </div>
                 
-                <div className="shop-products">
-                  {shopProducts.map(product => (
-                    <WishlistItem 
-                      key={product._id} 
-                      product={product} 
-                      onRemove={removeFromWishlist}
-                      onQuantityChange={handleQuantityChange}
-                      isSelected={selectedProducts[product._id] || false}
-                      onToggleSelection={toggleProductSelection}
-                    />
-                  ))}
-                </div>
-                
+               <div className="shop-products">
+  <div className="products-grid">
+    {shopProducts.map(product => (
+      <WishlistItem 
+        key={product._id} 
+        product={product} 
+        onRemove={removeFromWishlist}
+        onQuantityChange={handleQuantityChange}
+        isSelected={selectedProducts[product._id] || false}
+        onToggleSelection={toggleProductSelection}
+      />
+    ))}
+  </div>
+</div>
                 {selectedCount > 0 && (
-                  <div className="shop-footer" style={{ 
-                    padding: '15px 20px', 
-                    background: '#f8f9fa', 
-                    borderTop: '1px solid #eee',
-                    textAlign: 'right',
-                    fontWeight: '600',
-                    color: '#2c3e50'
-                  }}>
-                    Selected Total: ₹{shopTotal.toFixed(2)}
+                  <div className="shop-footer">
+                    <div className="order-summary">
+                      <div className="summary-row">
+                        <span>Subtotal:</span>
+                        <span>₹{subtotal.toFixed(2)}</span>
+                      </div>
+                      {meetsMinimum ? (
+                        <>
+                          <div className="summary-row">
+                            <span>Delivery Charge:</span>
+                            <span>₹{deliveryCharge}</span>
+                          </div>
+                          <div className="summary-row total">
+                            <span>Total:</span>
+                            <span>₹{total.toFixed(2)}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="minimum-alert">
+                          <span>Add ₹{(100 - subtotal).toFixed(2)} more to reach minimum order of ₹100</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -308,20 +362,22 @@ function Wishlist() {
           })}
           
           <div className="cart-summary">
-            <div className="summary-row">
-              <span>Total Shops:</span>
-              <span>{Object.keys(groupedWishlist).length}</span>
+            <h3 className="summary-title">Cart Summary</h3>
+            <div className="summary-grid">
+              <div className="summary-item">
+                <span className="summary-label">Total Shops</span>
+                <span className="summary-value">{totalShops}</span>
+              </div>
+              <div className="summary-item">
+                <span className="summary-label">Total Products</span>
+                <span className="summary-value">{totalProducts}</span>
+              </div>
+              <div className="summary-item">
+                <span className="summary-label">Total Items</span>
+                <span className="summary-value">{totalItems}</span>
+              </div>
             </div>
-            <div className="summary-row">
-              <span>Total Products:</span>
-              <span>{wishlist.length}</span>
-            </div>
-            <div className="summary-row">
-              <span>Total Items:</span>
-              <span>{totalItems}</span>
-            </div>
-            
-            <button onClick={clearCart} className="clear-cart-btn">
+            <button onClick={clearCart} className="btn btn-danger" style={{width: '100%'}}>
               Clear Entire Wishlist
             </button>
           </div>
