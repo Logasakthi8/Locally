@@ -7,41 +7,15 @@ import os
 from dotenv import load_dotenv
 from models import User, Shop, Product, Wishlist, Order
 
+load_dotenv()
+
 app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY', 'fallback-secret-key-for-development')
-
-app.config.update(
-    SESSION_COOKIE_SECURE=True,      # Only send over HTTPS
-    SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SAMESITE='None',  # Required for cross-site
-)
-
-# Configure for production
-mongo_uri = os.getenv('MONGO_URI')
-if not mongo_uri:
-    raise ValueError("No MONGO_URI set for MongoDB connection")
-
-app.config["MONGO_URI"] = mongo_uri
-
-# Configure CORS for production
-# Configure CORS for multiple origins
-allowed_origins = [
-    'http://localhost:3000',  # Local development
-    'https://locally-frontend.onrender.com',  # Your production frontend
-    
-]
-
-# Use the environment variable if set, otherwise allow all in the list
-frontend_url = os.getenv('FRONTEND_URL', allowed_origins)
-
-CORS(app, 
-     resources={r"/api/*": {"origins": allowed_origins}}, 
-     supports_credentials=True,
-     allow_headers=["Content-Type", "Authorization"],
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
-
+app.secret_key = os.getenv('SECRET_KEY')
+app.config["MONGO_URI"] = os.getenv('MONGO_URI')
 mongo = PyMongo(app)
+CORS(app, supports_credentials=True)
 
+# Helper function to serialize ObjectId
 def serialize_doc(doc):
     if doc is None:
         return None
@@ -92,6 +66,22 @@ def login():
     session['user_id'] = str(user['_id'])
     session['user_mobile'] = user['mobile']
     return jsonify({'message': 'Login successful', 'user': serialize_doc(user)})
+
+@app.route('/api/check-auth', methods=['GET'])
+def check_auth():
+    if 'user_id' in session:
+        try:
+            user = mongo.db.users.find_one({'_id': ObjectId(session['user_id'])})
+            if user:
+                return jsonify({
+                    'isAuthenticated': True,
+                    'user': serialize_doc(user)
+                })
+        except:
+            # If there's any error, treat as not authenticated
+            pass
+    
+    return jsonify({'isAuthenticated': False})
 
 @app.route('/api/shops', methods=['GET'])
 def get_shops():
