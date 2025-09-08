@@ -9,38 +9,53 @@ function Wishlist() {
   const [loading, setLoading] = useState(true);
   const [selectedProducts, setSelectedProducts] = useState({});
   const [deliveryCharge] = useState(30);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchWishlist();
   }, []);
 
   useEffect(() => {
+    console.log('Wishlist updated:', wishlist);
     if (wishlist.length > 0) {
       groupProductsByShop();
       initializeSelectedProducts();
+    } else {
+      setGroupedWishlist({});
+      setSelectedProducts({});
     }
   }, [wishlist]);
 
   const fetchWishlist = async () => {
     try {
       setLoading(true);
+      setError('');
+      console.log('Fetching wishlist from:', `${config.apiUrl}/wishlist`);
+      
       const response = await fetch(`${config.apiUrl}/wishlist`, {
         credentials: 'include'
       });
       
+      console.log('Wishlist response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('Wishlist data received:', data);
         setWishlist(data);
         
         if (data.length > 0) {
           await fetchShopDetails(data);
         }
+      } else if (response.status === 401) {
+        setError('Please login to view your wishlist');
       } else {
         console.error('Failed to fetch wishlist');
+        setError('Failed to load wishlist. Please try again.');
       }
       setLoading(false);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error fetching wishlist:', error);
+      setError('Unable to connect to server. Please check your connection.');
       setLoading(false);
     }
   };
@@ -117,9 +132,11 @@ function Wishlist() {
         setSelectedProducts(newSelected);
       } else {
         console.error('Failed to remove from wishlist');
+        alert('Failed to remove item from wishlist');
       }
     } catch (error) {
       console.error('Error:', error);
+      alert('Error removing item from wishlist');
     }
   };
 
@@ -144,9 +161,11 @@ function Wishlist() {
         );
       } else {
         console.error('Failed to update quantity');
+        alert('Failed to update quantity');
       }
     } catch (error) {
       console.error('Error:', error);
+      alert('Error updating quantity');
     }
   };
 
@@ -174,7 +193,9 @@ function Wishlist() {
       return;
     }
     
-    const total = subtotal + deliveryCharge;
+    // Calculate delivery charge (free if subtotal >= 500)
+    const delivery = subtotal >= 500 ? 0 : deliveryCharge;
+    const total = subtotal + delivery;
     
     let message = `Hello ${shop.name}, I would like to order the following products:%0A%0A`;
     
@@ -183,7 +204,7 @@ function Wishlist() {
     });
     
     message += `%0ASubtotal: ₹${subtotal}%0A`;
-    message += `Delivery Charge: ₹${deliveryCharge}%0A`;
+    message += `Delivery Charge: ₹${delivery}%0A`;
     message += `Total: ₹${total}%0A%0A`;
     message += `Please confirm availability and proceed with the order.`;
     
@@ -195,6 +216,10 @@ function Wishlist() {
   };
 
   const clearCart = async () => {
+    if (!window.confirm('Are you sure you want to clear your entire wishlist?')) {
+      return;
+    }
+    
     try {
       const response = await fetch(`${config.apiUrl}/clear-cart`, {
         method: 'POST',
@@ -205,9 +230,13 @@ function Wishlist() {
         setWishlist([]);
         setGroupedWishlist({});
         setSelectedProducts({});
+        alert('Wishlist cleared successfully');
+      } else {
+        alert('Failed to clear wishlist');
       }
     } catch (error) {
       console.error('Error clearing cart:', error);
+      alert('Error clearing wishlist');
     }
   };
 
@@ -222,7 +251,9 @@ function Wishlist() {
     const subtotal = calculateShopSubtotal(selectedProductsList);
     
     if (subtotal >= 100) {
-      return subtotal + deliveryCharge;
+      // Apply free delivery if subtotal is 500 or more
+      const delivery = subtotal >= 500 ? 0 : deliveryCharge;
+      return subtotal + delivery;
     }
     
     return subtotal;
@@ -244,6 +275,19 @@ function Wishlist() {
     return (
       <div className="container">
         <div className="loading">Loading your wishlist...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container">
+        <div className="error-state">
+          <p>{error}</p>
+          <button onClick={fetchWishlist} className="btn btn-primary">
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
@@ -280,6 +324,8 @@ function Wishlist() {
             const shopItemsCount = shopProducts.length;
             const selectedCount = getSelectedProductsCount(shopId);
             const meetsMinimum = subtotal >= 100;
+            // Calculate delivery charge (free if subtotal >= 500)
+            const delivery = subtotal >= 500 ? 0 : deliveryCharge;
             
             return (
               <div key={shopId} className="shop-group">
@@ -317,20 +363,20 @@ function Wishlist() {
                   </div>
                 </div>
                 
-               <div className="shop-products">
-  <div className="products-grid">
-    {shopProducts.map(product => (
-      <WishlistItem 
-        key={product._id} 
-        product={product} 
-        onRemove={removeFromWishlist}
-        onQuantityChange={handleQuantityChange}
-        isSelected={selectedProducts[product._id] || false}
-        onToggleSelection={toggleProductSelection}
-      />
-    ))}
-  </div>
-</div>
+                <div className="shop-products">
+                  <div className="products-grid">
+                    {shopProducts.map(product => (
+                      <WishlistItem 
+                        key={product._id} 
+                        product={product} 
+                        onRemove={removeFromWishlist}
+                        onQuantityChange={handleQuantityChange}
+                        isSelected={selectedProducts[product._id] || false}
+                        onToggleSelection={toggleProductSelection}
+                      />
+                    ))}
+                  </div>
+                </div>
                 {selectedCount > 0 && (
                   <div className="shop-footer">
                     <div className="order-summary">
@@ -342,8 +388,13 @@ function Wishlist() {
                         <>
                           <div className="summary-row">
                             <span>Delivery Charge:</span>
-                            <span>₹{deliveryCharge}</span>
+                            <span>{subtotal >= 500 ? 'FREE' : `₹${delivery}`}</span>
                           </div>
+                          {subtotal >= 500 && (
+                            <div className="free-delivery-badge">
+                              🎉 You've earned free delivery!
+                            </div>
+                          )}
                           <div className="summary-row total">
                             <span>Total:</span>
                             <span>₹{total.toFixed(2)}</span>
