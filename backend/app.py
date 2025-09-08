@@ -67,21 +67,7 @@ def login():
     session['user_mobile'] = user['mobile']
     return jsonify({'message': 'Login successful', 'user': serialize_doc(user)})
 
-@app.route('/api/check-auth', methods=['GET'])
-def check_auth():
-    if 'user_id' in session:
-        try:
-            user = mongo.db.users.find_one({'_id': ObjectId(session['user_id'])})
-            if user:
-                return jsonify({
-                    'isAuthenticated': True,
-                    'user': serialize_doc(user)
-                })
-        except:
-            # If there's any error, treat as not authenticated
-            pass
-    
-    return jsonify({'isAuthenticated': False})
+
 
 @app.route('/api/shops', methods=['GET'])
 def get_shops():
