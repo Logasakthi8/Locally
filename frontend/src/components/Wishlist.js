@@ -9,53 +9,38 @@ function Wishlist() {
   const [loading, setLoading] = useState(true);
   const [selectedProducts, setSelectedProducts] = useState({});
   const [deliveryCharge] = useState(30);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchWishlist();
   }, []);
 
   useEffect(() => {
-    console.log('Wishlist updated:', wishlist);
     if (wishlist.length > 0) {
       groupProductsByShop();
       initializeSelectedProducts();
-    } else {
-      setGroupedWishlist({});
-      setSelectedProducts({});
     }
   }, [wishlist]);
 
   const fetchWishlist = async () => {
     try {
       setLoading(true);
-      setError('');
-      console.log('Fetching wishlist from:', `${config.apiUrl}/wishlist`);
-      
       const response = await fetch(`${config.apiUrl}/wishlist`, {
         credentials: 'include'
       });
       
-      console.log('Wishlist response status:', response.status);
-      
       if (response.ok) {
         const data = await response.json();
-        console.log('Wishlist data received:', data);
         setWishlist(data);
         
         if (data.length > 0) {
           await fetchShopDetails(data);
         }
-      } else if (response.status === 401) {
-        setError('Please login to view your wishlist');
       } else {
         console.error('Failed to fetch wishlist');
-        setError('Failed to load wishlist. Please try again.');
       }
       setLoading(false);
     } catch (error) {
-      console.error('Error fetching wishlist:', error);
-      setError('Unable to connect to server. Please check your connection.');
+      console.error('Error:', error);
       setLoading(false);
     }
   };
@@ -132,11 +117,9 @@ function Wishlist() {
         setSelectedProducts(newSelected);
       } else {
         console.error('Failed to remove from wishlist');
-        alert('Failed to remove item from wishlist');
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('Error removing item from wishlist');
     }
   };
 
@@ -161,11 +144,9 @@ function Wishlist() {
         );
       } else {
         console.error('Failed to update quantity');
-        alert('Failed to update quantity');
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('Error updating quantity');
     }
   };
 
@@ -216,10 +197,6 @@ function Wishlist() {
   };
 
   const clearCart = async () => {
-    if (!window.confirm('Are you sure you want to clear your entire wishlist?')) {
-      return;
-    }
-    
     try {
       const response = await fetch(`${config.apiUrl}/clear-cart`, {
         method: 'POST',
@@ -230,13 +207,9 @@ function Wishlist() {
         setWishlist([]);
         setGroupedWishlist({});
         setSelectedProducts({});
-        alert('Wishlist cleared successfully');
-      } else {
-        alert('Failed to clear wishlist');
       }
     } catch (error) {
       console.error('Error clearing cart:', error);
-      alert('Error clearing wishlist');
     }
   };
 
@@ -275,19 +248,6 @@ function Wishlist() {
     return (
       <div className="container">
         <div className="loading">Loading your wishlist...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="container">
-        <div className="error-state">
-          <p>{error}</p>
-          <button onClick={fetchWishlist} className="btn btn-primary">
-            Try Again
-          </button>
-        </div>
       </div>
     );
   }
@@ -438,4 +398,4 @@ function Wishlist() {
   );
 }
 
-export default Wishlist;
+export default Wishlist;                   it shows only your wishlist empty if we added the product
