@@ -174,7 +174,9 @@ function Wishlist() {
       return;
     }
     
-    const total = subtotal + deliveryCharge;
+    // Calculate delivery charge (free if subtotal >= 500)
+    const delivery = subtotal >= 500 ? 0 : deliveryCharge;
+    const total = subtotal + delivery;
     
     let message = `Hello ${shop.name}, I would like to order the following products:%0A%0A`;
     
@@ -183,7 +185,7 @@ function Wishlist() {
     });
     
     message += `%0ASubtotal: ₹${subtotal}%0A`;
-    message += `Delivery Charge: ₹${deliveryCharge}%0A`;
+    message += `Delivery Charge: ₹${delivery}%0A`;
     message += `Total: ₹${total}%0A%0A`;
     message += `Please confirm availability and proceed with the order.`;
     
@@ -222,7 +224,9 @@ function Wishlist() {
     const subtotal = calculateShopSubtotal(selectedProductsList);
     
     if (subtotal >= 100) {
-      return subtotal + deliveryCharge;
+      // Apply free delivery if subtotal is 500 or more
+      const delivery = subtotal >= 500 ? 0 : deliveryCharge;
+      return subtotal + delivery;
     }
     
     return subtotal;
@@ -280,6 +284,8 @@ function Wishlist() {
             const shopItemsCount = shopProducts.length;
             const selectedCount = getSelectedProductsCount(shopId);
             const meetsMinimum = subtotal >= 100;
+            // Calculate delivery charge (free if subtotal >= 500)
+            const delivery = subtotal >= 500 ? 0 : deliveryCharge;
             
             return (
               <div key={shopId} className="shop-group">
@@ -342,8 +348,13 @@ function Wishlist() {
                         <>
                           <div className="summary-row">
                             <span>Delivery Charge:</span>
-                            <span>₹{deliveryCharge}</span>
+                            <span>{subtotal >= 500 ? 'FREE' : `₹${delivery}`}</span>
                           </div>
+                          {subtotal >= 500 && (
+                            <div className="free-delivery-badge">
+                              🎉 You've earned free delivery!
+                            </div>
+                          )}
                           <div className="summary-row total">
                             <span>Total:</span>
                             <span>₹{total.toFixed(2)}</span>
