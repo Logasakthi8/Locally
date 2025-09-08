@@ -18,6 +18,28 @@ function Login({ onLogin }) {
   ];
 
   useEffect(() => {
+    // Check if user is already logged in
+    const checkAuthStatus = async () => {
+      try {
+        const response = await fetch(`${config.apiUrl}/check-auth`, {
+          method: 'GET',
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.isAuthenticated && data.user) {
+            onLogin(data.user);
+            navigate('/shops');
+          }
+        }
+      } catch (error) {
+        console.error('Error checking auth status:', error);
+      }
+    };
+
+    checkAuthStatus();
+
     // Set up interval to rotate messages every 3 seconds
     const interval = setInterval(() => {
       setCurrentTextIndex((prevIndex) => 
@@ -27,12 +49,12 @@ function Login({ onLogin }) {
 
     // Clean up interval on component unmount
     return () => clearInterval(interval);
-  }, [startupMessages.length]);
+  }, [startupMessages.length, navigate, onLogin]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`${config.apiUrl}/login`, {
+      const response = await fetch('http://localhost:5000/api/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -56,7 +78,7 @@ function Login({ onLogin }) {
   return (
     <div className="login-container">
       <div className="login-form">
-        <h2>Welcome to Locally</h2>
+        <h2>Welcome to ShopApp</h2>
         <p>Enter your mobile number to get started</p>
         <form onSubmit={handleSubmit}>
           <input
