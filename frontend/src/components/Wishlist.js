@@ -398,4 +398,4 @@ function Wishlist() {
   );
 }
 
-export default Wishlist;                   it shows only your wishlist empty if we added the product
+export default Wishlist;
