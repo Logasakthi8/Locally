@@ -138,7 +138,6 @@ def get_wishlist():
             wishlist_with_details.append(product_data)
     
     return jsonify(wishlist_with_details)
-
 # app.py - Update the add_to_wishlist endpoint
 @app.route('/api/wishlist', methods=['POST'])
 def add_to_wishlist():
