@@ -317,20 +317,20 @@ function Wishlist() {
                   </div>
                 </div>
                 
-               <div className="shop-products">
-  <div className="products-grid">
-    {shopProducts.map(product => (
-      <WishlistItem 
-        key={product._id} 
-        product={product} 
-        onRemove={removeFromWishlist}
-        onQuantityChange={handleQuantityChange}
-        isSelected={selectedProducts[product._id] || false}
-        onToggleSelection={toggleProductSelection}
-      />
-    ))}
-  </div>
-</div>
+                <div className="shop-products">
+                  <div className="products-grid">
+                    {shopProducts.map(product => (
+                      <WishlistItem 
+                        key={product._id} 
+                        product={product} 
+                        onRemove={removeFromWishlist}
+                        onQuantityChange={handleQuantityChange}
+                        isSelected={selectedProducts[product._id] || false}
+                        onToggleSelection={toggleProductSelection}
+                      />
+                    ))}
+                  </div>
+                </div>
                 {selectedCount > 0 && (
                   <div className="shop-footer">
                     <div className="order-summary">
@@ -387,4 +387,4 @@ function Wishlist() {
   );
 }
 
-export default Wishlist;                                       if the user purchased above 500 they will get free delivery.add thatlogic to the user butdon't touch other function
+export default Wishlist;
