@@ -4,13 +4,10 @@ import config from '../config';
 function ProductCard({ product }) {
   const [isLiked, setIsLiked] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
-  const [error, setError] = useState('');
 
   const handleLike = async () => {
     try {
       setIsAdding(true);
-      setError('');
-      
       const response = await fetch(`${config.apiUrl}/wishlist`, {
         method: 'POST',
         headers: {
@@ -20,43 +17,25 @@ function ProductCard({ product }) {
         credentials: 'include'
       });
       
-      // Check if response is successful (status 200-299)
       if (response.ok) {
         setIsLiked(true);
-        // Don't automatically reset the liked status
-        setIsAdding(false);
+        // Show success message for 2 seconds
+        setTimeout(() => {
+          setIsLiked(false);
+          setIsAdding(false);
+        }, 2000);
       } else {
-        // Handle HTTP error statuses
-        if (response.status === 401) {
-          setError('Please login to add to wishlist');
-        } else if (response.status === 404) {
-          setError('Product not found');
-        } else {
-          const errorData = await response.json();
-          setError(errorData.error || 'Failed to add to wishlist');
-        }
-        console.error('Failed to add to wishlist. Status:', response.status);
+        console.error('Failed to add to wishlist');
         setIsAdding(false);
       }
     } catch (error) {
-      console.error('Network error:', error);
-      setError('Network error. Please check your connection.');
+      console.error('Error:', error);
       setIsAdding(false);
     }
   };
 
-  const clearError = () => {
-    setError('');
-  };
-
   return (
     <div className="product-card">
-      {error && (
-        <div className="error-message">
-          <span>{error}</span>
-          <button onClick={clearError} className="error-close">×</button>
-        </div>
-      )}
       <img 
         src={product.image_url} 
         alt={product.name}
@@ -74,7 +53,7 @@ function ProductCard({ product }) {
         <button 
           className={`like-btn ${isLiked ? 'liked' : ''} ${isAdding ? 'adding' : ''}`}
           onClick={handleLike}
-          disabled={isAdding || isLiked}
+          disabled={isAdding}
         >
           {isAdding ? 'Adding...' : (isLiked ? 'Added to Wishlist!' : 'Add to Wishlist')}
         </button>
@@ -83,4 +62,4 @@ function ProductCard({ product }) {
   );
 }
 
-export default ProductCard;
+export default ProductCard;                                                                                        ProductCard.js:28 Failed to add to wishlist
