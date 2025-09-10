@@ -603,4 +603,4 @@ def update_wishlist_quantities():
         return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)               full updated code but don't touch other functionality
+    app.run(debug=True)            
