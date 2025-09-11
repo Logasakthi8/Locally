@@ -276,6 +276,7 @@ def get_user():
     else:
         return jsonify({'error': 'User not found'}), 404
 
+
 @app.route('/api/logout', methods=['POST'])
 def logout():
     session.pop('user_id', None)
