@@ -13,6 +13,8 @@ function ShopCard({ shop }) {
         <p><strong>Owner:</strong> {shop.owner_mobile}</p>
         <p><strong>Hours:</strong> {shop.opening_time} - {shop.closing_time}</p>
         <p><strong>Address:</strong> {shop.address}</p>
+         <p><strong>Rating:</strong> {shop.avgRating ? shop.avgRating.toFixed(1) : "No reviews yet"}</p>
+
         <button 
           className="primary-btn"
           onClick={() => navigate(`/products/${shop._id}`)}
