@@ -5,6 +5,7 @@ import config from '../config';
 function Login({ onLogin }) {
   const [mobile, setMobile] = useState('');
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
+  const [loading, setLoading] = useState(false); // ✅ added loading state
   const navigate = useNavigate();
 
   // Array of startup messages to rotate through
@@ -14,7 +15,7 @@ function Login({ onLogin }) {
     "Fast, convenient, and personalized shopping experience",
     "Support local businesses with every purchase",
     "Your one-stop app for all shopping needs",
-    "Buy Products from your Trusted  shops"
+    "Buy Products from your Trusted shops"
   ];
 
   useEffect(() => {
@@ -31,6 +32,7 @@ function Login({ onLogin }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true); // ✅ show loading when request starts
     try {
       const response = await fetch(`${config.apiUrl}/login`, {
         method: 'POST',
@@ -50,6 +52,8 @@ function Login({ onLogin }) {
       }
     } catch (error) {
       console.error('Error:', error);
+    } finally {
+      setLoading(false); // ✅ stop loading after request finishes
     }
   };
 
@@ -67,8 +71,11 @@ function Login({ onLogin }) {
             required
             pattern="[0-9]{10}"
             title="Please enter a 10-digit mobile number"
+            disabled={loading} // ✅ disable input while logging in
           />
-          <button type="submit">Continue</button>
+          <button type="submit" disabled={loading}>
+            {loading ? "Logging in..." : "Continue"} {/* ✅ dynamic text */}
+          </button>
         </form>
         
         {/* Rotating startup messages section */}
