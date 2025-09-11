@@ -10,25 +10,24 @@ import config from './config';
 function App() {
   const [user, setUser] = useState(null);
 
-  useEffect(() => {
-    // Check if user is already logged in (session exists)
-    const checkSession = async () => {
-      try {
-        const response = await fetch('${config.apiUrl}', {
-          credentials: 'include'
-        });
-        
-        if (response.ok) {
-          const userData = await response.json();
-          setUser(userData);
-        }
-      } catch (error) {
-        console.error('Error checking session:', error);
+ useEffect(() => {
+  const checkSession = async () => {
+    try {
+      const response = await fetch(`${config.apiUrl}/user`, {
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData); // ✅ directly the user object
       }
-    };
-    
-    checkSession();
-  }, []);
+    } catch (error) {
+      console.error('Error checking session:', error);
+    }
+  };
+
+  checkSession();
+}, []);
 
   return (
     <Router>
