@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import config from '../config';
 
 function ShopCard({ shop }) {
-  const [hoverRating, setHoverRating] = useState(0);  // Hovered star
-  const [userRating, setUserRating] = useState(shop.avgRating || 0); // Current rating
+  const navigate = useNavigate();
+  const [hoverRating, setHoverRating] = useState(0);
+  const [userRating, setUserRating] = useState(shop.avgRating || 0);
 
   const submitRating = async (rating) => {
     try {
@@ -14,11 +16,11 @@ function ShopCard({ shop }) {
           'Accept': 'application/json',
         },
         body: JSON.stringify({ rating }),
-        credentials: 'include'  // ensure session cookie is sent
+        credentials: 'include'
       });
 
       if (response.ok) {
-        setUserRating(rating);  // Update UI immediately
+        setUserRating(rating);
         alert('Thank you for your rating!');
       } else {
         const data = await response.json();
@@ -32,26 +34,40 @@ function ShopCard({ shop }) {
 
   return (
     <div className="shop-card">
-      <h3>{shop.name}</h3>
-      <p>{shop.address}</p>
+      <img src={shop.image_url} alt={shop.name} />
+      <div className="card-info">
+        <h3>{shop.name}</h3>
+        <p><strong>Category:</strong> {shop.category}</p>
+        <p><strong>Owner:</strong> {shop.owner_mobile}</p>
+        <p><strong>Hours:</strong> {shop.opening_time} - {shop.closing_time}</p>
+        <p><strong>Address:</strong> {shop.address}</p>
 
-      {/* Star Rating */}
-      <div className="stars">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <span
-            key={star}
-            style={{
-              cursor: 'pointer',
-              color: (hoverRating || userRating) >= star ? '#ffc107' : '#e4e5e9',
-              fontSize: '1.5rem',
-            }}
-            onMouseEnter={() => setHoverRating(star)}
-            onMouseLeave={() => setHoverRating(0)}
-            onClick={() => submitRating(star)}
-          >
-            ★
-          </span>
-        ))}
+        {/* Star Rating */}
+        <div className="stars" style={{ margin: '0.5rem 0' }}>
+          {[1, 2, 3, 4, 5].map((star) => (
+            <span
+              key={star}
+              style={{
+                cursor: 'pointer',
+                color: (hoverRating || userRating) >= star ? '#ffc107' : '#e4e5e9',
+                fontSize: '1.5rem',
+                marginRight: '2px'
+              }}
+              onMouseEnter={() => setHoverRating(star)}
+              onMouseLeave={() => setHoverRating(0)}
+              onClick={() => submitRating(star)}
+            >
+              ★
+            </span>
+          ))}
+        </div>
+
+        <button 
+          className="primary-btn"
+          onClick={() => navigate(`/products/${shop._id}`)}
+        >
+          View Shop
+        </button>
       </div>
     </div>
   );
