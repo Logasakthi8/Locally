@@ -33,7 +33,13 @@ function Shops() {
       <h2 className="page-title">Browse Shops</h2>
       <div className="shops-grid">
         {shops.map(shop => (
-          <ShopCard key={shop._id} shop={shop} />
+          <ShopCard 
+            key={shop._id} 
+            shop={{
+              ...shop,
+              avgRating: shop.avgRating || null   // ✅ pass rating if available
+            }} 
+          />
         ))}
       </div>
     </div>
