@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import ShopCard from './ShopCard';
 import config from '../config';
 
-function Shops() {
+function Shops() { 
   const [shops, setShops] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
