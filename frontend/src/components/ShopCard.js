@@ -1,35 +1,60 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import config from '../config';
 
 function ShopCard({ shop }) {
-  const navigate = useNavigate();
+  const [hoverRating, setHoverRating] = useState(0);  // Hovered star
+  const [userRating, setUserRating] = useState(shop.avgRating || 0); // Current rating
+
+  const submitRating = async (rating) => {
+    try {
+      const response = await fetch(`${config.apiUrl}/reviews/${shop._id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ rating }),
+        credentials: 'include'  // ensure session cookie is sent
+      });
+
+      if (response.ok) {
+        setUserRating(rating);  // Update UI immediately
+        alert('Thank you for your rating!');
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Failed to submit rating');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error submitting rating');
+    }
+  };
 
   return (
     <div className="shop-card">
-      <img src={shop.image_url} alt={shop.name} />
-      <div className="card-info">
-        <h3>{shop.name}</h3>
-        <p><strong>Category:</strong> {shop.category}</p>
-        <p><strong>Owner:</strong> {shop.owner_mobile}</p>
-        <p><strong>Hours:</strong> {shop.opening_time} - {shop.closing_time}</p>
-        <p><strong>Address:</strong> {shop.address}</p>
+      <h3>{shop.name}</h3>
+      <p>{shop.address}</p>
 
-        {/* ⭐ Average Rating */}
-        <p>
-          <strong>Rating:</strong>{" "}
-          {shop.avgRating ? shop.avgRating.toFixed(1) + " ⭐" : "No reviews yet"}
-        </p>
-
-        <button 
-          className="primary-btn"
-          onClick={() => navigate(`/products/${shop._id}`)}
-        >
-          View Shop
-        </button>
+      {/* Star Rating */}
+      <div className="stars">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <span
+            key={star}
+            style={{
+              cursor: 'pointer',
+              color: (hoverRating || userRating) >= star ? '#ffc107' : '#e4e5e9',
+              fontSize: '1.5rem',
+            }}
+            onMouseEnter={() => setHoverRating(star)}
+            onMouseLeave={() => setHoverRating(0)}
+            onClick={() => submitRating(star)}
+          >
+            ★
+          </span>
+        ))}
       </div>
     </div>
   );
 }
 
 export default ShopCard;
-
