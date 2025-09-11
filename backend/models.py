@@ -86,3 +86,19 @@ class Order:
             'status': self.status,
             'created_at': self.created_at
         }
+class Review:
+    def __init__(self, shop_id, user_id, rating, comment=""):
+        self.shop_id = shop_id
+        self.user_id = user_id
+        self.rating = rating
+        self.comment = comment
+        self.created_at = datetime.utcnow()
+
+    def to_dict(self):
+        return {
+            "shop_id": self.shop_id,
+            "user_id": self.user_id,
+            "rating": self.rating,
+            "comment": self.comment,
+            "created_at": self.created_at
+        }
