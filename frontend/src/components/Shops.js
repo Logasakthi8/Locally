@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import ShopCard from './ShopCard';
 import config from '../config';
 
-function Shops() {   
+function Shops() {
   const [shops, setShops] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -16,7 +16,21 @@ function Shops() {
     try {
       const response = await fetch(`${config.apiUrl}/shops`);
       const data = await response.json();
-      setShops(data);
+
+      // fetch avg ratings for each shop
+      const shopsWithRatings = await Promise.all(
+        data.map(async (shop) => {
+          try {
+            const ratingRes = await fetch(`${config.apiUrl}/reviews/${shop._id}/average`);
+            const ratingData = await ratingRes.json();
+            return { ...shop, avgRating: ratingData.average_rating || null };
+          } catch {
+            return { ...shop, avgRating: null };
+          }
+        })
+      );
+
+      setShops(shopsWithRatings);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching shops:', error);
@@ -33,13 +47,7 @@ function Shops() {
       <h2 className="page-title">Browse Shops</h2>
       <div className="shops-grid">
         {shops.map(shop => (
-          <ShopCard 
-            key={shop._id} 
-            shop={{
-              ...shop,
-              avgRating: shop.avgRating || null   // ✅ pass rating if available
-            }} 
-          />
+          <ShopCard key={shop._id} shop={shop} />
         ))}
       </div>
     </div>
