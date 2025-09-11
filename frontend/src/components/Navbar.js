@@ -12,7 +12,7 @@ function Navbar({ user, onLogout }) {
       method: 'POST',
       credentials: 'include'
     });
-    setUser(null);
+    onLogout();
     navigate("/"); // redirect to login
   } catch (error) {
     console.error("Error logging out:", error);
