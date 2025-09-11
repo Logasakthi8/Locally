@@ -5,18 +5,20 @@ import config from '../config';
 function Navbar({ user, onLogout }) {
   const navigate = useNavigate();
 
+  
   const handleLogout = async () => {
-    try {
-      await fetch(`${config.apiUrl}/logout`, {
-        method: 'POST',
-        credentials: 'include'
-      });
-      onLogout();
-      navigate('/');
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  };
+  try {
+    await fetch(`${config.apiUrl}/logout`, {
+      method: 'POST',
+      credentials: 'include'
+    });
+    setUser(null);
+    navigate("/"); // redirect to login
+  } catch (error) {
+    console.error("Error logging out:", error);
+  }
+};
+
 
   return (
     <nav className="navbar">
