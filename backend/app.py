@@ -607,5 +607,62 @@ def update_wishlist_quantities():
         print(f"Error updating quantities: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
+# ======================
+# Reviews API
+# ======================
+
+@app.route('/api/reviews/<shop_id>', methods=['GET'])
+def get_reviews(shop_id):
+    """Get all reviews for a shop"""
+    try:
+        reviews = list(mongo.db.reviews.find({"shop_id": shop_id}))
+        return jsonify([serialize_doc(r) for r in reviews])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/reviews/<shop_id>', methods=['POST'])
+def add_review(shop_id):
+    """Add a review for a shop"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    data = request.json
+    rating = data.get('rating')
+    comment = data.get('comment', "")
+
+    if not rating or not (1 <= int(rating) <= 5):
+        return jsonify({'error': 'Rating must be between 1 and 5'}), 400
+
+    try:
+        review = {
+            "shop_id": shop_id,
+            "user_id": session['user_id'],
+            "rating": int(rating),
+            "comment": comment,
+            "created_at": datetime.utcnow()
+        }
+        result = mongo.db.reviews.insert_one(review)
+        review["_id"] = str(result.inserted_id)
+        return jsonify(review), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/reviews/<shop_id>/average', methods=['GET'])
+def get_average_rating(shop_id):
+    """Get average rating for a shop"""
+    try:
+        pipeline = [
+            {"$match": {"shop_id": shop_id}},
+            {"$group": {"_id": "$shop_id", "avg_rating": {"$avg": "$rating"}}}
+        ]
+        result = list(mongo.db.reviews.aggregate(pipeline))
+        avg = result[0]["avg_rating"] if result else 0
+        return jsonify({"shop_id": shop_id, "average_rating": round(avg, 2)})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     app.run(debug=True)
