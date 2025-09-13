@@ -208,12 +208,15 @@ body {
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
 }
 
-.shop-card img, .product-card img, .wishlist-item img {
+.shop-card img,
+.product-card img,
+.wishlist-item img {
   width: 100%;
   height: 200px;
-  object-fit: cover;
+  object-fit: contain;   /* shows full image */
+  background-color: #fff; /* optional: fills empty space */
+  padding: 10px;         /* optional: adds spacing */
 }
-
 .card-info {
   padding: 1.5rem;
   flex-grow: 1;
