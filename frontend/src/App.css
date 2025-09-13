@@ -2394,3 +2394,19 @@ body {
   background: #f8fafc;
   border-top: 1px solid #e2e8f0;
 }
+.price-quantity {
+  display: flex;
+  justify-content: space-between; /* pushes price left & qty right */
+  align-items: center;
+  margin-top: 8px;
+}
+
+.price {
+  font-weight: bold;
+}
+
+.quantity {
+  color: #555;
+  font-size: 14px;
+}
+
