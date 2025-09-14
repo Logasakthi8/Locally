@@ -19,7 +19,8 @@ app.config.update(
     SESSION_COOKIE_SECURE=True,  # True if using HTTPS
     SESSION_COOKIE_HTTPONLY=True
 )
-CORS(app, supports_credentials=True, origins=["https://locally-frontend.onrender.com"])
+CORS(app, supports_credentials=True, origins=["https://locallys.in",
+    "https://www.locallys.in"])
 
 # Helper function to serialize ObjectId
 def serialize_doc(doc):
