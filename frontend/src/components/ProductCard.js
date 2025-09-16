@@ -5,11 +5,17 @@ function ProductCard({ product }) {
   const [isLiked, setIsLiked] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState('');
-  const [quantity, setQuantity] = useState(1); // ✅ new state
+  const [quantity, setQuantity] = useState(1);
+  const [selectedVariant, setSelectedVariant] = useState(''); // ✅ variant state
 
   // Add product to wishlist
   const handleLike = async () => {
     try {
+      if (!selectedVariant) {
+        setError('Please select a size/variant');
+        return;
+      }
+
       setIsAdding(true);
       setError('');
 
@@ -17,12 +23,16 @@ function ProductCard({ product }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ product_id: product._id, quantity: 1 }) // ✅ send quantity=1
+        body: JSON.stringify({ 
+          product_id: product._id, 
+          quantity: 1,
+          selected_variant: selectedVariant // ✅ send variant
+        })
       });
 
       if (response.ok) {
         setIsLiked(true);
-        setQuantity(1); // ✅ default quantity after adding
+        setQuantity(1);
       } else if (response.status === 401) {
         setError('Please login to add to wishlist');
       } else {
@@ -39,13 +49,13 @@ function ProductCard({ product }) {
 
   // Update quantity in wishlist
   const updateQuantity = async (newQty) => {
-    if (newQty < 1) return; // stop at 1 (or remove if you want delete)
+    if (newQty < 1) return;
     try {
       const response = await fetch(`${config.apiUrl}/wishlist/${product._id}/quantity`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ quantity: newQty })
+        body: JSON.stringify({ quantity: newQty, selected_variant: selectedVariant })
       });
 
       if (response.ok) {
@@ -80,9 +90,25 @@ function ProductCard({ product }) {
       <div className="card-info">
         <h3>{product.name}</h3>
         <p className="description">{product.description}</p>
+
+        {/* ✅ Variant selector */}
+        {product.variants && product.variants.length > 0 && (
+          <select 
+            value={selectedVariant} 
+            onChange={(e) => setSelectedVariant(e.target.value)}
+          >
+            <option value="">-- Select Size --</option>
+            {product.variants.map((v, i) => (
+              <option key={i} value={v.label}>
+                {v.label} - ₹{v.price}
+              </option>
+            ))}
+          </select>
+        )}
+
         <div className="price-quantity">
           <span className="price">₹{product.price}</span>
-          <span className="quantity">Qty: {product.quantity}</span>
+          <span className="quantity">Stock: {product.quantity}</span>
         </div>
 
         {!isLiked ? (
