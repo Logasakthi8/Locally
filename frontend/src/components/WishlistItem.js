@@ -1,74 +1,134 @@
 import React, { useState } from 'react';
+import config from '../config';
 
-function WishlistItem({ product, onRemove, onQuantityChange, isSelected, onToggleSelection }) {
-  const [quantity, setQuantity] = useState(product.quantity || 1);
+function ProductCard({ product }) {
+  const [isLiked, setIsLiked] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [error, setError] = useState('');
+  const [quantity, setQuantity] = useState(1);
+  const [selectedVariant, setSelectedVariant] = useState(''); // ✅ variant state
 
-  const handleQuantityChange = (newQuantity) => {
-    if (newQuantity < 1) return;
-    setQuantity(newQuantity);
-    onQuantityChange(product._id, newQuantity);
+  // Add product to wishlist
+  const handleLike = async () => {
+    try {
+      if (!selectedVariant) {
+        setError('Please select a size/variant');
+        return;
+      }
+
+      setIsAdding(true);
+      setError('');
+
+      const response = await fetch(`${config.apiUrl}/wishlist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          product_id: product._id, 
+          quantity: 1,
+          selected_variant: selectedVariant // ✅ send variant
+        })
+      });
+
+      if (response.ok) {
+        setIsLiked(true);
+        setQuantity(1);
+      } else if (response.status === 401) {
+        setError('Please login to add to wishlist');
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to add to wishlist');
+      }
+    } catch (err) {
+      console.error('Network error:', err);
+      setError('Network error. Please check your connection.');
+    } finally {
+      setIsAdding(false);
+    }
   };
 
-  const incrementQuantity = () => {
-    handleQuantityChange(quantity + 1);
+  // Update quantity in wishlist
+  const updateQuantity = async (newQty) => {
+    if (newQty < 1) return;
+    try {
+      const response = await fetch(`${config.apiUrl}/wishlist/${product._id}/quantity`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ quantity: newQty, selected_variant: selectedVariant })
+      });
+
+      if (response.ok) {
+        setQuantity(newQty);
+      } else {
+        console.error('Failed to update quantity');
+      }
+    } catch (err) {
+      console.error('Error updating quantity:', err);
+    }
   };
 
-  const decrementQuantity = () => {
-    handleQuantityChange(quantity - 1);
-  };
+  const clearError = () => setError('');
 
   return (
-    <div className="wishlist-item">
-      <div className="product-selection">
-        <input
-          type="checkbox"
-          checked={isSelected}
-          onChange={() => onToggleSelection(product._id)}
-          className="selection-checkbox"
-        />
-      </div>
-      
-      <div className="product-info">
-        <img 
-          src={product.image_url || '/images/placeholder.jpg'} 
-          alt={product.name}
-          className="product-image"
-          onError={(e) => {
-            e.target.src = '/images/noimage.png';
-          }}
-        />
-        <div className="product-details">
-          <h4 className="product-name">{product.name}</h4>
-          <p className="product-price">₹{product.price}</p>
+    <div className="product-card">
+      {error && (
+        <div className="error-message">
+          <span>{error}</span>
+          <button onClick={clearError} className="error-close">×</button>
         </div>
-      </div>
-      
-      <div className="product-controls">
-        <div className="quantity-controls">
-          <button 
-            onClick={decrementQuantity}
-            className="quantity-btn minus"
+      )}
+
+      <img 
+        src={product.image_url} 
+        alt={product.name}
+        onError={(e) => {
+          e.target.src = 'https://via.placeholder.com/300x200?text=Product+Image';
+        }}
+      />
+
+      <div className="card-info">
+        <h3>{product.name}</h3>
+        <p className="description">{product.description}</p>
+
+        {/* ✅ Variant selector */}
+        {product.variants && product.variants.length > 0 && (
+          <select 
+            value={selectedVariant} 
+            onChange={(e) => setSelectedVariant(e.target.value)}
           >
-            -
-          </button>
-          <span className="quantity">{quantity}</span>
-          <button 
-            onClick={incrementQuantity}
-            className="quantity-btn plus"
-          >
-            +
-          </button>
+            <option value="">-- Select Size --</option>
+            {product.variants.map((v, i) => (
+              <option key={i} value={v.label}>
+                {v.label} - ₹{v.price}
+              </option>
+            ))}
+          </select>
+        )}
+
+        <div className="price-quantity">
+          <span className="price">₹{product.price}</span>
+          <span className="quantity">Stock: {product.quantity}</span>
         </div>
-        
-        <button 
-          onClick={() => onRemove(product._id)}
-          className="remove-btn"
-        >
-          Remove
-        </button>
+
+        {!isLiked ? (
+          <button 
+            className={`like-btn ${isAdding ? 'adding' : ''}`}
+            onClick={handleLike}
+            disabled={isAdding}
+          >
+            {isAdding ? 'Adding...' : 'Add to Wishlist'}
+          </button>
+        ) : (
+          <div className="quantity-controls">
+            <button onClick={() => updateQuantity(quantity - 1)}>-</button>
+            <span>{quantity}</span>
+            <button onClick={() => updateQuantity(quantity + 1)}>+</button>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-export default WishlistItem;
+export default ProductCard;
