@@ -1,102 +1,55 @@
-import React, { useState } from 'react';
-import config from '../config';
+import React, { useState, useEffect } from 'react';
 
-function ProductCard({ product }) {
-  const [isLiked, setIsLiked] = useState(false);
-  const [isAdding, setIsAdding] = useState(false);
-  const [error, setError] = useState('');
-  const [quantity, setQuantity] = useState(1);
-  const [selectedVariant, setSelectedVariant] = useState(''); // ✅ variant state
+function WishlistItem({ product, onRemove, onQuantityChange, isSelected, onToggleSelection }) {
+  const [quantity, setQuantity] = useState(product.quantity || 1);
+  const [selectedVariant, setSelectedVariant] = useState(product.selected_variant || '');
+  const [currentPrice, setCurrentPrice] = useState(product.price);
 
-  // Add product to wishlist
-  const handleLike = async () => {
-    try {
-      if (!selectedVariant) {
-        setError('Please select a size/variant');
-        return;
-      }
-
-      setIsAdding(true);
-      setError('');
-
-      const response = await fetch(`${config.apiUrl}/wishlist`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ 
-          product_id: product._id, 
-          quantity: 1,
-          selected_variant: selectedVariant // ✅ send variant
-        })
-      });
-
-      if (response.ok) {
-        setIsLiked(true);
-        setQuantity(1);
-      } else if (response.status === 401) {
-        setError('Please login to add to wishlist');
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Failed to add to wishlist');
-      }
-    } catch (err) {
-      console.error('Network error:', err);
-      setError('Network error. Please check your connection.');
-    } finally {
-      setIsAdding(false);
+  // Update price when variant changes
+  useEffect(() => {
+    if (selectedVariant && product.variants) {
+      const variantObj = product.variants.find(v => v.label === selectedVariant);
+      setCurrentPrice(variantObj ? variantObj.price : product.price);
+    } else {
+      setCurrentPrice(product.price);
     }
-  };
+  }, [selectedVariant, product]);
 
-  // Update quantity in wishlist
-  const updateQuantity = async (newQty) => {
+  // Handle quantity increment/decrement
+  const handleQuantityChange = (newQty) => {
     if (newQty < 1) return;
-    try {
-      const response = await fetch(`${config.apiUrl}/wishlist/${product._id}/quantity`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ quantity: newQty, selected_variant: selectedVariant })
-      });
-
-      if (response.ok) {
-        setQuantity(newQty);
-      } else {
-        console.error('Failed to update quantity');
-      }
-    } catch (err) {
-      console.error('Error updating quantity:', err);
-    }
+    setQuantity(newQty);
+    onQuantityChange(product._id, newQty, selectedVariant);
   };
 
-  const clearError = () => setError('');
+  const handleVariantChange = (e) => {
+    const variant = e.target.value;
+    setSelectedVariant(variant);
+    // Optionally, reset quantity to 1 when variant changes
+    setQuantity(1);
+    onQuantityChange(product._id, 1, variant);
+  };
 
   return (
-    <div className="product-card">
-      {error && (
-        <div className="error-message">
-          <span>{error}</span>
-          <button onClick={clearError} className="error-close">×</button>
-        </div>
-      )}
-
-      <img 
-        src={product.image_url} 
-        alt={product.name}
-        onError={(e) => {
-          e.target.src = 'https://via.placeholder.com/300x200?text=Product+Image';
-        }}
+    <div className="wishlist-item">
+      <input 
+        type="checkbox" 
+        checked={isSelected} 
+        onChange={() => onToggleSelection(product._id)}
       />
 
-      <div className="card-info">
-        <h3>{product.name}</h3>
+      <img 
+        src={product.image_url || 'https://via.placeholder.com/100x100?text=Product'} 
+        alt={product.name} 
+      />
+
+      <div className="item-info">
+        <h4>{product.name}</h4>
         <p className="description">{product.description}</p>
 
-        {/* ✅ Variant selector */}
+        {/* Variant selector */}
         {product.variants && product.variants.length > 0 && (
-          <select 
-            value={selectedVariant} 
-            onChange={(e) => setSelectedVariant(e.target.value)}
-          >
+          <select value={selectedVariant} onChange={handleVariantChange}>
             <option value="">-- Select Size --</option>
             {product.variants.map((v, i) => (
               <option key={i} value={v.label}>
@@ -107,28 +60,23 @@ function ProductCard({ product }) {
         )}
 
         <div className="price-quantity">
-          <span className="price">₹{product.price}</span>
-          <span className="quantity">Stock: {product.quantity}</span>
+          <span className="price">₹{currentPrice}</span>
+          <span className="quantity">
+            <button onClick={() => handleQuantityChange(quantity - 1)}>-</button>
+            {quantity}
+            <button onClick={() => handleQuantityChange(quantity + 1)}>+</button>
+          </span>
         </div>
-
-        {!isLiked ? (
-          <button 
-            className={`like-btn ${isAdding ? 'adding' : ''}`}
-            onClick={handleLike}
-            disabled={isAdding}
-          >
-            {isAdding ? 'Adding...' : 'Add to Wishlist'}
-          </button>
-        ) : (
-          <div className="quantity-controls">
-            <button onClick={() => updateQuantity(quantity - 1)}>-</button>
-            <span>{quantity}</span>
-            <button onClick={() => updateQuantity(quantity + 1)}>+</button>
-          </div>
-        )}
       </div>
+
+      <button 
+        className="remove-btn" 
+        onClick={() => onRemove(product._id)}
+      >
+        Remove
+      </button>
     </div>
   );
 }
 
-export default ProductCard;
+export default WishlistItem;
