@@ -48,14 +48,11 @@ function Wishlist() {
   const fetchShopDetails = async (products) => {
     try {
       const shopIds = [...new Set(products.map(product => product.shop_id))];
-      
       if (shopIds.length === 0) return;
       
       const response = await fetch(`${config.apiUrl}/shops/batch`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ shop_ids: shopIds }),
         credentials: 'include'
       });
@@ -75,15 +72,11 @@ function Wishlist() {
 
   const groupProductsByShop = () => {
     const grouped = {};
-    
     wishlist.forEach(product => {
       const shopId = product.shop_id;
-      if (!grouped[shopId]) {
-        grouped[shopId] = [];
-      }
+      if (!grouped[shopId]) grouped[shopId] = [];
       grouped[shopId].push(product);
     });
-    
     setGroupedWishlist(grouped);
   };
 
@@ -111,7 +104,6 @@ function Wishlist() {
       
       if (response.ok) {
         setWishlist(wishlist.filter(item => item._id !== productId));
-        
         const newSelected = {...selectedProducts};
         delete newSelected[productId];
         setSelectedProducts(newSelected);
@@ -123,21 +115,20 @@ function Wishlist() {
     }
   };
 
-  const updateQuantity = async (productId, newQuantity) => {
+  // ✅ Variant-aware quantity update
+  const updateQuantity = async (productId, variantLabel, newQuantity) => {
     try {
       const response = await fetch(`${config.apiUrl}/wishlist/${productId}/quantity`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ quantity: newQuantity }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantity: newQuantity, selected_variant: variantLabel }),
         credentials: 'include'
       });
       
       if (response.ok) {
         setWishlist(prevWishlist => 
           prevWishlist.map(item => 
-            item._id === productId 
+            item._id === productId && item.selected_variant === variantLabel
               ? { ...item, quantity: newQuantity }
               : item
           )
@@ -150,9 +141,9 @@ function Wishlist() {
     }
   };
 
-  const handleQuantityChange = (productId, newQuantity) => {
+  const handleQuantityChange = (productId, variantLabel, newQuantity) => {
     if (newQuantity < 1) return;
-    updateQuantity(productId, newQuantity);
+    updateQuantity(productId, variantLabel, newQuantity);
   };
 
   const checkoutViaWhatsApp = (shopId) => {
@@ -174,14 +165,14 @@ function Wishlist() {
       return;
     }
     
-    // Calculate delivery charge (free if subtotal >= 500)
     const delivery = subtotal >= 500 ? 0 : deliveryCharge;
     const total = subtotal + delivery;
     
     let message = `Hello ${shop.name}, I would like to order the following products:%0A%0A`;
     
     selectedShopProducts.forEach((product, index) => {
-      message += `${index + 1}. ${product.name} - ₹${product.price} x ${product.quantity || 1}%0A`;
+      const variantLabel = product.selected_variant ? ` (${product.selected_variant})` : '';
+      message += `${index + 1}. ${product.name}${variantLabel} - ₹${product.price} x ${product.quantity || 1}%0A`;
     });
     
     message += `%0ASubtotal: ₹${subtotal}%0A`;
@@ -213,31 +204,31 @@ function Wishlist() {
     }
   };
 
+  // ✅ Variant-aware subtotal
   const calculateShopSubtotal = (products) => {
-    return products.reduce((sum, item) => 
-      sum + (item.price * (item.quantity || 1)), 0
-    );
+    return products.reduce((sum, item) => {
+      let variantPrice = item.price;
+      if (item.selected_variant && item.variants) {
+        const variant = item.variants.find(v => v.label === item.selected_variant);
+        if (variant) variantPrice = variant.price;
+      }
+      return sum + (variantPrice * (item.quantity || 1));
+    }, 0);
   };
 
   const calculateShopTotal = (products) => {
     const selectedProductsList = products.filter(product => selectedProducts[product._id]);
     const subtotal = calculateShopSubtotal(selectedProductsList);
-    
     if (subtotal >= 100) {
-      // Apply free delivery if subtotal is 500 or more
       const delivery = subtotal >= 500 ? 0 : deliveryCharge;
       return subtotal + delivery;
     }
-    
     return subtotal;
   };
 
   const getSelectedProductsCount = (shopId) => {
     if (!groupedWishlist[shopId]) return 0;
-    
-    return groupedWishlist[shopId].filter(
-      product => selectedProducts[product._id]
-    ).length;
+    return groupedWishlist[shopId].filter(product => selectedProducts[product._id]).length;
   };
 
   const getTotalItemsCount = () => {
@@ -284,7 +275,6 @@ function Wishlist() {
             const shopItemsCount = shopProducts.length;
             const selectedCount = getSelectedProductsCount(shopId);
             const meetsMinimum = subtotal >= 100;
-            // Calculate delivery charge (free if subtotal >= 500)
             const delivery = subtotal >= 500 ? 0 : deliveryCharge;
             
             return (
@@ -330,7 +320,9 @@ function Wishlist() {
                         key={product._id} 
                         product={product} 
                         onRemove={removeFromWishlist}
-                        onQuantityChange={handleQuantityChange}
+                        onQuantityChange={(productId, newQuantity) =>
+                          handleQuantityChange(productId, product.selected_variant, newQuantity)
+                        }
                         isSelected={selectedProducts[product._id] || false}
                         onToggleSelection={toggleProductSelection}
                       />
