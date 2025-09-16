@@ -120,30 +120,53 @@ def get_shop_products(shop_id):
         return jsonify({'error': 'Internal server error'}), 500
 
 # Update the wishlist endpoint to include quantity
-@app.route('/api/wishlist', methods=['GET'])
+@app.route("/api/wishlist", methods=["GET"])
 def get_wishlist():
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
-    user_id = session['user_id']
-    wishlist_items = list(mongo.db.wishlist.find({'user_id': ObjectId(user_id)}))
-    
-    product_ids = [ObjectId(item['product_id']) for item in wishlist_items]
-    products = list(mongo.db.products.find({'_id': {'$in': product_ids}}))
-    
-    # Combine product details with wishlist quantities and shop_id
-    wishlist_with_details = []
-    for item in wishlist_items:
-      product = next((p for p in products if str(p['_id']) == str(item['product_id'])), None)
-      if product:
-        product_data = serialize_doc(product)
-        product_data['quantity'] = item.get('quantity', 1)
-        product_data['selected_variant'] = item.get('selected_variant')  # 👈 add this
-        product_data['shop_id'] = str(item.get('shop_id', product.get('shop_id', '')))
-        wishlist_with_details.append(product_data)
+    if "user_id" not in session:
+        return jsonify({"error": "Unauthorized"}), 401
 
-    
-     return jsonify(wishlist_with_details)
+    user_id = session["user_id"]
+
+    wishlist = mongo.db.wishlist.find_one({"user_id": ObjectId(user_id)})
+    if not wishlist:
+        return jsonify([])
+
+    wishlist_items = wishlist.get("items", [])
+    enriched_items = []
+
+    # Get all products
+    product_ids = [ObjectId(item["product_id"]) for item in wishlist_items]
+    products = list(mongo.db.products.find({"_id": {"$in": product_ids}}))
+
+    for item in wishlist_items:
+        product = next((p for p in products if str(p["_id"]) == str(item["product_id"])), None)
+        if not product:
+            continue
+
+        variant_label = item.get("selected_variant")
+        variant_price = None
+
+        if variant_label and "variants" in product:
+            for v in product["variants"]:
+                if v["label"] == variant_label:
+                    variant_price = v["price"]
+                    break
+
+        price_to_use = variant_price if variant_price is not None else product["price"]
+
+        enriched_items.append({
+            "product_id": str(product["_id"]),
+            "name": product["name"],
+            "image_url": product.get("image_url"),
+            "selected_variant": variant_label,
+            "quantity": item.get("quantity", 1),
+            "price": price_to_use,
+            "total": price_to_use * item.get("quantity", 1)
+        })
+
+    # ✅ return must be at function level, not inside loop
+    return jsonify(enriched_items)
+
 
 # app.py - Update the add_to_wishlist endpoint
 @app.route('/api/wishlist', methods=['POST'])
