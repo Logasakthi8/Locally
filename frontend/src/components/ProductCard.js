@@ -82,7 +82,7 @@ function ProductCard({ product }) {
         <p className="description">{product.description}</p>
         <div className="price-quantity">
           <span className="price">₹{product.price}</span>
-          <span className="quantity">Stock: {product.quantity}</span>
+          <span className="quantity">Qty: {product.quantity}</span>
         </div>
 
         {!isLiked ? (
