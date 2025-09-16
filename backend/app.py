@@ -134,13 +134,14 @@ def get_wishlist():
     # Combine product details with wishlist quantities and shop_id
     wishlist_with_details = []
     for item in wishlist_items:
-        product = next((p for p in products if str(p['_id']) == str(item['product_id'])), None)
-        if product:
-            product_data = serialize_doc(product)
-            product_data['quantity'] = item.get('quantity', 1)
-            # Ensure we have the correct shop_id (from wishlist, not product)
-            product_data['shop_id'] = str(item.get('shop_id', product.get('shop_id', '')))
-            wishlist_with_details.append(product_data)
+    product = next((p for p in products if str(p['_id']) == str(item['product_id'])), None)
+    if product:
+        product_data = serialize_doc(product)
+        product_data['quantity'] = item.get('quantity', 1)
+        product_data['selected_variant'] = item.get('selected_variant')  # 👈 add this
+        product_data['shop_id'] = str(item.get('shop_id', product.get('shop_id', '')))
+        wishlist_with_details.append(product_data)
+
     
     return jsonify(wishlist_with_details)
 
@@ -152,13 +153,13 @@ def add_to_wishlist():
     
     data = request.json
     product_id = data.get('product_id')
+    selected_variant = data.get('selected_variant')  # 👈 NEW
     
     if not product_id:
         return jsonify({'error': 'Product ID is required'}), 400
     
     user_id = session['user_id']
     
-    # First get the product to know its shop_id
     try:
         product = mongo.db.products.find_one({'_id': ObjectId(product_id)})
         if not product:
@@ -169,18 +170,19 @@ def add_to_wishlist():
         print(f"Error finding product: {e}")
         return jsonify({'error': 'Invalid product ID'}), 400
     
-    # Check if already in wishlist
+    # Check if already in wishlist (same product + same variant)
     existing = mongo.db.wishlist.find_one({
         'user_id': ObjectId(user_id),
-        'product_id': ObjectId(product_id)
+        'product_id': ObjectId(product_id),
+        'selected_variant': selected_variant  # 👈 prevent mixing variants
     })
     
     if existing:
-        # Update quantity if already exists
         result = mongo.db.wishlist.update_one(
             {
                 'user_id': ObjectId(user_id),
-                'product_id': ObjectId(product_id)
+                'product_id': ObjectId(product_id),
+                'selected_variant': selected_variant
             },
             {'$inc': {'quantity': 1}}
         )
@@ -190,8 +192,14 @@ def add_to_wishlist():
         else:
             return jsonify({'message': 'Product already in wishlist'})
     
-    # Create new wishlist item with shop_id
-    wishlist_item = Wishlist(ObjectId(user_id), ObjectId(product_id), shop_id)
+    # Create new wishlist item
+    wishlist_item = Wishlist(
+        ObjectId(user_id),
+        ObjectId(product_id),
+        shop_id,
+        quantity=1,
+        selected_variant=selected_variant  # 👈 store it
+    )
     mongo.db.wishlist.insert_one(wishlist_item.to_dict())
     return jsonify({'message': 'Product added to wishlist'})
 
@@ -530,16 +538,29 @@ def checkout_shop(shop_id):
         product_ids = [item['product_id'] for item in wishlist_items]
         products = list(mongo.db.products.find({'_id': {'$in': product_ids}}))
         
-        # Create order
+        # Build order items
         order_items = []
         for item in wishlist_items:
             product = next((p for p in products if p['_id'] == item['product_id']), None)
             if product:
+                # Handle variant price if available
+                variant_label = item.get('selected_variant')
+                variant_price = None
+
+                if variant_label and 'variants' in product:
+                    for v in product['variants']:
+                        if v['label'] == variant_label:
+                            variant_price = v['price']
+                            break
+
+                price_to_use = variant_price if variant_price is not None else product['price']
+
                 order_items.append({
                     'product_id': item['product_id'],
                     'quantity': item.get('quantity', 1),
-                    'price': product['price'],
-                    'name': product['name']
+                    'price': price_to_use,
+                    'name': product['name'],
+                    'variant': variant_label if variant_label else None
                 })
         
         # Get shop details
