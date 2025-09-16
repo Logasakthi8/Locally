@@ -134,8 +134,8 @@ def get_wishlist():
     # Combine product details with wishlist quantities and shop_id
     wishlist_with_details = []
     for item in wishlist_items:
-    product = next((p for p in products if str(p['_id']) == str(item['product_id'])), None)
-    if product:
+      product = next((p for p in products if str(p['_id']) == str(item['product_id'])), None)
+      if product:
         product_data = serialize_doc(product)
         product_data['quantity'] = item.get('quantity', 1)
         product_data['selected_variant'] = item.get('selected_variant')  # 👈 add this
@@ -143,7 +143,7 @@ def get_wishlist():
         wishlist_with_details.append(product_data)
 
     
-    return jsonify(wishlist_with_details)
+     return jsonify(wishlist_with_details)
 
 # app.py - Update the add_to_wishlist endpoint
 @app.route('/api/wishlist', methods=['POST'])
