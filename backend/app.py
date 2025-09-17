@@ -120,43 +120,35 @@ def get_shop_products(shop_id):
         return jsonify({'error': 'Internal server error'}), 500
 
 # Update the wishlist endpoint to include quantity
-@app.route('/api/wishlist', methods=['GET'])
+@app.route('/wishlist', methods=['GET'])
 def get_wishlist():
-    if 'user_id' not in session:
-        return jsonify([])
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
 
-    user_id = session['user_id']
-    wishlist_items = list(mongo.db.wishlist.find({'user_id': ObjectId(user_id)}))
-    
-    product_ids = [item['product_id'] for item in wishlist_items]
-    products = list(mongo.db.products.find({'_id': {'$in': product_ids}}))
+    wishlist_items = mongo.db.wishlist.find({"user_id": user_id})
+    result = []
 
-    wishlist_with_details = []
     for item in wishlist_items:
-        product = next((p for p in products if str(p['_id']) == str(item['product_id'])), None)
+        product = mongo.db.products.find_one({"_id": ObjectId(item["product_id"])})
         if product:
-            # Get selected variant price
-            variant_label = item.get('selected_variant')
-            variant_price = None
-            if variant_label and 'variants' in product:
-                for v in product['variants']:
-                    if v['label'] == variant_label:
-                        variant_price = v['price']
-                        break
-            price_to_use = variant_price if variant_price is not None else product['price']
+            # merge product + wishlist
+            merged = {
+                "_id": str(item["_id"]),
+                "product_id": str(item["product_id"]),
+                "shop_id": str(item["shop_id"]),
+                "quantity": item.get("quantity", 1),
+                "selected_variant": item.get("selected_variant", ""),
+                "name": product["name"],
+                "description": product["description"],
+                "image_url": product["image_url"],
+                "price": product["price"],
+                "variants": product.get("variants", [])
+            }
+            result.append(merged)
 
-            wishlist_with_details.append({
-                '_id': str(item['_id']),
-                'product_id': str(product['_id']),
-                'shop_id': str(product['shop_id']),
-                'name': product['name'],
-                'image_url': product.get('image_url', ''),
-                'quantity': item.get('quantity', 1),
-                'price': price_to_use,
-                'selected_variant': variant_label
-            })
+    return jsonify(result)
 
-    return jsonify(wishlist_with_details)
 
 
 # app.py - Update the add_to_wishlist endpoint
