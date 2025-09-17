@@ -12,37 +12,16 @@ function Wishlist() {
 
   const fetchWishlist = async () => {
     try {
-      setLoading(true);
       const res = await fetch(`${config.apiUrl}/wishlist`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setWishlist(data);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching wishlist:', err);
     } finally {
       setLoading(false);
     }
-  };
-
-  const removeItem = async (id) => {
-    try {
-      const res = await fetch(`${config.apiUrl}/wishlist/${id}`, { 
-        method: 'DELETE', 
-        credentials: 'include' 
-      });
-      if (res.ok) {
-        setWishlist(prev => prev.filter(item => item._id !== id));
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const updateQuantity = (id, newQty) => {
-    setWishlist(prev =>
-      prev.map(item => item._id === id ? { ...item, quantity: newQty } : item)
-    );
   };
 
   if (loading) return <p>Loading wishlist...</p>;
@@ -50,12 +29,10 @@ function Wishlist() {
 
   return (
     <div className="wishlist-container">
-      {wishlist.map(product => (
+      {wishlist.map(item => (
         <WishlistItem 
-          key={product._id} 
-          product={product} 
-          onRemove={removeItem}
-          onQuantityChange={updateQuantity}
+          key={item._id} 
+          product={item}
         />
       ))}
     </div>
