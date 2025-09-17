@@ -1,67 +1,60 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import config from '../config';
 
 function ProductCard({ product }) {
-  const [selectedVariant, setSelectedVariant] = useState(product.variants?.[0] || null);
-  const [quantity, setQuantity] = useState(1);
   const [isLiked, setIsLiked] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState('');
+  const [quantity, setQuantity] = useState(1); // ✅ new state
 
-  // Update price/stock/image/description when variant changes
-  useEffect(() => {
-    if (product.variants && product.variants.length > 0) {
-      setSelectedVariant(product.variants[0]); // default first variant
-      setQuantity(1);
-    }
-  }, [product.variants]);
-
-  const handleVariantChange = (e) => {
-    const variant = product.variants.find(v => v.label === e.target.value);
-    setSelectedVariant(variant);
-    setQuantity(1); // reset quantity when variant changes
-  };
-
-  const handleQuantityChange = (newQty) => {
-    if (!selectedVariant) return;
-    if (newQty < 1) return;
-    if (newQty > selectedVariant.quantity) return; // respect stock
-    setQuantity(newQty);
-  };
-
+  // Add product to wishlist
   const handleLike = async () => {
-    if (!selectedVariant) {
-      setError('Please select a variant');
-      return;
-    }
-
-    setIsAdding(true);
-    setError('');
-
     try {
+      setIsAdding(true);
+      setError('');
+
       const response = await fetch(`${config.apiUrl}/wishlist`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          product_id: product._id,
-          quantity,
-          selected_variant: selectedVariant.label
-        })
+        body: JSON.stringify({ product_id: product._id, quantity: 1 }) // ✅ send quantity=1
       });
 
       if (response.ok) {
         setIsLiked(true);
-        setQuantity(1);
+        setQuantity(1); // ✅ default quantity after adding
+      } else if (response.status === 401) {
+        setError('Please login to add to wishlist');
       } else {
-        const data = await response.json();
-        setError(data.error || 'Failed to add to wishlist');
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to add to wishlist');
       }
     } catch (err) {
-      console.error(err);
-      setError('Network error');
+      console.error('Network error:', err);
+      setError('Network error. Please check your connection.');
     } finally {
       setIsAdding(false);
+    }
+  };
+
+  // Update quantity in wishlist
+  const updateQuantity = async (newQty) => {
+    if (newQty < 1) return; // stop at 1 (or remove if you want delete)
+    try {
+      const response = await fetch(`${config.apiUrl}/wishlist/${product._id}/quantity`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ quantity: newQty })
+      });
+
+      if (response.ok) {
+        setQuantity(newQty);
+      } else {
+        console.error('Failed to update quantity');
+      }
+    } catch (err) {
+      console.error('Error updating quantity:', err);
     }
   };
 
@@ -76,42 +69,37 @@ function ProductCard({ product }) {
         </div>
       )}
 
-      <img
-        src={selectedVariant?.image_url || product.image_url}
+      <img 
+        src={product.image_url} 
         alt={product.name}
-        onError={(e) => e.target.src = 'https://via.placeholder.com/300x200?text=Product+Image'}
+        onError={(e) => {
+          e.target.src = 'https://via.placeholder.com/300x200?text=Product+Image';
+        }}
       />
 
       <div className="card-info">
         <h3>{product.name}</h3>
-        <p>{selectedVariant?.description || product.description}</p>
-
-        {product.variants && product.variants.length > 0 && (
-          <select value={selectedVariant.label} onChange={handleVariantChange}>
-            {product.variants.map(v => (
-              <option key={v.label} value={v.label}>
-                {v.label} - ₹{v.price} (Stock: {v.quantity})
-              </option>
-            ))}
-          </select>
-        )}
-
+        <p className="description">{product.description}</p>
         <div className="price-quantity">
-          <span className="price">₹{selectedVariant?.price || product.price}</span>
-          <div className="quantity-controls">
-            <button onClick={() => handleQuantityChange(quantity - 1)}>-</button>
-            <span>{quantity}</span>
-            <button onClick={() => handleQuantityChange(quantity + 1)}>+</button>
-          </div>
+          <span className="price">₹{product.price}</span>
+          <span className="quantity">Qty: {product.quantity}</span>
         </div>
 
-        <button
-          className={`like-btn ${isAdding ? 'adding' : ''}`}
-          onClick={handleLike}
-          disabled={isAdding}
-        >
-          {isAdding ? 'Adding...' : 'Add to Wishlist'}
-        </button>
+        {!isLiked ? (
+          <button 
+            className={`like-btn ${isAdding ? 'adding' : ''}`}
+            onClick={handleLike}
+            disabled={isAdding}
+          >
+            {isAdding ? 'Adding...' : 'Add to Wishlist'}
+          </button>
+        ) : (
+          <div className="quantity-controls">
+            <button onClick={() => updateQuantity(quantity - 1)}>-</button>
+            <span>{quantity}</span>
+            <button onClick={() => updateQuantity(quantity + 1)}>+</button>
+          </div>
+        )}
       </div>
     </div>
   );
