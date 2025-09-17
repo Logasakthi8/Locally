@@ -120,7 +120,7 @@ def get_shop_products(shop_id):
         return jsonify({'error': 'Internal server error'}), 500
 
 # Update the wishlist endpoint to include quantity
-@app.route('api/wishlist', methods=['GET'])
+@app.route('/api/wishlist', methods=['GET'])
 def get_wishlist():
     user_id = session.get("user_id")
     if not user_id:
