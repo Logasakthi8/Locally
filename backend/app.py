@@ -24,7 +24,8 @@ CORS(app, supports_credentials=True)
 
 def serialize_doc(doc):
     """Convert MongoDB document to JSON serializable dict"""
-    doc['_id'] = str(doc['_id'])
+    if '_id' in doc:
+        doc['_id'] = str(doc['_id'])
     return doc
 
 
@@ -94,6 +95,12 @@ def get_products(shop_id):
     return jsonify([serialize_doc(product) for product in products])
 
 
+@app.route('/api/products', methods=['GET'])
+def get_all_products():
+    products = list(mongo.db.products.find())
+    return jsonify([serialize_doc(product) for product in products])
+
+
 @app.route('/api/products', methods=['POST'])
 def add_product():
     data = request.json
@@ -130,9 +137,21 @@ def get_wishlist():
         product = next((p for p in products if str(p['_id']) == str(item['product_id'])), None)
         if product:
             product_data = serialize_doc(product)
-            product_data['quantity'] = item.get('quantity', 1)
-            product_data['shop_id'] = str(item.get('shop_id', product.get('shop_id', '')))
-            product_data['selected_variant'] = item.get('selected_variant', "")
+
+            # Apply variant-specific details if selected
+            variant_label = item.get("selected_variant")
+            if variant_label and "variants" in product:
+                variant = next((v for v in product["variants"] if v["label"] == variant_label), None)
+                if variant:
+                    product_data["price"] = variant.get("price", product["price"])
+                    product_data["image_url"] = variant.get("image_url", product["image_url"])
+                    product_data["description"] = variant.get("description", product["description"])
+                    product_data["variant_label"] = variant_label
+
+            product_data["quantity"] = item.get("quantity", 1)
+            product_data["shop_id"] = str(item.get("shop_id", product.get("shop_id", "")))
+            product_data["selected_variant"] = item.get("selected_variant", "")
+
             wishlist_with_details.append(product_data)
 
     return jsonify(wishlist_with_details)
@@ -205,12 +224,6 @@ def create_order():
     )
     result = mongo.db.orders.insert_one(order_obj.to_dict())
     return jsonify({'message': 'Order created successfully', 'id': str(result.inserted_id)})
-
-@app.route('/api/products', methods=['GET'])
-def get_all_products():
-    products = list(mongo.db.products.find())
-    return jsonify([serialize_doc(product) for product in products])
-
 
 
 @app.route('/api/orders', methods=['GET'])
