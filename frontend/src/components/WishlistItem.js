@@ -1,84 +1,123 @@
-import React, { useState } from "react";
-import config from "../config";
+import React, { useState } from 'react';
 
-function WishlistItem({ item }) {
-  const [quantity, setQuantity] = useState(item.quantity || 1);
-  const [selectedVariant, setSelectedVariant] = useState(item.selected_variant || "");
-  const [error, setError] = useState("");
+function WishlistItem({ product, onRemove, onQuantityChange, isSelected, onToggleSelection }) {
+  const [quantity, setQuantity] = useState(product.quantity || 1);
+  const [isRemoving, setIsRemoving] = useState(false);
 
-  // ✅ Update quantity in wishlist
-  const updateQuantity = async (newQty) => {
-    if (newQty < 1) return;
+  const handleQuantityChange = (newQuantity) => {
+    if (newQuantity < 1) return;
+    setQuantity(newQuantity);
+    onQuantityChange(product._id, newQuantity);
+  };
+
+  const incrementQuantity = () => {
+    handleQuantityChange(quantity + 1);
+  };
+
+  const decrementQuantity = () => {
+    handleQuantityChange(quantity - 1);
+  };
+
+  const handleRemove = async () => {
+    setIsRemoving(true);
     try {
-      const response = await fetch(`${config.apiUrl}/wishlist/${item.product_id}/quantity`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ quantity: newQty, selected_variant: selectedVariant }),
-      });
-
-      if (response.ok) {
-        setQuantity(newQty);
-      } else {
-        console.error("Failed to update quantity");
-      }
-    } catch (err) {
-      console.error("Error updating quantity:", err);
+      await onRemove(product._id);
+    } catch (error) {
+      console.error('Error removing item:', error);
+    } finally {
+      setIsRemoving(false);
     }
   };
 
-  // ✅ Handle variant change (update price, etc.)
-  const handleVariantChange = (e) => {
-    const newVariant = e.target.value;
-    setSelectedVariant(newVariant);
+  const handleQuantityInputChange = (e) => {
+    const value = parseInt(e.target.value);
+    if (!isNaN(value) && value > 0) {
+      handleQuantityChange(value);
+    }
   };
 
-  // ✅ Compute price based on variant
-  let priceToUse = item.price;
-  if (item.variants && selectedVariant) {
-    const variant = item.variants.find((v) => v.label === selectedVariant);
-    if (variant) {
-      priceToUse = variant.price;
-    }
-  }
+  const totalPrice = product.price * quantity;
 
   return (
-    <div className="wishlist-item">
-      {error && <p className="error">{error}</p>}
-
-      <img
-        src={item.image_url}
-        alt={item.name}
-        onError={(e) => {
-          e.target.src = "https://via.placeholder.com/200x150?text=Product+Image";
-        }}
-      />
-
-      <div className="item-info">
-        <h3>{item.name}</h3>
-        <p>{item.description}</p>
-
-        {/* ✅ Variant dropdown */}
-        {item.variants && item.variants.length > 0 && (
-          <select value={selectedVariant} onChange={handleVariantChange}>
-            <option value="">-- Select Size --</option>
-            {item.variants.map((v, i) => (
-              <option key={i} value={v.label}>
-                {v.label} - ₹{v.price}
-              </option>
-            ))}
-          </select>
-        )}
-
-        <p className="price">₹{priceToUse}</p>
-
-        {/* ✅ Quantity controls */}
-        <div className="quantity-controls">
-          <button onClick={() => updateQuantity(quantity - 1)}>-</button>
-          <span>{quantity}</span>
-          <button onClick={() => updateQuantity(quantity + 1)}>+</button>
+    <div className={`wishlist-item ${isRemoving ? 'removing' : ''}`}>
+      <div className="product-selection">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={() => onToggleSelection(product._id)}
+          className="selection-checkbox"
+          aria-label={`Select ${product.name}`}
+        />
+      </div>
+      
+      <div className="product-info">
+        <img 
+          src={product.image_url || '/images/placeholder.jpg'} 
+          alt={product.name}
+          className="product-image"
+          onError={(e) => {
+            e.target.src = '/images/noimage.png';
+          }}
+          loading="lazy"
+        />
+        <div className="product-details">
+          <h4 className="product-name">{product.name}</h4>
+          <p className="product-description">{product.description}</p>
+          <p className="product-price">₹{product.price} each</p>
+          <p className="product-total-price">Total: ₹{totalPrice}</p>
         </div>
       </div>
+      
+      <div className="product-controls">
+        <div className="quantity-section">
+          <label className="quantity-label">Quantity:</label>
+          <div className="quantity-controls">
+            <button 
+              onClick={decrementQuantity}
+              className="quantity-btn minus"
+              disabled={quantity <= 1}
+              aria-label="Decrease quantity"
+            >
+              -
+            </button>
+            <input
+              type="number"
+              value={quantity}
+              onChange={handleQuantityInputChange}
+              min="1"
+              className="quantity-input"
+              aria-label="Quantity"
+            />
+            <button 
+              onClick={incrementQuantity}
+              className="quantity-btn plus"
+              aria-label="Increase quantity"
+            >
+              +
+            </button>
+          </div>
+        </div>
+        
+        <button 
+          onClick={handleRemove}
+          className="remove-btn"
+          disabled={isRemoving}
+          aria-label="Remove from wishlist"
+        >
+          {isRemoving ? 'Removing...' : 'Remove'}
+        </button>
+      </div>
+
+      {/* Stock availability indicator */}
+      {product.quantity !== undefined && (
+        <div className="stock-info">
+          {product.quantity > 0 ? (
+            <span className="in-stock">In stock ({product.quantity} available)</span>
+          ) : (
+            <span className="out-of-stock">Out of stock</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
