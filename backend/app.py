@@ -206,6 +206,12 @@ def create_order():
     result = mongo.db.orders.insert_one(order_obj.to_dict())
     return jsonify({'message': 'Order created successfully', 'id': str(result.inserted_id)})
 
+@app.route('/api/products', methods=['GET'])
+def get_all_products():
+    products = list(mongo.db.products.find())
+    return jsonify([serialize_doc(product) for product in products])
+
+
 
 @app.route('/api/orders', methods=['GET'])
 def get_orders():
