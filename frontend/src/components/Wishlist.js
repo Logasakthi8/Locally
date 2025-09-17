@@ -1,40 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import WishlistItem from './WishlistItem';
-import config from '../config';
+import React, { useState, useEffect } from "react";
+import config from "../config";
+import WishlistItem from "./WishlistItem";
 
 function Wishlist() {
   const [wishlist, setWishlist] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchWishlist();
+    fetch(`${config.apiUrl}/wishlist`, { credentials: "include" })
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("Wishlist API response:", data); // 👀 check structure
+        setWishlist(data);
+      })
+      .catch((err) => console.error("Fetch error:", err));
   }, []);
 
-  const fetchWishlist = async () => {
-    try {
-      const res = await fetch(`${config.apiUrl}/wishlist`, { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        setWishlist(data);
-      }
-    } catch (err) {
-      console.error('Error fetching wishlist:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) return <p>Loading wishlist...</p>;
-  if (wishlist.length === 0) return <p>Your wishlist is empty!</p>;
+  if (!wishlist || wishlist.length === 0) {
+    return <p className="empty-message">Your wishlist is empty</p>;
+  }
 
   return (
     <div className="wishlist-container">
-      {wishlist.map(item => (
-        <WishlistItem 
-          key={item._id} 
-          product={item}
-        />
-      ))}
+      <h2>Your Wishlist</h2>
+      <div className="wishlist-grid">
+        {wishlist.map((item) => (
+          <WishlistItem key={item._id} item={item} />
+        ))}
+      </div>
     </div>
   );
 }
