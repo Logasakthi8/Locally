@@ -1,86 +1,112 @@
-import React, { useState } from 'react';
+// src/components/ProductCard.jsx
+import React, { useState, useEffect } from 'react';
 import config from '../config';
 
 function ProductCard({ product }) {
+  const getId = () => product._id || product.id || (product._id && product._id.$oid) || null;
+  const getImage = (p) => p?.image_url || p?.image || p?.imageUrl || '';
+  const getVariants = () => product?.variants || [];
+
+  // UI state
   const [isLiked, setIsLiked] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState('');
   const [quantity, setQuantity] = useState(1);
 
-  // ✅ Pick the first variant as default (if variants exist)
-  const [selectedVariant, setSelectedVariant] = useState(
-    product.variants?.[0] || null
-  );
+  // selectedVariant is an object (e.g. { label: "500g", price: 90, image: "..."} )
+  const [selectedVariant, setSelectedVariant] = useState(getVariants()?.[0] || null);
 
-  // Handle variant change
+  // If product changes (loaded async), reset default variant
+  useEffect(() => {
+    const variants = getVariants();
+    setSelectedVariant(variants && variants.length ? variants[0] : null);
+  }, [product]);
+
+  // helper to normalize label (support label or size keys)
+  const getVariantLabel = (v) => (v?.label ?? v?.size ?? v?.name ?? '');
+
   const handleVariantChange = (e) => {
-    const chosenSize = e.target.value;
-    const variant = product.variants.find(v => v.size === chosenSize);
-    setSelectedVariant(variant);
+    const chosenLabel = e.target.value;
+    const v = getVariants().find(item => String(getVariantLabel(item)) === String(chosenLabel));
+    setSelectedVariant(v || null);
   };
+
+  const clearError = () => setError('');
+
+  const productId = getId();
 
   // Add product + variant to wishlist
   const handleLike = async () => {
+    if (!productId) {
+      setError('Product id missing');
+      return;
+    }
+
     try {
       setIsAdding(true);
       setError('');
 
-      const response = await fetch(`${config.apiUrl}/wishlist`, {
+      const body = {
+        product_id: productId,
+        quantity: 1,
+        variant: selectedVariant || null
+      };
+
+      const res = await fetch(`${config.apiUrl}/wishlist`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          product_id: product._id,
-          quantity: 1,
-          variant: selectedVariant   // ✅ send variant info
-        })
+        body: JSON.stringify(body)
       });
 
-      if (response.ok) {
+      if (res.ok) {
         setIsLiked(true);
         setQuantity(1);
-      } else if (response.status === 401) {
+      } else if (res.status === 401) {
         setError('Please login to add to wishlist');
       } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Failed to add to wishlist');
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || 'Failed to add to wishlist');
       }
     } catch (err) {
       console.error('Network error:', err);
-      setError('Network error. Please check your connection.');
+      setError('Network error. Check console.');
     } finally {
       setIsAdding(false);
     }
   };
 
-  // Update quantity in wishlist
+  // Update quantity (updates the wishlist entry)
   const updateQuantity = async (newQty) => {
     if (newQty < 1) return;
     try {
-      const response = await fetch(
-        `${config.apiUrl}/wishlist/${product._id}/quantity`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            quantity: newQty,
-            variant: selectedVariant   // ✅ update correct variant
-          })
-        }
-      );
+      const payload = { quantity: newQty };
+      // if variant exists, send its label so backend updates the correct wishlist entry
+      if (selectedVariant) payload.variant = selectedVariant;
 
-      if (response.ok) {
-        setQuantity(newQty);
-      } else {
-        console.error('Failed to update quantity');
+      const res = await fetch(`${config.apiUrl}/wishlist/${productId}/quantity`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) setQuantity(newQty);
+      else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || 'Failed to update quantity');
       }
     } catch (err) {
       console.error('Error updating quantity:', err);
+      setError('Network error.');
     }
   };
 
-  const clearError = () => setError('');
+  // Render
+  const imageSrc = selectedVariant?.image || getImage(product);
+  const title = selectedVariant?.name || selectedVariant?.label || product?.name;
+  const description = selectedVariant?.description || product?.description || '';
+  const price = selectedVariant?.price ?? product?.price ?? '—';
 
   return (
     <div className="product-card">
@@ -91,42 +117,47 @@ function ProductCard({ product }) {
         </div>
       )}
 
-      <img 
-        src={selectedVariant?.image || product.image_url} 
-        alt={selectedVariant?.name || product.name}
-        onError={(e) => {
-          e.target.src = 'https://via.placeholder.com/300x200?text=Product+Image';
-        }}
-      />
+      <div className="card-media">
+        <img
+          src={imageSrc || 'https://via.placeholder.com/300x200?text=Product+Image'}
+          alt={title || 'product'}
+          onError={(e) => (e.target.src = 'https://via.placeholder.com/300x200?text=Product+Image')}
+        />
+      </div>
 
       <div className="card-info">
-        <h3>{selectedVariant?.name || product.name}</h3>
-        <p className="description">{selectedVariant?.description || product.description}</p>
-        <div className="price-quantity">
-          <span className="price">₹{selectedVariant?.price || product.price}</span>
-          <span className="quantity">Qty: {quantity}</span>
+        <h3 className="product-title">{title}</h3>
+        <p className="description">{description}</p>
+
+        <div className="price-row">
+          <div className="price">₹{price}</div>
+          <div className="stock">Stock: {product.quantity ?? '—'}</div>
         </div>
 
-        {/* ✅ Size dropdown */}
-        {product.variants && product.variants.length > 0 && (
+        {/* Variant selector */}
+        {getVariants() && getVariants().length > 0 && (
           <div className="variant-selector">
-            <label htmlFor={`variant-${product._id}`}>Size: </label>
+            <label htmlFor={`variant-${productId}`}>Size</label>
             <select
-              id={`variant-${product._id}`}
-              value={selectedVariant?.size}
+              id={`variant-${productId}`}
+              value={selectedVariant ? String(getVariantLabel(selectedVariant)) : ''}
               onChange={handleVariantChange}
             >
-              {product.variants.map(v => (
-                <option key={v.size} value={v.size}>
-                  {v.size}
-                </option>
-              ))}
+              {getVariants().map((v, idx) => {
+                const label = getVariantLabel(v);
+                return (
+                  <option key={idx} value={label}>
+                    {label} {v.price ? `- ₹${v.price}` : ''}
+                  </option>
+                );
+              })}
             </select>
           </div>
         )}
 
+        {/* wishlist controls */}
         {!isLiked ? (
-          <button 
+          <button
             className={`like-btn ${isAdding ? 'adding' : ''}`}
             onClick={handleLike}
             disabled={isAdding}
