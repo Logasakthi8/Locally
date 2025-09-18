@@ -5,9 +5,21 @@ function ProductCard({ product }) {
   const [isLiked, setIsLiked] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState('');
-  const [quantity, setQuantity] = useState(1); // ✅ new state
+  const [quantity, setQuantity] = useState(1);
 
-  // Add product to wishlist
+  // ✅ Pick the first variant as default (if variants exist)
+  const [selectedVariant, setSelectedVariant] = useState(
+    product.variants?.[0] || null
+  );
+
+  // Handle variant change
+  const handleVariantChange = (e) => {
+    const chosenSize = e.target.value;
+    const variant = product.variants.find(v => v.size === chosenSize);
+    setSelectedVariant(variant);
+  };
+
+  // Add product + variant to wishlist
   const handleLike = async () => {
     try {
       setIsAdding(true);
@@ -17,12 +29,16 @@ function ProductCard({ product }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ product_id: product._id, quantity: 1 }) // ✅ send quantity=1
+        body: JSON.stringify({
+          product_id: product._id,
+          quantity: 1,
+          variant: selectedVariant   // ✅ send variant info
+        })
       });
 
       if (response.ok) {
         setIsLiked(true);
-        setQuantity(1); // ✅ default quantity after adding
+        setQuantity(1);
       } else if (response.status === 401) {
         setError('Please login to add to wishlist');
       } else {
@@ -39,14 +55,20 @@ function ProductCard({ product }) {
 
   // Update quantity in wishlist
   const updateQuantity = async (newQty) => {
-    if (newQty < 1) return; // stop at 1 (or remove if you want delete)
+    if (newQty < 1) return;
     try {
-      const response = await fetch(`${config.apiUrl}/wishlist/${product._id}/quantity`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ quantity: newQty })
-      });
+      const response = await fetch(
+        `${config.apiUrl}/wishlist/${product._id}/quantity`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            quantity: newQty,
+            variant: selectedVariant   // ✅ update correct variant
+          })
+        }
+      );
 
       if (response.ok) {
         setQuantity(newQty);
@@ -70,20 +92,38 @@ function ProductCard({ product }) {
       )}
 
       <img 
-        src={product.image_url} 
-        alt={product.name}
+        src={selectedVariant?.image || product.image_url} 
+        alt={selectedVariant?.name || product.name}
         onError={(e) => {
           e.target.src = 'https://via.placeholder.com/300x200?text=Product+Image';
         }}
       />
 
       <div className="card-info">
-        <h3>{product.name}</h3>
-        <p className="description">{product.description}</p>
+        <h3>{selectedVariant?.name || product.name}</h3>
+        <p className="description">{selectedVariant?.description || product.description}</p>
         <div className="price-quantity">
-          <span className="price">₹{product.price}</span>
-          <span className="quantity">Qty: {product.quantity}</span>
+          <span className="price">₹{selectedVariant?.price || product.price}</span>
+          <span className="quantity">Qty: {quantity}</span>
         </div>
+
+        {/* ✅ Size dropdown */}
+        {product.variants && product.variants.length > 0 && (
+          <div className="variant-selector">
+            <label htmlFor={`variant-${product._id}`}>Size: </label>
+            <select
+              id={`variant-${product._id}`}
+              value={selectedVariant?.size}
+              onChange={handleVariantChange}
+            >
+              {product.variants.map(v => (
+                <option key={v.size} value={v.size}>
+                  {v.size}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {!isLiked ? (
           <button 
