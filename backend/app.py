@@ -118,8 +118,7 @@ def get_shop_products(shop_id):
     except Exception as e:
         print(f"Error fetching products: {e}")
         return jsonify({'error': 'Internal server error'}), 500
-
-# Update the wishlist endpoint to include variant information
+# Update the get_wishlist endpoint to return wishlist item ID
 @app.route('/api/wishlist', methods=['GET'])
 def get_wishlist():
     if 'user_id' not in session:
@@ -131,7 +130,7 @@ def get_wishlist():
     product_ids = [ObjectId(item['product_id']) for item in wishlist_items]
     products = list(mongo.db.products.find({'_id': {'$in': product_ids}}))
     
-    # Combine product details with wishlist quantities, variant info, and shop_id
+    # Combine product details with wishlist quantities and shop_id
     wishlist_with_details = []
     for item in wishlist_items:
         product = next((p for p in products if str(p['_id']) == str(item['product_id'])), None)
@@ -139,6 +138,7 @@ def get_wishlist():
             product_data = serialize_doc(product)
             product_data['quantity'] = item.get('quantity', 1)
             product_data['variant_id'] = item.get('variant_id')
+            product_data['wishlist_id'] = str(item['_id'])  # Add wishlist item ID
             # Ensure we have the correct shop_id (from wishlist, not product)
             product_data['shop_id'] = str(item.get('shop_id', product.get('shop_id', '')))
             
@@ -158,7 +158,7 @@ def get_wishlist():
     
     return jsonify(wishlist_with_details)
 
-# Update the add_to_wishlist endpoint to support variants
+# Update the add_to_wishlist endpoint to handle variants as separate items
 @app.route('/api/wishlist', methods=['POST'])
 def add_to_wishlist():
     if 'user_id' not in session:
@@ -166,7 +166,7 @@ def add_to_wishlist():
     
     data = request.json
     product_id = data.get('product_id')
-    variant_id = data.get('variant_id')  # New parameter for variant selection
+    variant_id = data.get('variant_id')
     
     if not product_id:
         return jsonify({'error': 'Product ID is required'}), 400
@@ -211,14 +211,24 @@ def add_to_wishlist():
         )
         
         if result.modified_count > 0:
-            return jsonify({'message': 'Product quantity updated in wishlist'})
+            return jsonify({
+                'message': 'Product quantity updated in wishlist',
+                'wishlist_item_id': str(existing['_id'])
+            })
         else:
-            return jsonify({'message': 'Product already in wishlist'})
+            return jsonify({
+                'message': 'Product already in wishlist',
+                'wishlist_item_id': str(existing['_id'])
+            })
     
     # Create new wishlist item with shop_id and variant_id
     wishlist_item = Wishlist(ObjectId(user_id), ObjectId(product_id), shop_id, variant_id)
-    mongo.db.wishlist.insert_one(wishlist_item.to_dict())
-    return jsonify({'message': 'Product added to wishlist'})
+    result = mongo.db.wishlist.insert_one(wishlist_item.to_dict())
+    
+    return jsonify({
+        'message': 'Product added to wishlist',
+        'wishlist_item_id': str(result.inserted_id)
+    })
 
 @app.route('/api/wishlist/<product_id>', methods=['DELETE'])
 def remove_from_wishlist(product_id):
