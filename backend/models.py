@@ -13,15 +13,16 @@ class User:
             "created_at": self.created_at
         }
 
+
 class Shop:
-    def __init__(self, name, owner_mobile, category, opening_time, closing_time, image_url,address):
+    def __init__(self, name, owner_mobile, category, opening_time, closing_time, image_url, address):
         self.name = name
         self.owner_mobile = owner_mobile
         self.category = category
         self.opening_time = opening_time
         self.closing_time = closing_time
         self.image_url = image_url
-        self.address=address
+        self.address = address
     
     def to_dict(self):
         return {
@@ -31,8 +32,9 @@ class Shop:
             "opening_time": self.opening_time,
             "closing_time": self.closing_time,
             "image_url": self.image_url,
-            "address":self.address
+            "address": self.address
         }
+
 
 class Product:
     def __init__(self, shop_id, name, description, price, quantity, image_url, variants=None):
@@ -42,8 +44,8 @@ class Product:
         self.price = price
         self.quantity = quantity
         self.image_url = image_url
-        # 👇 new field for different sizes/options
-        self.variants = variants or []   # e.g., [{"label": "200g", "price": 50}, {"label": "500g", "price": 90}]
+        # ✅ variants example: [{"size": "200g", "price": 50, "image": "...", "description": "..."}]
+        self.variants = variants or []
     
     def to_dict(self):
         return {
@@ -63,36 +65,39 @@ class Wishlist:
         self.product_id = product_id
         self.shop_id = shop_id
         self.quantity = quantity
-        self.selected_variant = selected_variant  # 👈 store "200g" or "500g"
+        # ✅ selected_variant example: {"size": "500g", "price": 90, "image": "..."}
+        self.selected_variant = selected_variant
         self.created_at = datetime.utcnow()
     
     def to_dict(self):
         return {
-            'user_id': self.user_id,
-            'product_id': self.product_id,
-            'shop_id': self.shop_id,
-            'quantity': self.quantity,
-            'selected_variant': self.selected_variant,  # 👈 new field
-            'created_at': self.created_at
+            "user_id": self.user_id,
+            "product_id": self.product_id,
+            "shop_id": self.shop_id,
+            "quantity": self.quantity,
+            "selected_variant": self.selected_variant,
+            "created_at": self.created_at
         }
 
 
 class Order:
     def __init__(self, user_id, items, total_amount=0, status='pending'):
         self.user_id = user_id
-        self.items = items
+        self.items = items  # should be list of {product_id, variant, qty}
         self.total_amount = total_amount
         self.status = status
         self.created_at = datetime.utcnow()
     
     def to_dict(self):
         return {
-            'user_id': self.user_id,
-            'items': self.items,
-            'total_amount': self.total_amount,
-            'status': self.status,
-            'created_at': self.created_at
+            "user_id": self.user_id,
+            "items": self.items,
+            "total_amount": self.total_amount,
+            "status": self.status,
+            "created_at": self.created_at
         }
+
+
 class Review:
     def __init__(self, shop_id, user_id, rating, comment=""):
         self.shop_id = shop_id
