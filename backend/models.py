@@ -42,7 +42,8 @@ class Product:
         self.price = price
         self.quantity = quantity
         self.image_url = image_url
-        self.variants = variants or []  # List of variant objects
+        # ✅ variants support
+        self.variants = variants or []  # [{ "label": "200g", "price": 60, "image_url": "..."}]
     
     def to_dict(self):
         return {
@@ -52,35 +53,17 @@ class Product:
             "price": self.price,
             "quantity": self.quantity,
             "image_url": self.image_url,
-            "variants": [variant.to_dict() for variant in self.variants] if self.variants else []
-        }
-
-class ProductVariant:
-    def __init__(self, id, name, description, price, quantity, image_url=None):
-        self.id = id
-        self.name = name
-        self.description = description
-        self.price = price
-        self.quantity = quantity
-        self.image_url = image_url
-    
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "name": self.name,
-            "description": self.description,
-            "price": self.price,
-            "quantity": self.quantity,
-            "image_url": self.image_url
+            "variants": self.variants
         }
 
 class Wishlist:
-    def __init__(self, user_id, product_id, shop_id, variant_id=None, quantity=1):
+    def __init__(self, user_id, product_id, shop_id, quantity=1, selected_variant=None):
         self.user_id = user_id
         self.product_id = product_id
         self.shop_id = shop_id
-        self.variant_id = variant_id  # New field to track selected variant
         self.quantity = quantity
+        # ✅ store which variant user picked (like "500g")
+        self.selected_variant = selected_variant  
         self.created_at = datetime.utcnow()
     
     def to_dict(self):
@@ -88,15 +71,15 @@ class Wishlist:
             'user_id': self.user_id,
             'product_id': self.product_id,
             'shop_id': self.shop_id,
-            'variant_id': self.variant_id,
             'quantity': self.quantity,
+            'selected_variant': self.selected_variant,
             'created_at': self.created_at
         }
 
 class Order:
     def __init__(self, user_id, items, total_amount=0, status='pending'):
         self.user_id = user_id
-        self.items = items
+        self.items = items  # [{product_id, quantity, variant}]
         self.total_amount = total_amount
         self.status = status
         self.created_at = datetime.utcnow()
@@ -108,21 +91,6 @@ class Order:
             'total_amount': self.total_amount,
             'status': self.status,
             'created_at': self.created_at
-        }
-
-class OrderItem:
-    def __init__(self, product_id, variant_id=None, quantity=1, price=0):
-        self.product_id = product_id
-        self.variant_id = variant_id
-        self.quantity = quantity
-        self.price = price
-    
-    def to_dict(self):
-        return {
-            'product_id': self.product_id,
-            'variant_id': self.variant_id,
-            'quantity': self.quantity,
-            'price': self.price
         }
 
 class Review:
