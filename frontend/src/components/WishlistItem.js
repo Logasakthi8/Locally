@@ -1,7 +1,21 @@
 import React, { useState } from 'react';
+import config from '../config';
 
 function WishlistItem({ product, onRemove, onQuantityChange, isSelected, onToggleSelection }) {
   const [quantity, setQuantity] = useState(product.quantity || 1);
+  const [imageError, setImageError] = useState(false);
+
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+    
+    // If it's already a full URL, return it as is
+    if (imagePath.startsWith('http') || imagePath.startsWith('https')) {
+      return imagePath;
+    }
+    
+    // If it's a relative path, prepend your base URL
+    return `${config.baseUrl || ''}${imagePath}`;
+  };
 
   const handleQuantityChange = (newQuantity) => {
     if (newQuantity < 1) return;
@@ -30,12 +44,10 @@ function WishlistItem({ product, onRemove, onQuantityChange, isSelected, onToggl
       
       <div className="product-info">
         <img 
-          src={product.image_url || '/images/placeholder.jpg'} 
+          src={imageError ? '/images/noimage.png' : (getImageUrl(product.image) || '/images/placeholder.jpg')} 
           alt={product.name}
           className="product-image"
-          onError={(e) => {
-            e.target.src = '/images/noimage.png';
-          }}
+          onError={() => setImageError(true)}
         />
         <div className="product-details">
           <h4 className="product-name">{product.name}</h4>
