@@ -5,60 +5,49 @@ function ProductCard({ product }) {
   const [isLiked, setIsLiked] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState('');
-  const [quantity, setQuantity] = useState(1); // ✅ new state
 
-  // Add product to wishlist
   const handleLike = async () => {
     try {
       setIsAdding(true);
       setError('');
-
+      
       const response = await fetch(`${config.apiUrl}/wishlist`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ product_id: product._id, quantity: 1 }) // ✅ send quantity=1
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ product_id: product._id }),
+        credentials: 'include'
       });
-
+      
+      // Check if response is successful (status 200-299)
       if (response.ok) {
         setIsLiked(true);
-        setQuantity(1); // ✅ default quantity after adding
-      } else if (response.status === 401) {
-        setError('Please login to add to wishlist');
+        // Don't automatically reset the liked status
+        setIsAdding(false);
       } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Failed to add to wishlist');
+        // Handle HTTP error statuses
+        if (response.status === 401) {
+          setError('Please login to add to wishlist');
+        } else if (response.status === 404) {
+          setError('Product not found');
+        } else {
+          const errorData = await response.json();
+          setError(errorData.error || 'Failed to add to wishlist');
+        }
+        console.error('Failed to add to wishlist. Status:', response.status);
+        setIsAdding(false);
       }
-    } catch (err) {
-      console.error('Network error:', err);
+    } catch (error) {
+      console.error('Network error:', error);
       setError('Network error. Please check your connection.');
-    } finally {
       setIsAdding(false);
     }
   };
 
-  // Update quantity in wishlist
-  const updateQuantity = async (newQty) => {
-    if (newQty < 1) return; // stop at 1 (or remove if you want delete)
-    try {
-      const response = await fetch(`${config.apiUrl}/wishlist/${product._id}/quantity`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ quantity: newQty })
-      });
-
-      if (response.ok) {
-        setQuantity(newQty);
-      } else {
-        console.error('Failed to update quantity');
-      }
-    } catch (err) {
-      console.error('Error updating quantity:', err);
-    }
+  const clearError = () => {
+    setError('');
   };
-
-  const clearError = () => setError('');
 
   return (
     <div className="product-card">
@@ -68,7 +57,6 @@ function ProductCard({ product }) {
           <button onClick={clearError} className="error-close">×</button>
         </div>
       )}
-
       <img 
         src={product.image_url} 
         alt={product.name}
@@ -76,7 +64,6 @@ function ProductCard({ product }) {
           e.target.src = 'https://via.placeholder.com/300x200?text=Product+Image';
         }}
       />
-
       <div className="card-info">
         <h3>{product.name}</h3>
         <p className="description">{product.description}</p>
@@ -84,22 +71,13 @@ function ProductCard({ product }) {
           <span className="price">₹{product.price}</span>
           <span className="quantity">Qty: {product.quantity}</span>
         </div>
-
-        {!isLiked ? (
-          <button 
-            className={`like-btn ${isAdding ? 'adding' : ''}`}
-            onClick={handleLike}
-            disabled={isAdding}
-          >
-            {isAdding ? 'Adding...' : 'Add to Wishlist'}
-          </button>
-        ) : (
-          <div className="quantity-controls">
-            <button onClick={() => updateQuantity(quantity - 1)}>-</button>
-            <span>{quantity}</span>
-            <button onClick={() => updateQuantity(quantity + 1)}>+</button>
-          </div>
-        )}
+        <button 
+          className={`like-btn ${isLiked ? 'liked' : ''} ${isAdding ? 'adding' : ''}`}
+          onClick={handleLike}
+          disabled={isAdding || isLiked}
+        >
+          {isAdding ? 'Adding...' : (isLiked ? 'Added to Wishlist!' : 'Add to Wishlist')}
+        </button>
       </div>
     </div>
   );
