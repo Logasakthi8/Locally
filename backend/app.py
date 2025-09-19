@@ -399,33 +399,28 @@ def debug_products():
 def update_wishlist_quantity(product_id):
     if 'user_id' not in session:
         return jsonify({'error': 'Not authenticated'}), 401
-
+    
     user_id = session['user_id']
     data = request.json
     quantity = data.get('quantity', 1)
-    variant_size = data.get('variant_size')  # distinguish by variant
-
+    
     try:
-        if quantity <= 0:
-            mongo.db.wishlist.delete_one({
-                'user_id': ObjectId(user_id),
-                'product_id': ObjectId(product_id),
-                'variant.size': variant_size
-            })
-            return jsonify({'message': 'Product removed from wishlist'})
-
+        # Update the quantity in wishlist
         result = mongo.db.wishlist.update_one(
             {
                 'user_id': ObjectId(user_id),
-                'product_id': ObjectId(product_id),
-                'variant.size': variant_size
+                'product_id': ObjectId(product_id)
             },
-            {'$set': {'quantity': quantity}}
+            {'$set': {'quantity': max(1, quantity)}}  # Ensure quantity is at least 1
         )
-        return jsonify({'message': 'Quantity updated successfully'})
+        
+        if result.modified_count > 0:
+            return jsonify({'message': 'Quantity updated successfully'})
+        else:
+            return jsonify({'error': 'Product not found in wishlist'}), 404
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
+        print(f"Error updating quantity: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
 
 # Add this endpoint to get wishlist count by shop
 @app.route('/api/wishlist/shop-counts', methods=['GET'])
