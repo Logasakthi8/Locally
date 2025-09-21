@@ -35,6 +35,13 @@ function Products() {
     }
   };
 
+  // Callback function when wishlist is updated
+  const handleWishlistUpdate = () => {
+    console.log('Wishlist updated, you can refresh products if needed');
+    // If you want to refresh products after wishlist update, uncomment:
+    // fetchProducts();
+  };
+
   if (loading) {
     return (
       <div className="container">
@@ -76,7 +83,11 @@ function Products() {
       ) : (
         <div className="products-grid">
           {products.map(product => (
-            <ProductCard key={product._id} product={product} />
+            <ProductCard 
+              key={product._id} 
+              product={product} 
+              onWishlistUpdate={handleWishlistUpdate}
+            />
           ))}
         </div>
       )}
