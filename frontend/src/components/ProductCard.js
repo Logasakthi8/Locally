@@ -197,15 +197,24 @@ function ProductCard({ product, onWishlistUpdate }) {
           </div>
         )}
         
-        <button 
-          className={`like-btn ${isLiked ? 'liked' : ''} ${isAdding ? 'adding' : ''}`}
-          onClick={showQuantityControls ? () => removeFromWishlist() : handleLike}
-          disabled={isAdding || product.quantity === 0}
-        >
-          {isAdding ? 'Processing...' : 
-           (showQuantityControls ? 'Remove from Wishlist' : 
-            (product.quantity === 0 ? 'Out of Stock' : 'Add to Wishlist'))}
-        </button>
+        {/* Show Add to Wishlist button if not in wishlist, or Remove button if in wishlist */}
+        {!showQuantityControls ? (
+          <button 
+            className={`like-btn ${isAdding ? 'adding' : ''}`}
+            onClick={handleLike}
+            disabled={isAdding || product.quantity === 0}
+          >
+            {isAdding ? 'Processing...' : 
+             (product.quantity === 0 ? 'Out of Stock' : 'Add to Wishlist')}
+          </button>
+        ) : (
+          <button 
+            className="remove-btn"
+            onClick={removeFromWishlist}
+          >
+            Remove from Wishlist
+          </button>
+        )}
       </div>
     </div>
   );
