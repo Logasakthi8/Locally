@@ -46,7 +46,7 @@ function WishlistItem({ product, onRemove, onQuantityChange, isSelected, onToggl
 
       <div className="product-info">
         <img 
-          src={imageError ? '/images/noimage.png' : (getImageUrl(product.image) || '/images/placeholder.jpg')} 
+          src={imageError ? '/images/noimage.png' : (getImageUrl(product.image_url) || '/images/placeholder.jpg')} 
           alt={product.name}
           className="product-image"
           onError={() => setImageError(true)}
