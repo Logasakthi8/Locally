@@ -7,6 +7,7 @@ function ProductCard({ product, onWishlistUpdate }) {
   const [error, setError] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [imageError, setImageError] = useState(false);
+  const [showQuantityControls, setShowQuantityControls] = useState(false);
 
   // Check if product is already in wishlist when component mounts
   useEffect(() => {
@@ -26,6 +27,7 @@ function ProductCard({ product, onWishlistUpdate }) {
         if (inWishlist) {
           setIsLiked(true);
           setQuantity(inWishlist.quantity || 1);
+          setShowQuantityControls(true); // Show controls if already in wishlist
         }
       }
     } catch (error) {
@@ -57,6 +59,7 @@ function ProductCard({ product, onWishlistUpdate }) {
         
         if (response.ok) {
           setIsLiked(true);
+          setShowQuantityControls(true); // Show quantity controls after adding
           if (onWishlistUpdate) {
             onWishlistUpdate(); // Notify parent component
           }
@@ -78,18 +81,12 @@ function ProductCard({ product, onWishlistUpdate }) {
   };
 
   const handleQuantityChange = (newQuantity) => {
-    if (newQuantity < 0 || newQuantity > product.quantity) return;
+    if (newQuantity < 1 || newQuantity > product.quantity) return;
     
     setQuantity(newQuantity);
     
-    // If quantity becomes 0 and item is in wishlist, remove it
-    if (newQuantity === 0 && isLiked) {
-      removeFromWishlist();
-    }
-    // If already in wishlist and quantity > 0, update quantity on server
-    else if (isLiked && newQuantity > 0) {
-      updateWishlistQuantity(newQuantity);
-    }
+    // Update quantity on server
+    updateWishlistQuantity(newQuantity);
   };
 
   const updateWishlistQuantity = async (newQuantity) => {
@@ -120,7 +117,8 @@ function ProductCard({ product, onWishlistUpdate }) {
 
       if (response.ok) {
         setIsLiked(false);
-        setQuantity(1);
+        setShowQuantityControls(false); // Hide quantity controls
+        setQuantity(1); // Reset quantity to 1
         if (onWishlistUpdate) {
           onWishlistUpdate(); // Notify parent component
         }
@@ -135,7 +133,12 @@ function ProductCard({ product, onWishlistUpdate }) {
   };
 
   const decrementQuantity = () => {
-    handleQuantityChange(quantity - 1);
+    if (quantity > 1) {
+      handleQuantityChange(quantity - 1);
+    } else {
+      // If quantity is 1, remove from wishlist
+      removeFromWishlist();
+    }
   };
 
   const clearError = () => {
@@ -174,12 +177,11 @@ function ProductCard({ product, onWishlistUpdate }) {
           )}
         </div>
         
-        {/* Always show quantity controls when product is available */}
-        {product.quantity > 0 && (
+        {/* Show quantity controls only after adding to wishlist */}
+        {showQuantityControls && product.quantity > 0 && (
           <div className="quantity-controls">
             <button 
               onClick={decrementQuantity} 
-              disabled={quantity <= 0}
               className="quantity-btn"
             >
               -
@@ -197,12 +199,12 @@ function ProductCard({ product, onWishlistUpdate }) {
         
         <button 
           className={`like-btn ${isLiked ? 'liked' : ''} ${isAdding ? 'adding' : ''}`}
-          onClick={quantity === 0 ? () => handleQuantityChange(1) : handleLike}
+          onClick={showQuantityControls ? () => removeFromWishlist() : handleLike}
           disabled={isAdding || product.quantity === 0}
         >
           {isAdding ? 'Processing...' : 
-           (quantity === 0 ? 'Add to Wishlist' : 
-            (isLiked ? 'In Wishlist' : 'Add to Wishlist'))}
+           (showQuantityControls ? 'Remove from Wishlist' : 
+            (product.quantity === 0 ? 'Out of Stock' : 'Add to Wishlist'))}
         </button>
       </div>
     </div>
