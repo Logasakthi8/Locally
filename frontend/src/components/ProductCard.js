@@ -5,7 +5,7 @@ function ProductCard({ product }) {
   const [isLiked, setIsLiked] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState('');
-  const [wishlistQty, setWishlistQty] = useState(1); // ✅ track wishlist quantity
+  const [quantity, setQuantity] = useState(1); // 👈 Track quantity
 
   const handleLike = async () => {
     try {
@@ -17,21 +17,25 @@ function ProductCard({ product }) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ product_id: product._id, quantity: 1 }), // ✅ send initial quantity
+        body: JSON.stringify({ product_id: product._id }),
         credentials: 'include'
       });
 
       if (response.ok) {
         setIsLiked(true);
-        setWishlistQty(1);
+        setQuantity(1); // default quantity
       } else {
         if (response.status === 401) {
           setError('Please login to add to wishlist');
         } else if (response.status === 404) {
           setError('Product not found');
         } else {
-          const errorData = await response.json();
-          setError(errorData.error || 'Failed to add to wishlist');
+          try {
+            const errorData = await response.json();
+            setError(errorData.error || 'Failed to add to wishlist');
+          } catch {
+            setError('Unexpected error from server');
+          }
         }
       }
     } catch (error) {
@@ -42,36 +46,41 @@ function ProductCard({ product }) {
     }
   };
 
-  // ✅ update quantity in wishlist
-  const updateWishlistQty = async (newQty) => {
-    if (newQty < 1) return; // don’t allow 0
+  // 👇 Increment quantity
+  const incrementQuantity = async () => {
+    const newQuantity = quantity + 1;
+    await updateQuantity(newQuantity);
+  };
 
-    try {
-      setIsAdding(true);
-      const response = await fetch(`${config.apiUrl}/wishlist`, {
-        method: 'PUT', // ✅ use PUT for updating
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ product_id: product._id, quantity: newQty }),
-        credentials: 'include'
-      });
-
-      if (response.ok) {
-        setWishlistQty(newQty);
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Failed to update quantity');
-      }
-    } catch (error) {
-      console.error('Network error:', error);
-      setError('Network error. Please check your connection.');
-    } finally {
-      setIsAdding(false);
+  // 👇 Decrement quantity (min 1)
+  const decrementQuantity = async () => {
+    if (quantity > 1) {
+      const newQuantity = quantity - 1;
+      await updateQuantity(newQuantity);
     }
   };
 
-  const clearError = () => {
-    setError('');
+  // 👇 Call backend to update wishlist quantity
+  const updateQuantity = async (newQuantity) => {
+    try {
+      const response = await fetch(`${config.apiUrl}/wishlist/${product._id}/quantity`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantity: newQuantity }),
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        setQuantity(newQuantity);
+      } else {
+        console.error('Failed to update quantity:', response.status);
+      }
+    } catch (err) {
+      console.error('Error updating quantity:', err);
+    }
   };
+
+  const clearError = () => setError('');
 
   return (
     <div className="product-card">
@@ -100,27 +109,17 @@ function ProductCard({ product }) {
 
         {!isLiked ? (
           <button
-            className={`like-btn ${isAdding ? 'adding' : ''}`}
+            className={`like-btn ${isLiked ? 'liked' : ''} ${isAdding ? 'adding' : ''}`}
             onClick={handleLike}
-            disabled={isAdding}
+            disabled={isAdding || isLiked}
           >
             {isAdding ? 'Adding...' : 'Add to Wishlist'}
           </button>
         ) : (
-          <div className="wishlist-qty-controls">
-            <button
-              onClick={() => updateWishlistQty(wishlistQty - 1)}
-              disabled={isAdding}
-            >
-              –
-            </button>
-            <span>{wishlistQty}</span>
-            <button
-              onClick={() => updateWishlistQty(wishlistQty + 1)}
-              disabled={isAdding}
-            >
-              +
-            </button>
+          <div className="quantity-controls">
+            <button onClick={decrementQuantity} disabled={quantity <= 1}>-</button>
+            <span>{quantity}</span>
+            <button onClick={incrementQuantity}>+</button>
           </div>
         )}
       </div>
