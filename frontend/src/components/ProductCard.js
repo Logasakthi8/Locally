@@ -7,7 +7,6 @@ function ProductCard({ product, onWishlistUpdate }) {
   const [error, setError] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [imageError, setImageError] = useState(false);
-  const [showQuantityControls, setShowQuantityControls] = useState(false);
 
   // Check if product is already in wishlist when component mounts
   useEffect(() => {
@@ -27,7 +26,6 @@ function ProductCard({ product, onWishlistUpdate }) {
         if (inWishlist) {
           setIsLiked(true);
           setQuantity(inWishlist.quantity || 1);
-          setShowQuantityControls(true); // Show controls if already in wishlist
         }
       }
     } catch (error) {
@@ -59,7 +57,6 @@ function ProductCard({ product, onWishlistUpdate }) {
         
         if (response.ok) {
           setIsLiked(true);
-          setShowQuantityControls(true); // Show quantity controls after adding
           if (onWishlistUpdate) {
             onWishlistUpdate(); // Notify parent component
           }
@@ -108,37 +105,12 @@ function ProductCard({ product, onWishlistUpdate }) {
     }
   };
 
-  const removeFromWishlist = async () => {
-    try {
-      const response = await fetch(`${config.apiUrl}/wishlist/${product._id}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
-
-      if (response.ok) {
-        setIsLiked(false);
-        setShowQuantityControls(false); // Hide quantity controls
-        setQuantity(1); // Reset quantity to 1
-        if (onWishlistUpdate) {
-          onWishlistUpdate(); // Notify parent component
-        }
-      }
-    } catch (error) {
-      console.error('Error removing from wishlist:', error);
-    }
-  };
-
   const incrementQuantity = () => {
     handleQuantityChange(quantity + 1);
   };
 
   const decrementQuantity = () => {
-    if (quantity > 1) {
-      handleQuantityChange(quantity - 1);
-    } else {
-      // If quantity is 1, remove from wishlist
-      removeFromWishlist();
-    }
+    handleQuantityChange(quantity - 1);
   };
 
   const clearError = () => {
@@ -178,7 +150,7 @@ function ProductCard({ product, onWishlistUpdate }) {
         </div>
         
         {/* Show quantity controls only after adding to wishlist */}
-        {showQuantityControls && product.quantity > 0 && (
+        {isLiked && product.quantity > 0 && (
           <div className="quantity-controls">
             <button 
               onClick={decrementQuantity} 
@@ -197,22 +169,15 @@ function ProductCard({ product, onWishlistUpdate }) {
           </div>
         )}
         
-        {/* Show Add to Wishlist button if not in wishlist, or Remove button if in wishlist */}
-        {!showQuantityControls ? (
+        {/* Show Add to Wishlist button if not in wishlist */}
+        {!isLiked && (
           <button 
             className={`like-btn ${isAdding ? 'adding' : ''}`}
             onClick={handleLike}
             disabled={isAdding || product.quantity === 0}
           >
-            {isAdding ? 'Processing...' : 
+            {isAdding ? 'Adding...' : 
              (product.quantity === 0 ? 'Out of Stock' : 'Add to Wishlist')}
-          </button>
-        ) : (
-          <button 
-            className="remove-btn"
-            onClick={removeFromWishlist}
-          >
-            Remove from Wishlist
           </button>
         )}
       </div>
