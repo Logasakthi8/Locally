@@ -5,13 +5,14 @@ function ProductCard({ product }) {
   const [isLiked, setIsLiked] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState('');
-  const [quantity, setQuantity] = useState(1); // Add quantity state
+  const [quantity, setQuantity] = useState(1);
+  const [imageError, setImageError] = useState(false);
 
   const handleLike = async () => {
     try {
       setIsAdding(true);
       setError('');
-      
+
       const response = await fetch(`${config.apiUrl}/wishlist`, {
         method: 'POST',
         headers: {
@@ -19,27 +20,28 @@ function ProductCard({ product }) {
         },
         body: JSON.stringify({ 
           product_id: product._id,
-          quantity: quantity // Send quantity to backend
+          quantity: quantity
         }),
         credentials: 'include'
       });
 
-      // Check if response is successful (status 200-299)
-      if (response.ok) {
-        setIsLiked(true);
-        // Don't automatically reset the liked status
-        setIsAdding(false);
-      } else {
-        // Handle HTTP error statuses
-        if (response.status === 401) {
-          setError('Please login to add to wishlist');
-        } else if (response.status === 404) {
-          setError('Product not found');
+      // Check content type before parsing
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const data = await response.json();
+        
+        if (response.ok) {
+          setIsLiked(true);
+          setIsAdding(false);
         } else {
-          const errorData = await response.json();
-          setError(errorData.error || 'Failed to add to wishlist');
+          setError(data.error || 'Failed to add to wishlist');
+          setIsAdding(false);
         }
-        console.error('Failed to add to wishlist. Status:', response.status);
+      } else {
+        // Handle non-JSON response
+        const text = await response.text();
+        console.error('Server returned non-JSON response:', text.substring(0, 200));
+        setError('Server error. Please try again later.');
         setIsAdding(false);
       }
     } catch (error) {
@@ -65,6 +67,12 @@ function ProductCard({ product }) {
     }
   };
 
+  // Handle image errors gracefully
+  const handleImageError = (e) => {
+    setImageError(true);
+    e.target.src = 'https://via.placeholder.com/300x200?text=Product+Image';
+  };
+
   return (
     <div className="product-card">
       {error && (
@@ -73,27 +81,43 @@ function ProductCard({ product }) {
           <button onClick={clearError} className="error-close">×</button>
         </div>
       )}
+      
       <img 
-        src={product.image_url} 
+        src={imageError ? 'https://via.placeholder.com/300x200?text=Product+Image' : product.image_url}
         alt={product.name}
-        onError={(e) => {
-          e.target.src = 'https://via.placeholder.com/300x200?text=Product+Image';
-        }}
+        onError={handleImageError}
+        className="product-image"
       />
+      
       <div className="card-info">
-        <h3>{product.name}</h3>
-        <p className="description">{product.description}</p>
+        <h3 className="product-name">{product.name}</h3>
+        <p className="product-description">{product.description}</p>
+        
         <div className="price-quantity">
           <span className="price">₹{product.price}</span>
-          <span className="quantity">Available: {product.quantity}</span>
+          {product.quantity && (
+            <span className="available-quantity">Available: {product.quantity}</span>
+          )}
         </div>
         
-        {/* Quantity adjustment controls */}
-        {!isLiked && (
+        {/* Quantity controls - only show if product is available */}
+        {product.quantity > 0 && !isLiked && (
           <div className="quantity-controls">
-            <button onClick={decrementQuantity} disabled={quantity <= 1}>-</button>
+            <button 
+              onClick={decrementQuantity} 
+              disabled={quantity <= 1}
+              className="quantity-btn"
+            >
+              -
+            </button>
             <span className="quantity-display">{quantity}</span>
-            <button onClick={incrementQuantity} disabled={quantity >= product.quantity}>+</button>
+            <button 
+              onClick={incrementQuantity} 
+              disabled={quantity >= product.quantity}
+              className="quantity-btn"
+            >
+              +
+            </button>
           </div>
         )}
         
@@ -110,4 +134,5 @@ function ProductCard({ product }) {
     </div>
   );
 }
+
 export default ProductCard;
