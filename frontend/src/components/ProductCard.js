@@ -78,11 +78,16 @@ function ProductCard({ product, onWishlistUpdate }) {
   };
 
   const handleQuantityChange = (newQuantity) => {
-    if (newQuantity < 1 || newQuantity > product.quantity) return;
+    if (newQuantity < 0 || newQuantity > product.quantity) return;
+    
     setQuantity(newQuantity);
     
-    // If already in wishlist, update quantity on server
-    if (isLiked) {
+    // If quantity becomes 0 and item is in wishlist, remove it
+    if (newQuantity === 0 && isLiked) {
+      removeFromWishlist();
+    }
+    // If already in wishlist and quantity > 0, update quantity on server
+    else if (isLiked && newQuantity > 0) {
       updateWishlistQuantity(newQuantity);
     }
   };
@@ -103,6 +108,25 @@ function ProductCard({ product, onWishlistUpdate }) {
       }
     } catch (error) {
       console.error('Error updating quantity:', error);
+    }
+  };
+
+  const removeFromWishlist = async () => {
+    try {
+      const response = await fetch(`${config.apiUrl}/wishlist/${product._id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        setIsLiked(false);
+        setQuantity(1);
+        if (onWishlistUpdate) {
+          onWishlistUpdate(); // Notify parent component
+        }
+      }
+    } catch (error) {
+      console.error('Error removing from wishlist:', error);
     }
   };
 
@@ -150,12 +174,12 @@ function ProductCard({ product, onWishlistUpdate }) {
           )}
         </div>
         
-        {/* Always show quantity controls, even when in wishlist */}
+        {/* Always show quantity controls when product is available */}
         {product.quantity > 0 && (
           <div className="quantity-controls">
             <button 
               onClick={decrementQuantity} 
-              disabled={quantity <= 1}
+              disabled={quantity <= 0}
               className="quantity-btn"
             >
               -
@@ -173,12 +197,12 @@ function ProductCard({ product, onWishlistUpdate }) {
         
         <button 
           className={`like-btn ${isLiked ? 'liked' : ''} ${isAdding ? 'adding' : ''}`}
-          onClick={handleLike}
+          onClick={quantity === 0 ? () => handleQuantityChange(1) : handleLike}
           disabled={isAdding || product.quantity === 0}
         >
           {isAdding ? 'Processing...' : 
-           (isLiked ? 'In Wishlist' : 
-            (product.quantity === 0 ? 'Out of Stock' : 'Add to Wishlist'))}
+           (quantity === 0 ? 'Add to Wishlist' : 
+            (isLiked ? 'In Wishlist' : 'Add to Wishlist'))}
         </button>
       </div>
     </div>
