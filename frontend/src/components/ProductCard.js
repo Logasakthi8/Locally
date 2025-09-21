@@ -21,7 +21,9 @@ function ProductCard({ product, onWishlistUpdate }) {
       
       if (response.ok) {
         const wishlistItems = await response.json();
+        console.log('Wishlist items:', wishlistItems); // Debug log
         const inWishlist = wishlistItems.find(item => item._id === product._id);
+        console.log('Product in wishlist:', inWishlist); // Debug log
         
         if (inWishlist) {
           setIsLiked(true);
@@ -56,7 +58,7 @@ function ProductCard({ product, onWishlistUpdate }) {
         const data = await response.json();
         
         if (response.ok) {
-          setIsLiked(true);
+          setIsLiked(true); // This should make quantity controls visible
           if (onWishlistUpdate) {
             onWishlistUpdate(); // Notify parent component
           }
@@ -122,6 +124,9 @@ function ProductCard({ product, onWishlistUpdate }) {
     e.target.src = 'https://via.placeholder.com/300x200?text=Product+Image';
   };
 
+  // Debug log to check state
+  console.log('ProductCard state:', { isLiked, quantity, productId: product._id });
+
   return (
     <div className="product-card">
       {error && (
@@ -151,7 +156,7 @@ function ProductCard({ product, onWishlistUpdate }) {
         
         {/* Show quantity controls only after adding to wishlist */}
         {isLiked && product.quantity > 0 && (
-          <div className="quantity-controls">
+          <div className="quantity-controls" style={{border: '2px solid red', padding: '10px'}}>
             <button 
               onClick={decrementQuantity} 
               className="quantity-btn"
