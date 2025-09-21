@@ -7,28 +7,42 @@ function WishlistItem({ product, onRemove, onQuantityChange, isSelected, onToggl
 
   const getImageUrl = (imagePath) => {
     if (!imagePath) return null;
-    
-    // If it's already a full URL, return it as is
     if (imagePath.startsWith('http') || imagePath.startsWith('https')) {
       return imagePath;
     }
-    
-    // If it's a relative path, prepend your base URL
     return `${config.baseUrl || ''}${imagePath}`;
   };
 
-  const handleQuantityChange = (newQuantity) => {
-    if (newQuantity < 1) return;
-    setQuantity(newQuantity);
-    onQuantityChange(product._id, newQuantity);
+  const updateQuantity = async (newQuantity) => {
+    try {
+      const response = await fetch(`${config.apiUrl}/wishlist/${product._id}/quantity`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantity: newQuantity }),
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        setQuantity(newQuantity);
+        if (onQuantityChange) {
+          onQuantityChange(product._id, newQuantity);
+        }
+      } else {
+        console.error('Failed to update quantity. Status:', response.status);
+      }
+    } catch (err) {
+      console.error('Error updating quantity:', err);
+    }
   };
 
   const incrementQuantity = () => {
-    handleQuantityChange(quantity + 1);
+    updateQuantity(quantity + 1);
   };
 
   const decrementQuantity = () => {
-    handleQuantityChange(quantity - 1);
+    if (quantity > 1) {
+      updateQuantity(quantity - 1);
+    }
   };
 
   return (
@@ -41,10 +55,10 @@ function WishlistItem({ product, onRemove, onQuantityChange, isSelected, onToggl
           className="selection-checkbox"
         />
       </div>
-      
+
       <div className="product-info">
-        <img 
-          src={imageError ? '/images/noimage.png' : (getImageUrl(product.image) || '/images/placeholder.jpg')} 
+        <img
+          src={imageError ? '/images/noimage.png' : (getImageUrl(product.image) || '/images/placeholder.jpg')}
           alt={product.name}
           className="product-image"
           onError={() => setImageError(true)}
@@ -54,25 +68,26 @@ function WishlistItem({ product, onRemove, onQuantityChange, isSelected, onToggl
           <p className="product-price">₹{product.price}</p>
         </div>
       </div>
-      
+
       <div className="product-controls">
         <div className="quantity-controls">
-          <button 
+          <button
             onClick={decrementQuantity}
             className="quantity-btn minus"
+            disabled={quantity <= 1}
           >
             -
           </button>
           <span className="quantity">{quantity}</span>
-          <button 
+          <button
             onClick={incrementQuantity}
             className="quantity-btn plus"
           >
             +
           </button>
         </div>
-        
-        <button 
+
+        <button
           onClick={() => onRemove(product._id)}
           className="remove-btn"
         >
