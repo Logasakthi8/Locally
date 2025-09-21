@@ -5,7 +5,7 @@ function ProductCard({ product }) {
   const [isLiked, setIsLiked] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState('');
-  const [quantity, setQuantity] = useState(1); // ✅ Track product quantity
+  const [wishlistQty, setWishlistQty] = useState(1); // ✅ track wishlist quantity
 
   const handleLike = async () => {
     try {
@@ -17,12 +17,13 @@ function ProductCard({ product }) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ product_id: product._id, quantity: 1 }),
-        credentials: 'include',
+        body: JSON.stringify({ product_id: product._id, quantity: 1 }), // ✅ send initial quantity
+        credentials: 'include'
       });
 
       if (response.ok) {
         setIsLiked(true);
+        setWishlistQty(1);
       } else {
         if (response.status === 401) {
           setError('Please login to add to wishlist');
@@ -41,21 +42,30 @@ function ProductCard({ product }) {
     }
   };
 
-  const handleQuantityChange = async (delta) => {
-    const newQty = Math.max(1, quantity + delta);
-    setQuantity(newQty);
+  // ✅ update quantity in wishlist
+  const updateWishlistQty = async (newQty) => {
+    if (newQty < 1) return; // don’t allow 0
 
     try {
-      await fetch(`${config.apiUrl}/wishlist/${product._id}`, {
-        method: 'PUT', // ✅ Update quantity in wishlist
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ quantity: newQty }),
-        credentials: 'include',
+      setIsAdding(true);
+      const response = await fetch(`${config.apiUrl}/wishlist`, {
+        method: 'PUT', // ✅ use PUT for updating
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product_id: product._id, quantity: newQty }),
+        credentials: 'include'
       });
+
+      if (response.ok) {
+        setWishlistQty(newQty);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to update quantity');
+      }
     } catch (error) {
-      console.error('Error updating wishlist quantity:', error);
+      console.error('Network error:', error);
+      setError('Network error. Please check your connection.');
+    } finally {
+      setIsAdding(false);
     }
   };
 
@@ -67,7 +77,7 @@ function ProductCard({ product }) {
     <div className="product-card">
       {error && (
         <div className="error-message">
-          <span>{error}</span>
+          {error}
           <button onClick={clearError} className="error-close">×</button>
         </div>
       )}
@@ -85,21 +95,32 @@ function ProductCard({ product }) {
         <p className="description">{product.description}</p>
         <div className="price-quantity">
           <span className="price">₹{product.price}</span>
+          <span className="quantity">Qty: {product.quantity}</span>
         </div>
 
         {!isLiked ? (
           <button
-            className={`like-btn ${isLiked ? 'liked' : ''} ${isAdding ? 'adding' : ''}`}
+            className={`like-btn ${isAdding ? 'adding' : ''}`}
             onClick={handleLike}
             disabled={isAdding}
           >
             {isAdding ? 'Adding...' : 'Add to Wishlist'}
           </button>
         ) : (
-          <div className="quantity-control">
-            <button onClick={() => handleQuantityChange(-1)}>-</button>
-            <span>{quantity}</span>
-            <button onClick={() => handleQuantityChange(1)}>+</button>
+          <div className="wishlist-qty-controls">
+            <button
+              onClick={() => updateWishlistQty(wishlistQty - 1)}
+              disabled={isAdding}
+            >
+              –
+            </button>
+            <span>{wishlistQty}</span>
+            <button
+              onClick={() => updateWishlistQty(wishlistQty + 1)}
+              disabled={isAdding}
+            >
+              +
+            </button>
           </div>
         )}
       </div>
