@@ -2516,3 +2516,31 @@ body {
   margin-left: auto;
   font-size: 1.2em;
 }
+.quantity-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 10px 0;
+}
+
+.quantity-controls button {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid #ddd;
+  background: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.quantity-controls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.quantity-display {
+  margin: 0 15px;
+  font-weight: bold;
+  min-width: 30px;
+  text-align: center;
+}
