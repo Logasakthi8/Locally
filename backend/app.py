@@ -19,9 +19,12 @@ app.config.update(
     SESSION_COOKIE_SECURE=True,  # True if using HTTPS
     SESSION_COOKIE_HTTPONLY=True
 )
-CORS(app, supports_credentials=True, origins=["https://locallys.in",
-    "https://www.locallys.in"])
-
+CORS(app, supports_credentials=True, origins=[
+    "https://locallys.in",
+    "https://www.locallys.in", 
+    "http://localhost:3000",  # Add this for development
+    "http://127.0.0.1:3000"   # Add this for development
+])
 # Helper function to serialize ObjectId
 def serialize_doc(doc):
     if doc is None:
@@ -125,41 +128,62 @@ def add_to_wishlist():
     if 'user_id' not in session:
         return jsonify({'error': 'Not authenticated'}), 401
 
-    data = request.json
-    product_id = data.get('product_id')
-    variant = data.get('variant')  # selected variant (dict)
-    
-    if not product_id:
-        return jsonify({'error': 'Product ID is required'}), 400
+    try:
+        data = request.json
+        product_id = data.get('product_id')
+        quantity = data.get('quantity', 1)  # Get quantity from request, default to 1
+        variant = data.get('variant')  # This might be None
+        
+        if not product_id:
+            return jsonify({'error': 'Product ID is required'}), 400
 
-    user_id = session['user_id']
-    
-    # Find product
-    product = mongo.db.products.find_one({'_id': ObjectId(product_id)})
-    if not product:
-        return jsonify({'error': 'Product not found'}), 404
+        user_id = session['user_id']
+        
+        # Find product
+        product = mongo.db.products.find_one({'_id': ObjectId(product_id)})
+        if not product:
+            return jsonify({'error': 'Product not found'}), 404
 
-    shop_id = product['shop_id']
+        shop_id = product['shop_id']
 
-    # Check if variant already exists in wishlist
-    existing = mongo.db.wishlist.find_one({
-        'user_id': ObjectId(user_id),
-        'product_id': ObjectId(product_id),
-        'variant.size': variant.get("size") if variant else None
-    })
+        # Check if product already exists in wishlist (with or without variant)
+        query = {
+            'user_id': ObjectId(user_id),
+            'product_id': ObjectId(product_id)
+        }
+        
+        # If variant exists, include it in the query
+        if variant and variant.get('size'):
+            query['variant.size'] = variant.get('size')
+        
+        existing = mongo.db.wishlist.find_one(query)
 
-    if existing:
-        mongo.db.wishlist.update_one(
-            {'_id': existing['_id']},
-            {'$inc': {'quantity': 1}}
-        )
-        return jsonify({'message': 'Product quantity updated in wishlist'})
+        if existing:
+            # Update quantity if product already exists
+            mongo.db.wishlist.update_one(
+                {'_id': existing['_id']},
+                {'$set': {'quantity': quantity}}  # Set to the new quantity
+            )
+            return jsonify({'message': 'Product quantity updated in wishlist'})
 
-    # Add new wishlist entry
-    wishlist_item = Wishlist(ObjectId(user_id), ObjectId(product_id), shop_id, variant, 1)
-    mongo.db.wishlist.insert_one(wishlist_item.to_dict())
-    return jsonify({'message': 'Product added to wishlist'})
-
+        # Add new wishlist entry with specified quantity
+        wishlist_item = {
+            'user_id': ObjectId(user_id),
+            'product_id': ObjectId(product_id),
+            'shop_id': shop_id,
+            'quantity': quantity,
+            'variant': variant,
+            'added_at': datetime.utcnow()
+        }
+        mongo.db.wishlist.insert_one(wishlist_item)
+        return jsonify({'message': 'Product added to wishlist'})
+        
+    except Exception as e:
+        print(f"Error in add_to_wishlist: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Internal server error'}), 500
+        
 @app.route('/api/wishlist', methods=['GET'])
 def get_wishlist():
     if 'user_id' not in session:
