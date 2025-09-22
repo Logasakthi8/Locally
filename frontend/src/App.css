@@ -2526,21 +2526,23 @@ body {
   color: #666;
   margin-left: 10px;
 }
-.price-quantity-row {
+.price-quantity-container {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin: 10px 0;
-  width: 100%;
+  width: 100%; /* Ensure it takes full width */
 }
 
-.price {
-  font-size: 18px;
-  font-weight: bold;
-  color: #2c5aa0;
+.price-section {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0; /* Prevent shrinking */
 }
 
-.product-quantity {
-  font-size: 14px;
-  color: #666;
+.quantity-section {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0; /* Prevent shrinking */
+  margin-left: auto; /* Push to the right */
 }
