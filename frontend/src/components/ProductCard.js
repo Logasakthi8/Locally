@@ -105,10 +105,10 @@ function ProductCard({ product }) {
         )}
       </div>
 
-      {/* Quantity display in bottom right corner */}
-      {isLiked && (
-        <div className="quantity-badge">
-          {quantity}
+      {/* Product quantity/weight display in bottom right corner */}
+      {product.quantity && (
+        <div className="product-quantity-badge">
+          {product.quantity}
         </div>
       )}
     </div>
