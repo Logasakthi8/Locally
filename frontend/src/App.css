@@ -2531,32 +2531,13 @@ body {
   justify-content: space-between;
   align-items: center;
   margin: 10px 0;
+  border: 1px solid red; /* Temporary for debugging */
 }
 
 .price-section {
-  display: flex;
-  align-items: center;
-}
-
-.price {
-  font-size: 18px;
-  font-weight: bold;
-  color: #2c5aa0;
+  border: 1px solid blue; /* Temporary for debugging */
 }
 
 .quantity-section {
-  display: flex;
-  align-items: center;
-}
-
-.quantity-label {
-  font-size: 14px;
-  color: #666;
-  margin-right: 4px;
-}
-
-.quantity-value {
-  font-size: 14px;
-  font-weight: bold;
-  color: #333;
+  border: 1px solid green; /* Temporary for debugging */
 }
