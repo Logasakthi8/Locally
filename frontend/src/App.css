@@ -2526,18 +2526,21 @@ body {
   color: #666;
   margin-left: 10px;
 }
-.price-quantity-container {
+.price-quantity-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin: 10px 0;
-  border: 1px solid red; /* Temporary for debugging */
+  width: 100%;
 }
 
-.price-section {
-  border: 1px solid blue; /* Temporary for debugging */
+.price {
+  font-size: 18px;
+  font-weight: bold;
+  color: #2c5aa0;
 }
 
-.quantity-section {
-  border: 1px solid green; /* Temporary for debugging */
+.product-quantity {
+  font-size: 14px;
+  color: #666;
 }
