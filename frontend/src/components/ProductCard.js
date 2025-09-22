@@ -83,8 +83,19 @@ function ProductCard({ product }) {
       <div className="card-info">
         <h3>{product.name}</h3>
         <p className="description">{product.description}</p>
-        <div className="price-quantity">
-          <span className="price">₹{product.price}</span>
+        
+        <div className="price-quantity-container">
+          <div className="price-section">
+            <span className="price">₹{product.price}</span>
+          </div>
+          
+          {/* Product quantity display on the right side of price */}
+          {product.quantity && (
+            <div className="quantity-section">
+              <span className="quantity-label">Quantity: </span>
+              <span className="quantity-value">{product.quantity}</span>
+            </div>
+          )}
         </div>
 
         {/* Show quantity controls only after adding to wishlist */}
@@ -104,13 +115,6 @@ function ProductCard({ product }) {
           </button>
         )}
       </div>
-
-      {/* Product quantity/weight display in bottom right corner */}
-      {product.quantity && (
-        <div className="product-quantity-badge">
-          {product.quantity}
-        </div>
-      )}
     </div>
   );
 }
