@@ -2531,18 +2531,32 @@ body {
   justify-content: space-between;
   align-items: center;
   margin: 10px 0;
-  width: 100%; /* Ensure it takes full width */
 }
 
 .price-section {
   display: flex;
   align-items: center;
-  flex-shrink: 0; /* Prevent shrinking */
+}
+
+.price {
+  font-size: 18px;
+  font-weight: bold;
+  color: #2c5aa0;
 }
 
 .quantity-section {
   display: flex;
   align-items: center;
-  flex-shrink: 0; /* Prevent shrinking */
-  margin-left: auto; /* Push to the right */
+}
+
+.quantity-label {
+  font-size: 14px;
+  color: #666;
+  margin-right: 4px;
+}
+
+.quantity-value {
+  font-size: 14px;
+  font-weight: bold;
+  color: #333;
 }
