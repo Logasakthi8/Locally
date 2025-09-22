@@ -104,6 +104,13 @@ function ProductCard({ product }) {
           </button>
         )}
       </div>
+
+      {/* Quantity display in bottom right corner */}
+      {isLiked && (
+        <div className="quantity-badge">
+          {quantity}
+        </div>
+      )}
     </div>
   );
 }
