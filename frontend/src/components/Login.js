@@ -60,7 +60,10 @@ function Login({ onLogin }) {
   return (
     <div className="login-container">
       <div className="login-form">
-        <h2>Welcome to Locally</h2>
+        <div className="logo-header">
+          <img src="/images/logo.png" alt="Locally Logo" className="logo" />
+          <h2>Locally</h2>
+        </div>
         <p>Enter your mobile number to get started</p>
         <form onSubmit={handleSubmit}>
           <input
