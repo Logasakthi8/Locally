@@ -2579,3 +2579,21 @@ body {
   font-size: 2rem;
   color: #333;
 }
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.nav-logo {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+
+.logo-container .logo {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #333;
+}
