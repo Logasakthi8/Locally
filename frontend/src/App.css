@@ -2605,3 +2605,18 @@ body {
   color: #333;
   text-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
+/* Alternative background removal methods */
+.nav-logo {
+  /* Method 1: Brightness and contrast adjustment */
+  filter: brightness(1.1) contrast(1.1) drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+  
+  /* Method 2: If the logo has white background, use this */
+  /* background: transparent; */
+}
+
+/* If the logo still has white background, you can also try */
+.nav-logo {
+  background: transparent;
+  border: none;
+  outline: none;
+}
