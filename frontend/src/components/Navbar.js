@@ -22,8 +22,8 @@ function Navbar({ user, onLogout }) {
     <nav className="navbar">
       <div className="nav-container">
         <div className="logo-container" onClick={() => navigate(user ? '/shops' : '/')}>
-          <img src="/Gemini_Generated_Image_w0yb8lw0yb8lw0yb.png" alt="Locally Logo" className="nav-logo" />
-          <h1 className="logo">Locally</h1>
+          <img src="/logo.png" alt="Locally Logo" className="nav-logo" />
+          
         </div>
         <div className="nav-links">
           {user ? (
