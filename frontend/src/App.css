@@ -2582,18 +2582,26 @@ body {
 .logo-container {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   cursor: pointer;
 }
 
 .nav-logo {
-  width: 30px;
-  height: 30px;
+  width: 45px;
+  height: 45px;
   object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+}
+
+/* Remove white background from PNG */
+.nav-logo {
+  mix-blend-mode: multiply;
 }
 
 .logo-container .logo {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.8rem;
+  font-weight: bold;
   color: #333;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
