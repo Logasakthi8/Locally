@@ -2579,88 +2579,72 @@ body {
   font-size: 2rem;
   color: #333;
 }
-/* Navbar Styles */
+/* Navbar container */
 .navbar {
-  width: 100%;
-  padding: 12px 24px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  padding: 10px 20px;
   position: sticky;
   top: 0;
   z-index: 1000;
-  background-color: #fff; /* keep your background same */
 }
 
 .nav-container {
-  width: 100%;
-  max-width: 1200px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
 }
 
-/* ---- Logo Section ---- */
+/* Logo section */
 .logo-container {
   display: flex;
   align-items: center;
   cursor: pointer;
 }
 
-.nav-logo {
-  height: 60px;   /* bigger like Swiggy */
+.nav-logo-big {
+  height: 60px;  /* Bigger logo size */
   width: auto;
-  object-fit: contain;
-  background: transparent;  /* makes sure logo background stays transparent */
+  margin-right: 10px;
 }
 
-.logo {
+.logo-text {
   font-size: 28px;
   font-weight: bold;
-  margin-left: 10px;
-  color: #000; /* keep it visible */
+  color: #ff6600; /* Swiggy-like orange */
+  margin: 0;
 }
 
-/* ---- Nav Links ---- */
-.nav-links {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
+/* Nav links */
 .nav-links button {
   background: none;
   border: none;
   font-size: 16px;
+  margin-left: 20px;
   cursor: pointer;
   font-weight: 500;
 }
 
 .nav-links button:hover {
-  color: #ff6f00; /* Swiggy orange hover effect */
+  color: #ff6600;
 }
 
-/* ---- User Info ---- */
+/* User info */
 .user-info {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 15px;
-  font-weight: 500;
 }
 
 .user-info button {
-  background: #ff6f00;
+  background: #ff6600;
   border: none;
   color: white;
   padding: 6px 12px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
 }
 
 .user-info button:hover {
-  background: #e65c00;
+  background: #e55a00;
 }
