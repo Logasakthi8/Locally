@@ -21,15 +21,16 @@ function Navbar({ user, onLogout }) {
   return (
     <nav className="navbar">
       <div className="nav-container">
+        {/* Logo */}
         <div className="logo-container" onClick={() => navigate(user ? '/shops' : '/')}>
-          <img src="/logo1.png" alt="Locally Logo" className="nav-logo" />
-          <h1 className="logo">Locally</h1>
+          <img src="/logo1.png" alt="Locally Logo" className="nav-logo-big" />
         </div>
+
+        {/* Links */}
         <div className="nav-links">
           {user ? (
             <>
               <button onClick={() => navigate('/shops')}>Shops</button>
-              <button onClick={() => navigate('/wishlist')}>Cart</button>
               <div className="user-info">
                 <span>👤 {user.mobile}</span>
                 <button onClick={handleLogout}>Logout</button>
