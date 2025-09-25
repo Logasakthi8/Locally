@@ -2579,46 +2579,50 @@ body {
   font-size: 2rem;
   color: #333;
 }
+/* Navbar Styles */
 .navbar {
-  background: #ffffff; /* Keep original white background */
-  padding: 10px 0;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  border-bottom: 1px solid #e6e6e6;
+  width: 100%;
+  padding: 12px 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background-color: #fff; /* keep your background same */
 }
 
 .nav-container {
+  width: 100%;
+  max-width: 1200px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
 }
 
+/* ---- Logo Section ---- */
 .logo-container {
   display: flex;
   align-items: center;
-  gap: 10px;
   cursor: pointer;
 }
 
-/* Make logo background transparent */
 .nav-logo {
-  width: 50px;
-  height: 50px;
+  height: 60px;   /* bigger like Swiggy */
+  width: auto;
   object-fit: contain;
-  background: transparent !important;
-  mix-blend-mode: multiply; /* This removes white background */
-  filter: brightness(1.1) contrast(1.1);
+  background: transparent;  /* makes sure logo background stays transparent */
 }
 
 .logo {
-  margin: 0;
-  font-size: 1.5rem;
-  color: #333;
+  font-size: 28px;
+  font-weight: bold;
+  margin-left: 10px;
+  color: #000; /* keep it visible */
 }
 
-/* Keep original button styles - don't change */
+/* ---- Nav Links ---- */
 .nav-links {
   display: flex;
   align-items: center;
@@ -2626,29 +2630,37 @@ body {
 }
 
 .nav-links button {
-  background: #007bff;
+  background: none;
   border: none;
-  color: white;
-  padding: 8px 16px;
-  border-radius: 4px;
+  font-size: 16px;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .nav-links button:hover {
-  background: #0056b3;
+  color: #ff6f00; /* Swiggy orange hover effect */
 }
 
+/* ---- User Info ---- */
 .user-info {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #333;
+  font-size: 15px;
+  font-weight: 500;
 }
 
-.user-info span {
-  background: #f8f9fa;
-  padding: 5px 10px;
-  border-radius: 4px;
-  border: 1px solid #dee2e6;
+.user-info button {
+  background: #ff6f00;
+  border: none;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.user-info button:hover {
+  background: #e65c00;
 }
