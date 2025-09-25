@@ -2579,72 +2579,92 @@ body {
   font-size: 2rem;
   color: #333;
 }
-/* Navbar container */
 .navbar {
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  padding: 10px 20px;
-  position: sticky;
-  top: 0;
-  z-index: 1000;
+  background: #ffffff;
+  padding: 10px 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-bottom: 1px solid #e6e6e6;
 }
 
 .nav-container {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
 }
 
-/* Logo section */
 .logo-container {
   display: flex;
   align-items: center;
+  gap: 10px;
   cursor: pointer;
+  padding: 5px;
 }
 
-.nav-logo-big {
-  height: 60px;  /* Bigger logo size */
-  width: auto;
-  margin-right: 10px;
+.nav-logo {
+  width: 120px;
+  height: 40px;
+  object-fit: contain;
+  
+  /* Try different methods to remove white background */
+  /* Method 1: Simple approach */
+  filter: brightness(1.1) contrast(1.2);
+  
+  /* Method 2: If above doesn't work, try this */
+  /* mix-blend-mode: darken; */
+}
+
+/* Alternative methods - try one at a time */
+.nav-logo {
+  /* Method 3: For white background removal */
+  background: transparent;
+  border: none;
+}
+
+/* Method 4: If logo still has white bg, add shadow to make it visible */
+.nav-logo {
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
 }
 
 .logo-text {
-  font-size: 28px;
-  font-weight: bold;
-  color: #ff6600; /* Swiggy-like orange */
   margin: 0;
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+  font-family: Arial, sans-serif;
 }
 
-/* Nav links */
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
 .nav-links button {
-  background: none;
+  background: #007bff;
   border: none;
-  font-size: 16px;
-  margin-left: 20px;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 4px;
   cursor: pointer;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .nav-links button:hover {
-  color: #ff6600;
+  background: #0056b3;
 }
 
-/* User info */
 .user-info {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.user-info button {
-  background: #ff6600;
-  border: none;
-  color: white;
-  padding: 6px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.user-info button:hover {
-  background: #e55a00;
+.user-info span {
+  background: #f8f9fa;
+  padding: 5px 10px;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
 }
