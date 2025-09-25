@@ -2580,10 +2580,10 @@ body {
   color: #333;
 }
 .navbar {
-  background: #ffffff;
-  padding: 10px 0;
+  background: #87CEEB; /* Sky blue background */
+  padding: 10px 0; /* Same padding as before */
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  border-bottom: 1px solid #e6e6e6;
+  border-bottom: 1px solid #6cb4d1;
 }
 
 .nav-container {
@@ -2593,6 +2593,7 @@ body {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px;
+  height: 60px; /* Fixed height to keep navbar compact */
 }
 
 .logo-container {
@@ -2600,42 +2601,25 @@ body {
   align-items: center;
   gap: 10px;
   cursor: pointer;
-  padding: 5px;
 }
 
+/* Make only the logo bigger but within navbar container */
 .nav-logo {
-  width: 120px;
-  height: 40px;
+  width: 45px; /* Increased logo size */
+  height: 45px; /* Increased logo size */
   object-fit: contain;
-  
-  /* Try different methods to remove white background */
-  /* Method 1: Simple approach */
-  filter: brightness(1.1) contrast(1.2);
-  
-  /* Method 2: If above doesn't work, try this */
-  /* mix-blend-mode: darken; */
-}
-
-/* Alternative methods - try one at a time */
-.nav-logo {
-  /* Method 3: For white background removal */
   background: transparent;
-  border: none;
+  mix-blend-mode: multiply;
+  filter: brightness(1.1) contrast(1.1);
 }
 
-/* Method 4: If logo still has white bg, add shadow to make it visible */
-.nav-logo {
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
-}
-
-.logo-text {
+.logo {
   margin: 0;
-  font-size: 24px;
-  font-weight: bold;
+  font-size: 1.5rem;
   color: #333;
-  font-family: Arial, sans-serif;
 }
 
+/* Keep original button styles */
 .nav-links {
   display: flex;
   align-items: center;
@@ -2660,11 +2644,12 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  color: #333;
 }
 
 .user-info span {
-  background: #f8f9fa;
+  background: rgba(255, 255, 255, 0.3);
   padding: 5px 10px;
   border-radius: 4px;
-  border: 1px solid #dee2e6;
+  border: 1px solid rgba(255, 255, 255, 0.5);
 }
