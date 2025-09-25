@@ -7,7 +7,7 @@ function Navbar({ user, onLogout }) {
 
   const handleLogout = async () => {
     try {
-      await fetch(`${config.apiUrl}/logout`, { 
+      await fetch(`${config.apiUrl}/logout`, {
         method: 'POST',
         credentials: 'include'
       });
@@ -23,7 +23,7 @@ function Navbar({ user, onLogout }) {
       <div className="nav-container">
         <div className="logo-container" onClick={() => navigate(user ? '/shops' : '/')}>
           <img src="/logo.png" alt="Locally Logo" className="nav-logo" />
-          
+          <h1 className="logo">Locally</h1>
         </div>
         <div className="nav-links">
           {user ? (
