@@ -42,7 +42,7 @@ function Login({ onLogin }) {
         body: JSON.stringify({ mobile }),
         credentials: 'include'
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         onLogin(data.user);
@@ -61,7 +61,7 @@ function Login({ onLogin }) {
     <div className="login-container">
       <div className="login-form">
         <div className="logo-header">
-          <img src="/logo1.png" alt="Locally Logo" className="logo" />
+          <img src="/images/logo.png" alt="Locally Logo" className="logo" />
           <h2>Locally</h2>
         </div>
         <p>Enter your mobile number to get started</p>
@@ -80,7 +80,7 @@ function Login({ onLogin }) {
             {loading ? "Logging in..." : "Continue"} {/* ✅ dynamic text */}
           </button>
         </form>
-        
+
         {/* Rotating startup messages section */}
         <div className="startup-messages">
           <p key={currentTextIndex} className="fade-in">
