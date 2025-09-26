@@ -61,7 +61,7 @@ function Login({ onLogin }) {
     <div className="login-container">
       <div className="login-form">
         <div className="logo-header">
-          <img src="/logo.png" alt="Locally Logo" className="logo" />
+          <img src="/logo1.png" alt="Locally Logo" className="logo" />
           <h2>Locally</h2>
         </div>
         <p>Enter your mobile number to get started</p>
