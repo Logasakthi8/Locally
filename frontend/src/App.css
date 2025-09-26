@@ -2581,9 +2581,12 @@ body {
 }
 .navbar {
   background: #87CEEB; /* Sky blue background */
-  padding: 10px 0; /* Same padding as before */
+  padding: 8px 0; /* Reduced padding to make navbar more compact */
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   border-bottom: 1px solid #6cb4d1;
+  height: 60px; /* Fixed navbar height */
+  display: flex;
+  align-items: center;
 }
 
 .nav-container {
@@ -2593,47 +2596,51 @@ body {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px;
-  height: 60px; /* Fixed height to keep navbar compact */
+  width: 100%;
+  height: 100%; /* Take full height of navbar */
 }
 
 .logo-container {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   cursor: pointer;
+  height: 100%; /* Stay within navbar height */
 }
 
-/* Make only the logo bigger but within navbar container */
+/* Make logo visible but properly sized within navbar */
 .nav-logo {
-  width: 45px; /* Increased logo size */
-  height: 45px; /* Increased logo size */
+  width: 35px; /* Optimal size that fits well */
+  height: 35px; /* Square aspect ratio */
   object-fit: contain;
   background: transparent;
   mix-blend-mode: multiply;
-  filter: brightness(1.1) contrast(1.1);
+  filter: brightness(1.2) contrast(1.3) drop-shadow(0 1px 2px rgba(0,0,0,0.2));
 }
 
 .logo {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   color: #333;
+  font-weight: bold;
 }
 
 /* Keep original button styles */
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 12px;
 }
 
 .nav-links button {
   background: #007bff;
   border: none;
   color: white;
-  padding: 8px 16px;
+  padding: 6px 12px;
   border-radius: 4px;
   cursor: pointer;
   font-weight: 600;
+  font-size: 0.9rem;
 }
 
 .nav-links button:hover {
@@ -2649,7 +2656,8 @@ body {
 
 .user-info span {
   background: rgba(255, 255, 255, 0.3);
-  padding: 5px 10px;
+  padding: 4px 8px;
   border-radius: 4px;
   border: 1px solid rgba(255, 255, 255, 0.5);
+  font-size: 0.9rem;
 }
