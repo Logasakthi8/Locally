@@ -2579,21 +2579,27 @@ body {
   font-size: 2rem;
   color: #333;
 }
-/* Conceptual CSS for better logo visibility */
-.logo-container {
-    display: flex; /* Align image and text side-by-side */
-    align-items: center; /* Vertically center them */
-    cursor: pointer;
-    gap: 8px; /* Space between logo image and text */
-}
-
 .nav-logo {
-    height: 40px; /* Adjust height to your preferred size */
-    width: auto;
+  width: 45px;
+  height: 45px;
+  object-fit: contain;
+  background: transparent;
+  /* Swiggy-style orange color enhancement */
+  filter: 
+    brightness(1.1)
+    contrast(1.8)
+    saturate(2.5)
+    hue-rotate(-5deg)
+    drop-shadow(0 2px 4px rgba(0,0,0,0.2));
 }
 
-.logo-text {
-    font-size: 1.5rem; /* Larger font size for prominence */
-    font-weight: bold; /* Bold text */
-    color: #FF671F; /* Use a brand color, for example */
+/* Optional: Hover effect like Swiggy */
+.logo-container:hover .nav-logo {
+  filter: 
+    brightness(1.2)
+    contrast(2.0)
+    saturate(2.8)
+    hue-rotate(-5deg)
+    drop-shadow(0 3px 6px rgba(0,0,0,0.3));
+  transform: scale(1.02);
 }
