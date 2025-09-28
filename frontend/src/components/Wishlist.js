@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import WishlistItem from './WishlistItem';
-import config from '../config';
+import config from '../config'; 
 
 function Wishlist() {
   const [wishlist, setWishlist] = useState([]);
