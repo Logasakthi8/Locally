@@ -9,9 +9,11 @@ function Wishlist() {
   const [loading, setLoading] = useState(true);
   const [selectedProducts, setSelectedProducts] = useState({});
   const [deliveryCharge] = useState(30);
+  const [userDeliveryCount, setUserDeliveryCount] = useState(0); // Track user's delivery count
 
   useEffect(() => {
     fetchWishlist();
+    fetchUserDeliveryCount();
   }, []);
 
   useEffect(() => {
@@ -20,6 +22,20 @@ function Wishlist() {
       initializeSelectedProducts();
     }
   }, [wishlist]);
+
+  const fetchUserDeliveryCount = async () => {
+    try {
+      const response = await fetch(`${config.apiUrl}/user/delivery-count`, {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUserDeliveryCount(data.deliveryCount || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching delivery count:', error);
+    }
+  };
 
   const isShopOpen = (shop) => {
     if (!shop.opening_time || !shop.closing_time) return true;
@@ -187,6 +203,11 @@ function Wishlist() {
     updateQuantity(productId, newQuantity);
   };
 
+  // Calculate delivery charge based on user's delivery count
+  const calculateDeliveryCharge = () => {
+    return userDeliveryCount < 2 ? 0 : deliveryCharge;
+  };
+
   const checkoutViaWhatsApp = (shopId) => {
     const shop = shops[shopId];
     if (!shop) return;
@@ -213,8 +234,8 @@ function Wishlist() {
       return;
     }
     
-    // Calculate delivery charge (free if subtotal >= 500)
-    const delivery = subtotal >= 500 ? 0 : deliveryCharge;
+    // Calculate delivery charge based on user's delivery count
+    const delivery = calculateDeliveryCharge();
     const total = subtotal + delivery;
     
     let message = `Hello ${shop.name}, I would like to order the following products:%0A%0A`;
@@ -224,7 +245,10 @@ function Wishlist() {
     });
     
     message += `%0ASubtotal: ₹${subtotal}%0A`;
-    message += `Delivery Charge: ₹${delivery}%0A`;
+    message += `Delivery Charge: ${delivery === 0 ? 'FREE' : `₹${delivery}`}%0A`;
+    if (userDeliveryCount < 2) {
+      message += `🎉 Free delivery (${2 - userDeliveryCount} free delivery${2 - userDeliveryCount === 1 ? '' : 's'} left!)%0A`;
+    }
     message += `Total: ₹${total}%0A%0A`;
     message += `Please confirm availability and proceed with the order.`;
     
@@ -273,8 +297,8 @@ function Wishlist() {
     const subtotal = calculateShopSubtotal(selectedProductsList);
     
     if (subtotal >= 100) {
-      // Apply free delivery if subtotal is 500 or more
-      const delivery = subtotal >= 500 ? 0 : deliveryCharge;
+      // Apply delivery charge based on user's delivery count
+      const delivery = calculateDeliveryCharge();
       return subtotal + delivery;
     }
     
@@ -334,8 +358,8 @@ function Wishlist() {
             const selectedCount = getSelectedProductsCount(shopId);
             const meetsMinimum = subtotal >= 100;
             const shopOpen = isShopOpen(shop);
-            // Calculate delivery charge (free if subtotal >= 500)
-            const delivery = subtotal >= 500 ? 0 : deliveryCharge;
+            // Calculate delivery charge based on user's delivery count
+            const delivery = calculateDeliveryCharge();
             
             return (
               <div key={shopId} className="shop-group">
@@ -404,11 +428,16 @@ function Wishlist() {
                         <>
                           <div className="summary-row">
                             <span>Delivery Charge:</span>
-                            <span>{subtotal >= 500 ? 'FREE' : `₹${delivery}`}</span>
+                            <span>{delivery === 0 ? 'FREE' : `₹${delivery}`}</span>
                           </div>
-                          {subtotal >= 500 && (
+                          {delivery === 0 && (
                             <div className="free-delivery-badge">
-                              🎉 You've earned free delivery!
+                              🎉 Free delivery! ({2 - userDeliveryCount} free delivery{2 - userDeliveryCount === 1 ? '' : 's'} left)
+                            </div>
+                          )}
+                          {subtotal >= 500 && delivery > 0 && (
+                            <div className="free-delivery-badge">
+                              🎉 You've earned free delivery on orders above ₹500!
                             </div>
                           )}
                           <div className="summary-row total">
@@ -442,6 +471,12 @@ function Wishlist() {
               <div className="summary-item">
                 <span className="summary-label">Total Items</span>
                 <span className="summary-value">{totalItems}</span>
+              </div>
+              <div className="summary-item">
+                <span className="summary-label">Free Deliveries Left</span>
+                <span className="summary-value">
+                  {userDeliveryCount < 2 ? `${2 - userDeliveryCount}` : '0'}
+                </span>
               </div>
             </div>
             <button onClick={clearCart} className="btn btn-danger" style={{width: '100%'}}>
