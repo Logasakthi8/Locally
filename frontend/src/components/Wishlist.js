@@ -194,7 +194,7 @@ function Wishlist() {
     // Check if shop is open
     const shopOpen = isShopOpen(shop);
     if (!shopOpen) {
-      alert(`This shop is currently closed. Please try again when it opens tomorrow at ${shop.opening_time}.`);
+      alert(`This shop is closed now. Please try again when it opens tomorrow at ${shop.opening_time}.`);
       return;
     }
     
