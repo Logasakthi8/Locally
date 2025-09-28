@@ -21,37 +21,38 @@ function Wishlist() {
     }
   }, [wishlist]);
 
- const isShopOpen = (shop) => {
-  if (!shop.opening_time || !shop.closing_time) return true;
+  const isShopOpen = (shop) => {
+    if (!shop.opening_time || !shop.closing_time) return true;
 
-  const now = new Date();
-  const currentTime = now.getHours() * 60 + now.getMinutes(); // Current time in minutes
+    const now = new Date();
+    const currentTime = now.getHours() * 60 + now.getMinutes(); // Current time in minutes
 
-  // Function to convert "HH:MM AM/PM" to minutes since midnight
-  const convertTimeToMinutes = (timeStr) => {
-    // Match the time parts and AM/PM indicator
-    const match = timeStr.match(/(\d{1,2}):(\d{2})\s?(AM|PM)/i);
-    if (!match) return 0; // Return 0 if format is invalid
+    // Function to convert "HH:MM AM/PM" to minutes since midnight
+    const convertTimeToMinutes = (timeStr) => {
+      // Match the time parts and AM/PM indicator
+      const match = timeStr.match(/(\d{1,2}):(\d{2})\s?(AM|PM)/i);
+      if (!match) return 0; // Return 0 if format is invalid
 
-    let [, hours, minutes, period] = match;
-    hours = parseInt(hours);
-    minutes = parseInt(minutes);
+      let [, hours, minutes, period] = match;
+      hours = parseInt(hours);
+      minutes = parseInt(minutes);
 
-    // Convert to 24-hour format
-    if (period.toUpperCase() === 'PM' && hours !== 12) {
-      hours += 12;
-    } else if (period.toUpperCase() === 'AM' && hours === 12) {
-      hours = 0;
-    }
-    return hours * 60 + minutes;
+      // Convert to 24-hour format
+      if (period.toUpperCase() === 'PM' && hours !== 12) {
+        hours += 12;
+      } else if (period.toUpperCase() === 'AM' && hours === 12) {
+        hours = 0;
+      }
+      return hours * 60 + minutes;
+    };
+
+    const openingTime = convertTimeToMinutes(shop.opening_time); // "09:30 AM" -> 570 minutes
+    const closingTime = convertTimeToMinutes(shop.closing_time); // "09:30 PM" -> 1290 minutes
+
+    // Simple comparison if shop closes on the same day
+    return currentTime >= openingTime && currentTime <= closingTime;
   };
 
-  const openingTime = convertTimeToMinutes(shop.opening_time); // "09:30 AM" -> 570 minutes
-  const closingTime = convertTimeToMinutes(shop.closing_time); // "09:30 PM" -> 1290 minutes
-
-  // Simple comparison if shop closes on the same day
-  return currentTime >= openingTime && currentTime <= closingTime;
-};
   const fetchWishlist = async () => {
     try {
       setLoading(true);
@@ -351,19 +352,19 @@ function Wishlist() {
                   <div className="shop-actions">
                     <button 
                       onClick={() => checkoutViaWhatsApp(shopId)} 
-                      className={`btn ${meetsMinimum ? 'btn-whatsapp' : 'btn-disabled'}`}
-                      disabled={selectedCount === 0 || !meetsMinimum}
-                      title={!meetsMinimum ? `Add ₹${100 - subtotal} more to checkout` : ''}
+                      className={`btn ${meetsMinimum && shopOpen ? 'btn-whatsapp' : 'btn-disabled'}`}
+                      disabled={selectedCount === 0 || !meetsMinimum || !shopOpen}
+                      title={!shopOpen ? 'Shop is closed' : !meetsMinimum ? `Add ₹${100 - subtotal} more to checkout` : ''}
                     >
                       <span>💬</span>
                       WhatsApp ({selectedCount})
                     </button>
                     {shop.owner_mobile && (
                       <button 
-                        onClick={() => meetsMinimum && callToOrder(shop.owner_mobile, shopId)} 
-                        className={`btn ${meetsMinimum ? 'btn-call' : 'btn-disabled'}`}
-                        disabled={!meetsMinimum}
-                        title={!meetsMinimum ? `Add ₹${100 - subtotal} more to call` : ''}
+                        onClick={() => meetsMinimum && shopOpen && callToOrder(shop.owner_mobile, shopId)} 
+                        className={`btn ${meetsMinimum && shopOpen ? 'btn-call' : 'btn-disabled'}`}
+                        disabled={!meetsMinimum || !shopOpen}
+                        title={!shopOpen ? 'Shop is closed' : !meetsMinimum ? `Add ₹${100 - subtotal} more to call` : ''}
                       >
                         <span>📞</span>
                         Call to Order
