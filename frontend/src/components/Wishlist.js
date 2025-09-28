@@ -330,27 +330,24 @@ function Wishlist() {
                       <span className="products-count">
                         <span>📦</span> {shopItemsCount} product{shopItemsCount !== 1 ? 's' : ''}
                       </span>
-                      <span className={`shop-status ${shopOpen ? 'open' : 'closed'}`}>
-                        {shopOpen ? '🟢 OPEN' : '🔴 CLOSED'}
-                      </span>
                     </div>
                   </div>
                   <div className="shop-actions">
                     <button 
                       onClick={() => checkoutViaWhatsApp(shopId)} 
-                      className={`btn ${meetsMinimum && shopOpen ? 'btn-whatsapp' : 'btn-disabled'}`}
-                      disabled={selectedCount === 0 || !meetsMinimum || !shopOpen}
-                      title={!shopOpen ? 'Shop is closed' : !meetsMinimum ? `Add ₹${100 - subtotal} more to checkout` : ''}
+                      className={`btn ${meetsMinimum ? 'btn-whatsapp' : 'btn-disabled'}`}
+                      disabled={selectedCount === 0 || !meetsMinimum}
+                      title={!meetsMinimum ? `Add ₹${100 - subtotal} more to checkout` : ''}
                     >
                       <span>💬</span>
                       WhatsApp ({selectedCount})
                     </button>
                     {shop.owner_mobile && (
                       <button 
-                        onClick={() => meetsMinimum && shopOpen && callToOrder(shop.owner_mobile, shopId)} 
-                        className={`btn ${meetsMinimum && shopOpen ? 'btn-call' : 'btn-disabled'}`}
-                        disabled={!meetsMinimum || !shopOpen}
-                        title={!shopOpen ? 'Shop is closed' : !meetsMinimum ? `Add ₹${100 - subtotal} more to call` : ''}
+                        onClick={() => meetsMinimum && callToOrder(shop.owner_mobile, shopId)} 
+                        className={`btn ${meetsMinimum ? 'btn-call' : 'btn-disabled'}`}
+                        disabled={!meetsMinimum}
+                        title={!meetsMinimum ? `Add ₹${100 - subtotal} more to call` : ''}
                       >
                         <span>📞</span>
                         Call to Order
