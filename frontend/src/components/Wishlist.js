@@ -27,32 +27,31 @@ function Wishlist() {
   const now = new Date();
   const currentHours = now.getHours();
   const currentMinutes = now.getMinutes();
-  const currentTime = currentHours * 60 + currentMinutes; // Convert to minutes since midnight
+  const currentTime = currentHours * 60 + currentMinutes;
   
-  // Parse opening time (handle "9.30" format from Flask)
+  // Parse times (handle "9.30" format)
   const [openHour, openMinute] = shop.opening_time.split('.').map(Number);
-  
-  // Parse closing time (handle "9.30" format from Flask)
   const [closeHour, closeMinute] = shop.closing_time.split('.').map(Number);
   
-  // Convert to 24-hour format assuming both times are in AM/PM format
-  // Since shops typically open in AM and close in PM, we'll assume:
-  // - Opening time is AM (so 9.30 = 9:30 AM)
-  // - Closing time is PM (so 9.30 = 9:30 PM = 21:30)
-  const openingTime = openHour * 60 + openMinute;
-  const closingTime = (closeHour + 12) * 60 + closeMinute; // Add 12 hours for PM
+  let openingTime, closingTime;
   
-  console.log('=== SHOP TIMING DEBUG ===');
-  console.log('Shop:', shop.name);
-  console.log('Opening time from DB:', shop.opening_time, '->', openHour + ':' + openMinute + ' AM', '(', openingTime, 'minutes)');
-  console.log('Closing time from DB:', shop.closing_time, '->', (closeHour + 12) + ':' + closeMinute + ' PM', '(', closingTime, 'minutes)');
-  console.log('Current time:', currentHours + ':' + currentMinutes, '(', currentTime, 'minutes)');
-  console.log('Is shop open?', currentTime >= openingTime && currentTime <= closingTime);
-  console.log('=== END DEBUG ===');
+  // Determine if we need to add 12 hours for PM times
+  // Basic assumption: if closing hour is less than opening hour, it spans to next day
+  // Otherwise, check if closing hour suggests it's PM (typically shops close in PM)
+  if (closeHour < openHour || closeHour <= 12) {
+    // Closing time is likely PM, opening time is AM
+    openingTime = openHour * 60 + openMinute;
+    closingTime = (closeHour + 12) * 60 + closeMinute;
+  } else {
+    // Both times might be in 24-hour format or same AM/PM
+    openingTime = openHour * 60 + openMinute;
+    closingTime = closeHour * 60 + closeMinute;
+  }
+  
+  console.log('Shop:', shop.name, 'Open:', openingTime, 'Close:', closingTime, 'Current:', currentTime);
   
   return currentTime >= openingTime && currentTime <= closingTime;
 };
-
   const fetchWishlist = async () => {
     try {
       setLoading(true);
