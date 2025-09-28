@@ -12,20 +12,43 @@ function Shops() {
     fetchShops();
   }, []);
 
+  const isShopOpen = (shop) => {
+    if (!shop.opening_time || !shop.closing_time) return true;
+    
+    const now = new Date();
+    const currentTime = now.getHours() * 60 + now.getMinutes(); // Convert to minutes since midnight
+    
+    const [openHour, openMinute] = shop.opening_time.split(':').map(Number);
+    const [closeHour, closeMinute] = shop.closing_time.split(':').map(Number);
+    
+    const openingTime = openHour * 60 + openMinute;
+    const closingTime = closeHour * 60 + closeMinute;
+    
+    return currentTime >= openingTime && currentTime <= closingTime;
+  };
+
   const fetchShops = async () => {
     try {
       const response = await fetch(`${config.apiUrl}/shops`);
       const data = await response.json();
 
-      // fetch avg ratings for each shop
+      // fetch avg ratings for each shop and determine open status
       const shopsWithRatings = await Promise.all(
         data.map(async (shop) => {
           try {
             const ratingRes = await fetch(`${config.apiUrl}/reviews/${shop._id}/average`);
             const ratingData = await ratingRes.json();
-            return { ...shop, avgRating: ratingData.average_rating || null };
+            return { 
+              ...shop, 
+              avgRating: ratingData.average_rating || null,
+              isOpen: isShopOpen(shop)
+            };
           } catch {
-            return { ...shop, avgRating: null };
+            return { 
+              ...shop, 
+              avgRating: null,
+              isOpen: isShopOpen(shop)
+            };
           }
         })
       );
