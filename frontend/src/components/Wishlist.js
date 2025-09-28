@@ -194,7 +194,7 @@ function Wishlist() {
     // Check if shop is open
     const shopOpen = isShopOpen(shop);
     if (!shopOpen) {
-      alert(`This shop is closed now. Please try again when it opens tomorrow at ${shop.opening_time}.`);
+      alert(`Sorry! The shop is closed. Come back tomorrow after ${shop.opening_time} to place your order.`);
       return;
     }
     
@@ -238,7 +238,7 @@ function Wishlist() {
     // Check if shop is open
     const shopOpen = isShopOpen(shop);
     if (!shopOpen) {
-      alert(`This shop is closed now. Please try again when it opens tomorrow at ${shop.opening_time}.`);
+      alert(`Sorry! The shop is closed. Come back tomorrow after ${shop.opening_time} to place your order.`);
       return;
     }
     
@@ -354,7 +354,7 @@ function Wishlist() {
                       onClick={() => checkoutViaWhatsApp(shopId)} 
                       className={`btn ${meetsMinimum && shopOpen ? 'btn-whatsapp' : 'btn-disabled'}`}
                       disabled={selectedCount === 0 || !meetsMinimum || !shopOpen}
-                      title={!shopOpen ? `Shop is closed. Opens tomorrow at ${shop.opening_time}` : !meetsMinimum ? `Add ₹${100 - subtotal} more to checkout` : ''}
+                      title={!shopOpen ? `Sorry! The shop is closed. Come back tomorrow after ${shop.opening_time} to place your order.` : !meetsMinimum ? `Add ₹${100 - subtotal} more to checkout` : ''}
                     >
                       <span>💬</span>
                       WhatsApp ({selectedCount})
@@ -364,7 +364,7 @@ function Wishlist() {
                         onClick={() => meetsMinimum && shopOpen && callToOrder(shop.owner_mobile, shopId)} 
                         className={`btn ${meetsMinimum && shopOpen ? 'btn-call' : 'btn-disabled'}`}
                         disabled={!meetsMinimum || !shopOpen}
-                        title={!shopOpen ? `Shop is closed. Opens tomorrow at ${shop.opening_time}` : !meetsMinimum ? `Add ₹${100 - subtotal} more to call` : ''}
+                        title={!shopOpen ? `Sorry! The shop is closed. Come back tomorrow after ${shop.opening_time} to place your order.` : !meetsMinimum ? `Add ₹${100 - subtotal} more to call` : ''}
                       >
                         <span>📞</span>
                         Call to Order
@@ -375,7 +375,7 @@ function Wishlist() {
                 
                 {!shopOpen && (
                   <div className="shop-closed-message">
-                    <p>This shop is currently closed. Please try again when it opens tomorrow at {shop.opening_time}.</p>
+                    <p>Sorry! The shop is closed. Come back tomorrow after {shop.opening_time} to place your order.</p>
                   </div>
                 )}
                 
