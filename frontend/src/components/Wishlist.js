@@ -23,33 +23,33 @@ function Wishlist() {
 
  const isShopOpen = (shop) => {
   if (!shop.opening_time || !shop.closing_time) return true;
-  
+
   const now = new Date();
-  const currentHours = now.getHours();
-  const currentMinutes = now.getMinutes();
-  const currentTime = currentHours * 60 + currentMinutes;
-  
-  // Parse times (handle "9.30" format)
-  const [openHour, openMinute] = shop.opening_time.split('.').map(Number);
-  const [closeHour, closeMinute] = shop.closing_time.split('.').map(Number);
-  
-  let openingTime, closingTime;
-  
-  // Determine if we need to add 12 hours for PM times
-  // Basic assumption: if closing hour is less than opening hour, it spans to next day
-  // Otherwise, check if closing hour suggests it's PM (typically shops close in PM)
-  if (closeHour < openHour || closeHour <= 12) {
-    // Closing time is likely PM, opening time is AM
-    openingTime = openHour * 60 + openMinute;
-    closingTime = (closeHour + 12) * 60 + closeMinute;
-  } else {
-    // Both times might be in 24-hour format or same AM/PM
-    openingTime = openHour * 60 + openMinute;
-    closingTime = closeHour * 60 + closeMinute;
-  }
-  
-  console.log('Shop:', shop.name, 'Open:', openingTime, 'Close:', closingTime, 'Current:', currentTime);
-  
+  const currentTime = now.getHours() * 60 + now.getMinutes(); // Current time in minutes
+
+  // Function to convert "HH:MM AM/PM" to minutes since midnight
+  const convertTimeToMinutes = (timeStr) => {
+    // Match the time parts and AM/PM indicator
+    const match = timeStr.match(/(\d{1,2}):(\d{2})\s?(AM|PM)/i);
+    if (!match) return 0; // Return 0 if format is invalid
+
+    let [, hours, minutes, period] = match;
+    hours = parseInt(hours);
+    minutes = parseInt(minutes);
+
+    // Convert to 24-hour format
+    if (period.toUpperCase() === 'PM' && hours !== 12) {
+      hours += 12;
+    } else if (period.toUpperCase() === 'AM' && hours === 12) {
+      hours = 0;
+    }
+    return hours * 60 + minutes;
+  };
+
+  const openingTime = convertTimeToMinutes(shop.opening_time); // "09:30 AM" -> 570 minutes
+  const closingTime = convertTimeToMinutes(shop.closing_time); // "09:30 PM" -> 1290 minutes
+
+  // Simple comparison if shop closes on the same day
   return currentTime >= openingTime && currentTime <= closingTime;
 };
   const fetchWishlist = async () => {
