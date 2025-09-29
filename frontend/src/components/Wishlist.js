@@ -9,11 +9,14 @@ function Wishlist() {
   const [loading, setLoading] = useState(true);
   const [selectedProducts, setSelectedProducts] = useState({});
   const [deliveryCharge] = useState(30);
-  const [userDeliveryCount, setUserDeliveryCount] = useState(0); // Track user's delivery count
+  const [userDeliveryCount, setUserDeliveryCount] = useState(() => {
+    // Initialize from localStorage or default to 0
+    const saved = localStorage.getItem('userDeliveryCount');
+    return saved ? parseInt(saved) : 0;
+  });
 
   useEffect(() => {
     fetchWishlist();
-    fetchUserDeliveryCount();
   }, []);
 
   useEffect(() => {
@@ -23,19 +26,10 @@ function Wishlist() {
     }
   }, [wishlist]);
 
-  const fetchUserDeliveryCount = async () => {
-    try {
-      const response = await fetch(`${config.apiUrl}/user/delivery-count`, {
-        credentials: 'include'
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setUserDeliveryCount(data.deliveryCount || 0);
-      }
-    } catch (error) {
-      console.error('Error fetching delivery count:', error);
-    }
-  };
+  // Update localStorage whenever userDeliveryCount changes
+  useEffect(() => {
+    localStorage.setItem('userDeliveryCount', userDeliveryCount.toString());
+  }, [userDeliveryCount]);
 
   const isShopOpen = (shop) => {
     if (!shop.opening_time || !shop.closing_time) return true;
@@ -253,6 +247,10 @@ function Wishlist() {
     message += `Please confirm availability and proceed with the order.`;
     
     window.open(`https://wa.me/${shop.owner_mobile}?text=${message}`, '_blank');
+    
+    // Increment delivery count after successful order
+    const newCount = userDeliveryCount + 1;
+    setUserDeliveryCount(newCount);
   };
 
   const callToOrder = (shopMobile, shopId) => {
