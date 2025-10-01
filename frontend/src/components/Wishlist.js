@@ -15,6 +15,9 @@ function Wishlist() {
     return saved ? parseInt(saved) : 0;
   });
 
+  // Your hardcoded phone number
+  const YOUR_PHONE_NUMBER = '9361437688';
+
   useEffect(() => {
     fetchWishlist();
   }, []);
@@ -232,7 +235,7 @@ function Wishlist() {
     const delivery = calculateDeliveryCharge();
     const total = subtotal + delivery;
     
-    let message = `Hello ${shop.name}, I would like to order the following products:%0A%0A`;
+    let message = `Hello, I would like to order the following products from ${shop.name}:%0A%0A`;
     
     selectedShopProducts.forEach((product, index) => {
       message += `${index + 1}. ${product.name} - ₹${product.price} x ${product.quantity || 1}%0A`;
@@ -246,7 +249,8 @@ function Wishlist() {
     message += `Total: ₹${total}%0A%0A`;
     message += `Please confirm availability and proceed with the order.`;
     
-    window.open(`https://wa.me/${shop.owner_mobile}?text=${message}`, '_blank');
+    // Use your hardcoded phone number instead of shop.owner_mobile
+    window.open(`https://wa.me/${YOUR_PHONE_NUMBER}?text=${message}`, '_blank');
     
     // Increment delivery count after successful order
     const newCount = userDeliveryCount + 1;
@@ -264,7 +268,8 @@ function Wishlist() {
       return;
     }
     
-    window.location.href = `tel:${shopMobile}`;
+    // Use your hardcoded phone number instead of shop.owner_mobile
+    window.location.href = `tel:${YOUR_PHONE_NUMBER}`;
   };
 
   const clearCart = async () => {
@@ -381,17 +386,15 @@ function Wishlist() {
                       <span>💬</span>
                       WhatsApp ({selectedCount})
                     </button>
-                    {shop.owner_mobile && (
-                      <button 
-                        onClick={() => meetsMinimum && shopOpen && callToOrder(shop.owner_mobile, shopId)} 
-                        className={`btn ${meetsMinimum && shopOpen ? 'btn-call' : 'btn-disabled'}`}
-                        disabled={!meetsMinimum || !shopOpen}
-                        title={!shopOpen ? `Sorry! The shop is closed. Come back tomorrow after ${shop.opening_time} to place your order.` : !meetsMinimum ? `Add ₹${100 - subtotal} more to call` : ''}
-                      >
-                        <span>📞</span>
-                        Call to Order
-                      </button>
-                    )}
+                    <button 
+                      onClick={() => meetsMinimum && shopOpen && callToOrder(YOUR_PHONE_NUMBER, shopId)} 
+                      className={`btn ${meetsMinimum && shopOpen ? 'btn-call' : 'btn-disabled'}`}
+                      disabled={!meetsMinimum || !shopOpen}
+                      title={!shopOpen ? `Sorry! The shop is closed. Come back tomorrow after ${shop.opening_time} to place your order.` : !meetsMinimum ? `Add ₹${100 - subtotal} more to call` : ''}
+                    >
+                      <span>📞</span>
+                      Call to Order
+                    </button>
                   </div>
                 </div>
                 
