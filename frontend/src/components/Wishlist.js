@@ -16,7 +16,7 @@ function Wishlist() {
   });
 
   // Your hardcoded phone number
-  const YOUR_PHONE_NUMBER = '9361437688';
+  const YOUR_PHONE_NUMBER = '9361437687';
 
   useEffect(() => {
     fetchWishlist();
