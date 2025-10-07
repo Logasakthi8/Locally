@@ -4,7 +4,6 @@ from flask_cors import CORS
 from bson import ObjectId
 from datetime import datetime, timedelta
 import os
-import jwt
 from dotenv import load_dotenv
 from models import User, Shop, Product, Wishlist, Order
 
@@ -15,20 +14,19 @@ app.secret_key = os.getenv('SECRET_KEY')
 app.config["MONGO_URI"] = os.getenv('MONGO_URI')
 mongo = PyMongo(app)
 
-# JWT Configuration
-JWT_SECRET = os.getenv('JWT_SECRET', 'your-fallback-secret-key')
-JWT_EXPIRY_DAYS = 30
-
+# Session configuration for persistent login
 app.config.update(
     SESSION_COOKIE_SAMESITE="None",
-    SESSION_COOKIE_SECURE=True,  # True if using HTTPS
-    SESSION_COOKIE_HTTPONLY=True
+    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_HTTPONLY=True,
+    PERMANENT_SESSION_LIFETIME=timedelta(days=30)
 )
+
 CORS(app, supports_credentials=True, origins=[
     "https://locallys.in",
     "https://www.locallys.in", 
-    "http://localhost:3000",  # Add this for development
-    "http://127.0.0.1:3000"   # Add this for development
+    "http://localhost:3000",
+    "http://127.0.0.1:3000"
 ])
 
 # Helper function to serialize ObjectId
@@ -39,63 +37,23 @@ def serialize_doc(doc):
         doc['_id'] = str(doc['_id'])
     return doc
 
-# JWT Token Functions
-def generate_token(user_id, mobile):
-    """Generate JWT token for user"""
-    payload = {
-        'user_id': str(user_id),
-        'mobile': mobile,
-        'exp': datetime.utcnow() + timedelta(days=JWT_EXPIRY_DAYS)
-    }
-    return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
-
-def verify_token(token):
-    """Verify JWT token and return payload if valid"""
-    try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
-        return payload
-    except jwt.ExpiredSignatureError:
-        return None
-    except jwt.InvalidTokenError:
-        return None
-
 # Authentication Middleware
 def auth_required(f):
-    """Decorator to check if user is authenticated via session or token"""
+    """Decorator to check if user is authenticated via session"""
     def decorated(*args, **kwargs):
-        # Check session first (for backward compatibility)
-        if 'user_id' in session:
-            return f(*args, **kwargs)
-        
-        # Check JWT token from Authorization header
-        auth_header = request.headers.get('Authorization')
-        if auth_header and auth_header.startswith('Bearer '):
-            token = auth_header.split(' ')[1]
-            payload = verify_token(token)
-            if payload:
-                # Set session for current request
-                session['user_id'] = payload['user_id']
-                session['user_mobile'] = payload['mobile']
-                return f(*args, **kwargs)
-        
-        return jsonify({'error': 'Not authenticated'}), 401
+        if 'user_id' not in session:
+            return jsonify({'error': 'Not authenticated'}), 401
+        return f(*args, **kwargs)
     decorated.__name__ = f.__name__
     return decorated
 
-# Token Verification Endpoint
-@app.route('/api/verify-token', methods=['GET'])
-def verify_token_endpoint():
-    """Verify JWT token validity"""
-    auth_header = request.headers.get('Authorization')
-    if not auth_header or not auth_header.startswith('Bearer '):
-        return jsonify({'valid': False}), 401
-    
-    token = auth_header.split(' ')[1]
-    payload = verify_token(token)
-    
-    if payload:
-        # Get fresh user data
-        user = mongo.db.users.find_one({'_id': ObjectId(payload['user_id'])})
+# Session Verification Endpoint
+@app.route('/api/verify-session', methods=['GET'])
+def verify_session():
+    """Verify session validity"""
+    if 'user_id' in session:
+        user_id = session['user_id']
+        user = mongo.db.users.find_one({'_id': ObjectId(user_id)})
         if user:
             return jsonify({
                 'valid': True,
@@ -104,7 +62,7 @@ def verify_token_endpoint():
     
     return jsonify({'valid': False}), 401
 
-# Updated Login Endpoint with JWT
+# Updated Login Endpoint with persistent session
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.json
@@ -120,19 +78,17 @@ def login():
         result = mongo.db.users.insert_one(user_obj.to_dict())
         user = mongo.db.users.find_one({'_id': result.inserted_id})
     
-    # Generate JWT token
-    token = generate_token(user['_id'], user['mobile'])
-    
-    # Set session (for backward compatibility)
+    # Set permanent session for 30 days
+    session.permanent = True
     session['user_id'] = str(user['_id'])
     session['user_mobile'] = user['mobile']
     
     return jsonify({
         'message': 'Login successful', 
-        'user': serialize_doc(user),
-        'token': token  # Send token to frontend
+        'user': serialize_doc(user)
     })
 
+# ALL YOUR EXISTING ROUTES REMAIN EXACTLY THE SAME
 # Add the clear-cart endpoint here (before other routes)
 @app.route('/api/clear-cart', methods=['POST'])
 @auth_required
@@ -151,7 +107,6 @@ def clear_cart():
         print(f"Error clearing cart: {e}")
         return jsonify({'error': str(e)}), 500
 
-# ALL YOUR EXISTING ROUTES BELOW (UPDATED WITH @auth_required)
 @app.route('/')
 def home():
     return jsonify({"message": "Shopping App API is running!"})
