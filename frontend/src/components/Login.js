@@ -5,7 +5,7 @@ import config from '../config';
 function Login({ onLogin }) {
   const [mobile, setMobile] = useState('');
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
-  const [loading, setLoading] = useState(false); // ✅ added loading state
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   // Array of startup messages to rotate through
@@ -19,6 +19,40 @@ function Login({ onLogin }) {
   ];
 
   useEffect(() => {
+    // Check if user is already logged in
+    const checkExistingAuth = async () => {
+      const token = localStorage.getItem('authToken');
+      const userData = localStorage.getItem('userData');
+      
+      if (token && userData) {
+        try {
+          // Verify token is still valid with a quick check
+          const response = await fetch(`${config.apiUrl}/verify-token`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+
+          if (response.ok) {
+            const user = JSON.parse(userData);
+            onLogin(user);
+            navigate('/shops');
+          } else {
+            // Token invalid, clear storage
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userData');
+          }
+        } catch (error) {
+          console.error('Token verification failed:', error);
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('userData');
+        }
+      }
+    };
+
+    checkExistingAuth();
+
     // Set up interval to rotate messages every 3 seconds
     const interval = setInterval(() => {
       setCurrentTextIndex((prevIndex) => 
@@ -26,13 +60,20 @@ function Login({ onLogin }) {
       );
     }, 3000);
 
-    // Clean up interval on component unmount
     return () => clearInterval(interval);
-  }, [startupMessages.length]);
+  }, [startupMessages.length, navigate, onLogin]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true); // ✅ show loading when request starts
+    
+    // Basic validation
+    if (!mobile || mobile.length !== 10) {
+      alert('Please enter a valid 10-digit mobile number');
+      return;
+    }
+
+    setLoading(true);
+    
     try {
       const response = await fetch(`${config.apiUrl}/login`, {
         method: 'POST',
@@ -40,20 +81,28 @@ function Login({ onLogin }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ mobile }),
-        credentials: 'include'
       });
 
+      const data = await response.json();
+
       if (response.ok) {
-        const data = await response.json();
+        // Store authentication data
+        if (data.token) {
+          localStorage.setItem('authToken', data.token);
+        }
+        localStorage.setItem('userData', JSON.stringify(data.user));
+        
         onLogin(data.user);
         navigate('/shops');
       } else {
-        console.error('Login failed');
+        console.error('Login failed:', data.message);
+        alert(data.message || 'Login failed. Please try again.');
       }
     } catch (error) {
       console.error('Error:', error);
+      alert('Network error. Please check your connection and try again.');
     } finally {
-      setLoading(false); // ✅ stop loading after request finishes
+      setLoading(false);
     }
   };
 
@@ -70,14 +119,14 @@ function Login({ onLogin }) {
             type="tel"
             placeholder="Enter your mobile number"
             value={mobile}
-            onChange={(e) => setMobile(e.target.value)}
+            onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
             required
             pattern="[0-9]{10}"
             title="Please enter a 10-digit mobile number"
-            disabled={loading} // ✅ disable input while logging in
+            disabled={loading}
           />
-          <button type="submit" disabled={loading}>
-            {loading ? "Logging in..." : "Continue"} {/* ✅ dynamic text */}
+          <button type="submit" disabled={loading || mobile.length !== 10}>
+            {loading ? "Logging in..." : "Continue"}
           </button>
         </form>
 
