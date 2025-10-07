@@ -20,36 +20,23 @@ function Login({ onLogin }) {
 
   useEffect(() => {
     // Check if user is already logged in
-    const checkExistingAuth = async () => {
-      const token = localStorage.getItem('authToken');
-      const userData = localStorage.getItem('userData');
-      
-      if (token && userData) {
-        try {
-          // Verify token is still valid with a quick check
-          const response = await fetch(`${config.apiUrl}/verify-token`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
+    // Check authentication on app load
+const checkExistingAuth = async () => {
+  try {
+    const response = await fetch(`${config.apiUrl}/api/verify-session`, {
+      method: 'GET',
+      credentials: 'include' // Important for sessions
+    });
 
-          if (response.ok) {
-            const user = JSON.parse(userData);
-            onLogin(user);
-            navigate('/shops');
-          } else {
-            // Token invalid, clear storage
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('userData');
-          }
-        } catch (error) {
-          console.error('Token verification failed:', error);
-          localStorage.removeItem('authToken');
-          localStorage.removeItem('userData');
-        }
-      }
-    };
+    if (response.ok) {
+      const data = await response.json();
+      onLogin(data.user);
+      navigate('/shops');
+    }
+  } catch (error) {
+    console.error('Session verification failed:', error);
+  }
+};
 
     checkExistingAuth();
 
