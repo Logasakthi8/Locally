@@ -8,7 +8,6 @@ function Login({ onLogin }) {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Array of startup messages to rotate through
   const startupMessages = [
     "Discover the best local shops near you",
     "Get exclusive deals from your favorite stores",
@@ -19,24 +18,23 @@ function Login({ onLogin }) {
   ];
 
   useEffect(() => {
-    // Check if user is already logged in
-    // Check authentication on app load
-const checkExistingAuth = async () => {
-  try {
-    const response = await fetch(`${config.apiUrl}/api/verify-session`, {
-      method: 'GET',
-      credentials: 'include' // Important for sessions
-    });
+    // Check if user is already logged in using session
+    const checkExistingAuth = async () => {
+      try {
+        const response = await fetch(`${config.apiUrl}/api/verify-session`, {
+          method: 'GET',
+          credentials: 'include' // Important for sessions
+        });
 
-    if (response.ok) {
-      const data = await response.json();
-      onLogin(data.user);
-      navigate('/shops');
-    }
-  } catch (error) {
-    console.error('Session verification failed:', error);
-  }
-};
+        if (response.ok) {
+          const data = await response.json();
+          onLogin(data.user);
+          navigate('/shops');
+        }
+      } catch (error) {
+        console.error('Session verification failed:', error);
+      }
+    };
 
     checkExistingAuth();
 
@@ -62,23 +60,18 @@ const checkExistingAuth = async () => {
     setLoading(true);
     
     try {
-      const response = await fetch(`${config.apiUrl}/login`, {
+      const response = await fetch(`${config.apiUrl}/api/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ mobile }),
+        credentials: 'include' // Important for session cookies
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        // Store authentication data
-        if (data.token) {
-          localStorage.setItem('authToken', data.token);
-        }
-        localStorage.setItem('userData', JSON.stringify(data.user));
-        
         onLogin(data.user);
         navigate('/shops');
       } else {
