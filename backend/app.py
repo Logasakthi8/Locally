@@ -2,8 +2,9 @@ from flask import Flask, jsonify, request, session
 from flask_pymongo import PyMongo
 from flask_cors import CORS
 from bson import ObjectId
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
+import jwt
 from dotenv import load_dotenv
 from models import User, Shop, Product, Wishlist, Order
 
@@ -13,6 +14,10 @@ app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
 app.config["MONGO_URI"] = os.getenv('MONGO_URI')
 mongo = PyMongo(app)
+
+# JWT Configuration
+JWT_SECRET = os.getenv('JWT_SECRET', 'your-fallback-secret-key')
+JWT_EXPIRY_DAYS = 30
 
 app.config.update(
     SESSION_COOKIE_SAMESITE="None",
@@ -25,6 +30,7 @@ CORS(app, supports_credentials=True, origins=[
     "http://localhost:3000",  # Add this for development
     "http://127.0.0.1:3000"   # Add this for development
 ])
+
 # Helper function to serialize ObjectId
 def serialize_doc(doc):
     if doc is None:
@@ -33,31 +39,72 @@ def serialize_doc(doc):
         doc['_id'] = str(doc['_id'])
     return doc
 
-# Add the clear-cart endpoint here (before other routes)
-@app.route('/api/clear-cart', methods=['POST'])
-def clear_cart():
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
-    user_id = session['user_id']
-    
+# JWT Token Functions
+def generate_token(user_id, mobile):
+    """Generate JWT token for user"""
+    payload = {
+        'user_id': str(user_id),
+        'mobile': mobile,
+        'exp': datetime.utcnow() + timedelta(days=JWT_EXPIRY_DAYS)
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
+
+def verify_token(token):
+    """Verify JWT token and return payload if valid"""
     try:
-        # Delete all wishlist items for this user
-        result = mongo.db.wishlist.delete_many({'user_id': ObjectId(user_id)})
+        payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+        return payload
+    except jwt.ExpiredSignatureError:
+        return None
+    except jwt.InvalidTokenError:
+        return None
+
+# Authentication Middleware
+def auth_required(f):
+    """Decorator to check if user is authenticated via session or token"""
+    def decorated(*args, **kwargs):
+        # Check session first (for backward compatibility)
+        if 'user_id' in session:
+            return f(*args, **kwargs)
         
-        return jsonify({
-            'message': 'Cart cleared successfully',
-            'deleted_count': result.deleted_count
-        })
-    except Exception as e:
-        print(f"Error clearing cart: {e}")
-        return jsonify({'error': str(e)}), 500
+        # Check JWT token from Authorization header
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            payload = verify_token(token)
+            if payload:
+                # Set session for current request
+                session['user_id'] = payload['user_id']
+                session['user_mobile'] = payload['mobile']
+                return f(*args, **kwargs)
+        
+        return jsonify({'error': 'Not authenticated'}), 401
+    decorated.__name__ = f.__name__
+    return decorated
 
-# ALL YOUR EXISTING ROUTES BELOW (DO NOT MODIFY)
-@app.route('/')
-def home():
-    return jsonify({"message": "Shopping App API is running!"})
+# Token Verification Endpoint
+@app.route('/api/verify-token', methods=['GET'])
+def verify_token_endpoint():
+    """Verify JWT token validity"""
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({'valid': False}), 401
+    
+    token = auth_header.split(' ')[1]
+    payload = verify_token(token)
+    
+    if payload:
+        # Get fresh user data
+        user = mongo.db.users.find_one({'_id': ObjectId(payload['user_id'])})
+        if user:
+            return jsonify({
+                'valid': True,
+                'user': serialize_doc(user)
+            })
+    
+    return jsonify({'valid': False}), 401
 
+# Updated Login Endpoint with JWT
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.json
@@ -73,9 +120,41 @@ def login():
         result = mongo.db.users.insert_one(user_obj.to_dict())
         user = mongo.db.users.find_one({'_id': result.inserted_id})
     
+    # Generate JWT token
+    token = generate_token(user['_id'], user['mobile'])
+    
+    # Set session (for backward compatibility)
     session['user_id'] = str(user['_id'])
     session['user_mobile'] = user['mobile']
-    return jsonify({'message': 'Login successful', 'user': serialize_doc(user)})
+    
+    return jsonify({
+        'message': 'Login successful', 
+        'user': serialize_doc(user),
+        'token': token  # Send token to frontend
+    })
+
+# Add the clear-cart endpoint here (before other routes)
+@app.route('/api/clear-cart', methods=['POST'])
+@auth_required
+def clear_cart():
+    user_id = session['user_id']
+    
+    try:
+        # Delete all wishlist items for this user
+        result = mongo.db.wishlist.delete_many({'user_id': ObjectId(user_id)})
+        
+        return jsonify({
+            'message': 'Cart cleared successfully',
+            'deleted_count': result.deleted_count
+        })
+    except Exception as e:
+        print(f"Error clearing cart: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# ALL YOUR EXISTING ROUTES BELOW (UPDATED WITH @auth_required)
+@app.route('/')
+def home():
+    return jsonify({"message": "Shopping App API is running!"})
 
 @app.route('/api/shops', methods=['GET'])
 def get_shops():
@@ -124,10 +203,8 @@ def get_shop_products(shop_id):
 
 # Update the wishlist endpoint to include quantity
 @app.route('/api/wishlist', methods=['POST'])
+@auth_required
 def add_to_wishlist():
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-
     try:
         data = request.json
         product_id = data.get('product_id')
@@ -185,10 +262,8 @@ def add_to_wishlist():
         return jsonify({'error': 'Internal server error'}), 500
         
 @app.route('/api/wishlist', methods=['GET'])
+@auth_required
 def get_wishlist():
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-
     user_id = session['user_id']
     wishlist_items = list(mongo.db.wishlist.find({'user_id': ObjectId(user_id)}))
 
@@ -209,10 +284,8 @@ def get_wishlist():
 
 
 @app.route('/api/wishlist/<product_id>', methods=['DELETE'])
+@auth_required
 def remove_from_wishlist(product_id):
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
     user_id = session['user_id']
     
     try:
@@ -229,10 +302,8 @@ def remove_from_wishlist(product_id):
         return jsonify({'error': 'Invalid product ID'}), 400
 
 @app.route('/api/checkout', methods=['POST'])
+@auth_required
 def checkout():
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
     data = request.json
     product_ids = data.get('product_ids', [])
     
@@ -278,10 +349,8 @@ def checkout():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/user', methods=['GET'])
+@auth_required
 def get_user():
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
     user_id = session['user_id']
     user = mongo.db.users.find_one({'_id': ObjectId(user_id)})
     
@@ -292,6 +361,7 @@ def get_user():
 
 
 @app.route('/api/logout', methods=['POST'])
+@auth_required
 def logout():
     session.pop('user_id', None)
     session.pop('user_mobile', None)
@@ -420,10 +490,8 @@ def debug_products():
 # Add these endpoints to your Flask app
 
 @app.route('/api/wishlist/<product_id>/quantity', methods=['PUT'])
+@auth_required
 def update_wishlist_quantity(product_id):
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
     user_id = session['user_id']
     data = request.json
     quantity = data.get('quantity', 1)
@@ -448,10 +516,8 @@ def update_wishlist_quantity(product_id):
 
 # Add this endpoint to get wishlist count by shop
 @app.route('/api/wishlist/shop-counts', methods=['GET'])
+@auth_required
 def get_wishlist_shop_counts():
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
     user_id = session['user_id']
     
     try:
@@ -484,10 +550,8 @@ def get_wishlist_shop_counts():
 
 # Add this endpoint to get wishlist items by shop
 @app.route('/api/wishlist/shop/<shop_id>', methods=['GET'])
+@auth_required
 def get_wishlist_by_shop(shop_id):
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
     user_id = session['user_id']
     
     try:
@@ -515,10 +579,8 @@ def get_wishlist_by_shop(shop_id):
 
 # Update the checkout_shop endpoint to handle selected products only
 @app.route('/api/checkout/shop/<shop_id>', methods=['POST'])
+@auth_required
 def checkout_shop(shop_id):
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
     user_id = session['user_id']
     data = request.json
     product_ids = data.get('product_ids', [])
@@ -589,10 +651,8 @@ def checkout_shop(shop_id):
 
 # Add this endpoint to update multiple quantities at once
 @app.route('/api/wishlist/quantities', methods=['PUT'])
+@auth_required
 def update_wishlist_quantities():
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
     user_id = session['user_id']
     data = request.json
     
@@ -636,11 +696,9 @@ def get_reviews(shop_id):
 
 
 @app.route('/api/reviews/<shop_id>', methods=['POST'])
+@auth_required
 def add_review(shop_id):
     """Add a review for a shop"""
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
     data = request.json
     rating = data.get('rating')
     comment = data.get('comment', "")
@@ -682,11 +740,9 @@ def get_average_rating(shop_id):
 # ======================
 
 @app.route('/api/user/delivery-count', methods=['GET'])
+@auth_required
 def get_user_delivery_count():
     """Get user's delivery count for free delivery calculation"""
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
     user_id = session['user_id']
     
     try:
@@ -704,11 +760,9 @@ def get_user_delivery_count():
         return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/api/user/increment-delivery', methods=['POST'])
+@auth_required
 def increment_delivery_count():
     """Increment user's delivery count"""
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
     user_id = session['user_id']
     
     try:
@@ -728,11 +782,9 @@ def increment_delivery_count():
         return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/api/user/orders', methods=['GET'])
+@auth_required
 def get_user_orders():
     """Get user's order history"""
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
     user_id = session['user_id']
     
     try:
