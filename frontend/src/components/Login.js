@@ -6,6 +6,7 @@ function Login({ onLogin }) {
   const [mobile, setMobile] = useState('');
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [networkError, setNetworkError] = useState(false);
   const navigate = useNavigate();
 
   const startupMessages = [
@@ -21,9 +22,10 @@ function Login({ onLogin }) {
     // Check if user is already logged in using session
     const checkExistingAuth = async () => {
       try {
+        console.log('Checking authentication...');
         const response = await fetch(`${config.apiUrl}/api/verify-session`, {
           method: 'GET',
-          credentials: 'include' // Important for sessions
+          credentials: 'include'
         });
 
         if (response.ok) {
@@ -33,6 +35,7 @@ function Login({ onLogin }) {
         }
       } catch (error) {
         console.error('Session verification failed:', error);
+        setNetworkError(true);
       }
     };
 
@@ -50,6 +53,7 @@ function Login({ onLogin }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setNetworkError(false);
     
     // Basic validation
     if (!mobile || mobile.length !== 10) {
@@ -60,27 +64,33 @@ function Login({ onLogin }) {
     setLoading(true);
     
     try {
+      console.log('Attempting login to:', `${config.apiUrl}/api/login`);
+      
       const response = await fetch(`${config.apiUrl}/api/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ mobile }),
-        credentials: 'include' // Important for session cookies
+        credentials: 'include'
       });
 
-      const data = await response.json();
+      console.log('Login response status:', response.status);
 
       if (response.ok) {
+        const data = await response.json();
+        console.log('Login successful:', data);
         onLogin(data.user);
         navigate('/shops');
       } else {
-        console.error('Login failed:', data.message);
-        alert(data.message || 'Login failed. Please try again.');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Login failed:', errorData);
+        alert(errorData.error || 'Login failed. Please try again.');
       }
     } catch (error) {
-      console.error('Error:', error);
-      alert('Network error. Please check your connection and try again.');
+      console.error('Network error:', error);
+      setNetworkError(true);
+      alert(`Cannot connect to server. Please check:\n\n1. Backend server is running\n2. Correct API URL: ${config.apiUrl}\n3. Network connection`);
     } finally {
       setLoading(false);
     }
@@ -93,6 +103,16 @@ function Login({ onLogin }) {
           <img src="/images/logo.png" alt="Locally Logo" className="logo" />
           <h2>Locally</h2>
         </div>
+        
+        {networkError && (
+          <div className="network-error">
+            <p>⚠️ Cannot connect to server</p>
+            <p style={{fontSize: '12px', color: '#666'}}>
+              Make sure backend is running at: {config.apiUrl}
+            </p>
+          </div>
+        )}
+        
         <p>Enter your mobile number to get started</p>
         <form onSubmit={handleSubmit}>
           <input
@@ -109,6 +129,11 @@ function Login({ onLogin }) {
             {loading ? "Logging in..." : "Continue"}
           </button>
         </form>
+
+        {/* Debug info - remove in production */}
+        <div style={{marginTop: '10px', fontSize: '12px', color: '#666'}}>
+          API URL: {config.apiUrl}
+        </div>
 
         {/* Rotating startup messages section */}
         <div className="startup-messages">
