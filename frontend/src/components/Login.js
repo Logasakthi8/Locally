@@ -42,7 +42,7 @@ const handleSubmit = async (e) => {
   setLoading(true);
   
   try {
-    const response = await fetch(`${config.apiUrl}/api/login`, {
+    const response = await fetch(`${config.apiUrl}/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
