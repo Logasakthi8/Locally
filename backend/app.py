@@ -91,8 +91,19 @@ def login():
         'message': 'Login successful', 
         'user': serialize_doc(user)
     })
-# ALL YOUR EXISTING ROUTES REMAIN EXACTLY THE SAME
-# Add the clear-cart endpoint here (before other routes)
+
+@app.route('/api/user', methods=['GET'])
+@auth_required
+def get_user():
+    """Get current user information"""
+    user_id = session['user_id']
+    user = mongo.db.users.find_one({'_id': ObjectId(user_id)})
+    
+    if user:
+        return jsonify(serialize_doc(user))
+    else:
+        return jsonify({'error': 'User not found'}), 404
+
 @app.route('/api/clear-cart', methods=['POST'])
 @auth_required
 def clear_cart():
