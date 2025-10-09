@@ -16,7 +16,7 @@ function App() {
     const checkSession = async () => {
       try {
         console.log('Checking user session...');
-        const response = await fetch(`${config.apiUrl}/api/user`, {
+        const response = await fetch(`${config.apiUrl}/user`, {
           method: 'GET',
           credentials: 'include'
         });
@@ -61,7 +61,7 @@ function App() {
 
   const handleLogout = async () => {
     try {
-      await fetch(`${config.apiUrl}/api/logout`, {
+      await fetch(`${config.apiUrl}/logout`, {
         method: 'POST',
         credentials: 'include'
       });
