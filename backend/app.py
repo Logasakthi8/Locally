@@ -16,10 +16,12 @@ mongo = PyMongo(app)
 
 # Session configuration for persistent login
 app.config.update(
-    SESSION_COOKIE_SAMESITE="None",
-    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_NAME='locally_session',
     SESSION_COOKIE_HTTPONLY=True,
-    PERMANENT_SESSION_LIFETIME=timedelta(days=30)
+    SESSION_COOKIE_SECURE=True,  # True for HTTPS
+    SESSION_COOKIE_SAMESITE='None',  # Important for cross-site
+    PERMANENT_SESSION_LIFETIME=timedelta(days=30),  # 30 days
+    SESSION_REFRESH_EACH_REQUEST=True  
 )
 
 CORS(app, supports_credentials=True, origins=[
@@ -37,7 +39,6 @@ def serialize_doc(doc):
         doc['_id'] = str(doc['_id'])
     return doc
 
-# Authentication Middleware
 def auth_required(f):
     """Decorator to check if user is authenticated via session"""
     def decorated(*args, **kwargs):
@@ -50,8 +51,11 @@ def auth_required(f):
 # Session Verification Endpoint
 @app.route('/api/verify-session', methods=['GET'])
 def verify_session():
-    """Verify session validity"""
+    """Verify session validity and refresh it"""
     if 'user_id' in session:
+        # Refresh the session to extend lifetime
+        session.modified = True
+        
         user_id = session['user_id']
         user = mongo.db.users.find_one({'_id': ObjectId(user_id)})
         if user:
@@ -87,7 +91,6 @@ def login():
         'message': 'Login successful', 
         'user': serialize_doc(user)
     })
-
 # ALL YOUR EXISTING ROUTES REMAIN EXACTLY THE SAME
 # Add the clear-cart endpoint here (before other routes)
 @app.route('/api/clear-cart', methods=['POST'])
