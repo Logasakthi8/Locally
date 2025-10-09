@@ -16,7 +16,7 @@ function App() {
     const checkAuth = async () => {
       try {
         // First try session-based auth
-        const sessionResponse = await fetch(`${config.apiUrl}/api/verify-session`, {
+        const sessionResponse = await fetch(`${config.apiUrl}/verify-session`, {
           method: 'GET',
           credentials: 'include'
         });
@@ -31,7 +31,7 @@ function App() {
         // If session fails, try persistent token for mobile PWA
         const persistentToken = localStorage.getItem('persistent_token');
         if (persistentToken) {
-          const tokenResponse = await fetch(`${config.apiUrl}/api/verify-token`, {
+          const tokenResponse = await fetch(`${config.apiUrl}/verify-token`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -85,7 +85,7 @@ function App() {
 
   const handleLogout = async () => {
     try {
-      await fetch(`${config.apiUrl}/api/logout`, {
+      await fetch(`${config.apiUrl}/logout`, {
         method: 'POST',
         credentials: 'include'
       });
