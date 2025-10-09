@@ -212,7 +212,7 @@ function Wishlist() {
     // Check if shop is open
     const shopOpen = isShopOpen(shop);
     if (!shopOpen) {
-      alert(`Sorry! The shop is closed. Come back after ${shop.opening_time} to place your order.`);
+      alert(`Sorry! The shop is closed. Please place the order after ${shop.opening_time}.`);
       return;
     }
     
