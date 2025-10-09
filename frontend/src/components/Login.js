@@ -30,33 +30,44 @@ function Login({ onLogin }) {
     return () => clearInterval(interval);
   }, [startupMessages.length]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true); // ✅ show loading when request starts
-    try {
-      const response = await fetch(`${config.apiUrl}/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ mobile }),
-        credentials: 'include'
-      });
+  // In your Login component, update the handleSubmit function:
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  if (!mobile || mobile.length !== 10) {
+    alert('Please enter a valid 10-digit mobile number');
+    return;
+  }
 
-      if (response.ok) {
-        const data = await response.json();
-        onLogin(data.user);
-        navigate('/shops');
-      } else {
-        console.error('Login failed');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false); // ✅ stop loading after request finishes
+  setLoading(true);
+  
+  try {
+    const response = await fetch(`${config.apiUrl}/api/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ mobile }),
+      credentials: 'include'
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      // Pass both user data and persistent token to onLogin
+      onLogin(data.user, data.persistent_token);
+      navigate('/shops');
+    } else {
+      alert(data.error || 'Login failed. Please try again.');
     }
-  };
-
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Network error. Please check your connection and try again.');
+  } finally {
+    setLoading(false);
+  }
+};
+  
   return (
     <div className="login-container">
       <div className="login-form">
