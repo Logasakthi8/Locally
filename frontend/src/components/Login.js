@@ -56,45 +56,43 @@ function Login({ onLogin }) {
     };
   }, [navigate, onLogin]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    // Basic validation
-    if (!mobile || mobile.length !== 10) {
-      alert('Please enter a valid 10-digit mobile number');
-      return;
+  // In your Login component, update the handleSubmit function:
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  if (!mobile || mobile.length !== 10) {
+    alert('Please enter a valid 10-digit mobile number');
+    return;
+  }
+
+  setLoading(true);
+  
+  try {
+    const response = await fetch(`${config.apiUrl}/api/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ mobile }),
+      credentials: 'include'
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      // Pass both user data and persistent token to onLogin
+      onLogin(data.user, data.persistent_token);
+      navigate('/shops');
+    } else {
+      alert(data.error || 'Login failed. Please try again.');
     }
-
-    setLoading(true);
-    
-    try {
-      const response = await fetch(`${config.apiUrl}/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ mobile }),
-        credentials: 'include'
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        onLogin(data.user);
-        navigate('/shops');
-        
-        // Store login timestamp in localStorage for PWA
-        localStorage.setItem('lastLogin', new Date().toISOString());
-      } else {
-        alert(data.error || 'Login failed. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Network error. Please check your connection and try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Network error. Please check your connection and try again.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="login-container">
