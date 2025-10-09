@@ -317,16 +317,7 @@ def checkout():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/user', methods=['GET'])
-@auth_required
-def get_user():
-    user_id = session['user_id']
-    user = mongo.db.users.find_one({'_id': ObjectId(user_id)})
-    
-    if user:
-        return jsonify(serialize_doc(user))
-    else:
-        return jsonify({'error': 'User not found'}), 404
+
 
 
 @app.route('/api/logout', methods=['POST'])
