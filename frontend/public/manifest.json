@@ -1,0 +1,10 @@
+{
+  "name": "Locally",
+  "short_name": "Locally",
+  "description": "Your local shopping app",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#007bff",
+  "orientation": "portrait"
+}
