@@ -13,50 +13,74 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkSession = async () => {
+    const checkAuth = async () => {
       try {
-        console.log('Checking user session...');
-        const response = await fetch(`${config.apiUrl}/api/user`, {
+        // First try session-based auth
+        const sessionResponse = await fetch(`${config.apiUrl}/api/verify-session`, {
           method: 'GET',
           credentials: 'include'
         });
 
-        if (response.ok) {
-          const userData = await response.json();
-          console.log('User session valid:', userData);
-          setUser(userData);
-          
-          // Store last successful auth check
-          localStorage.setItem('lastAuthCheck', Date.now().toString());
-        } else {
-          console.log('No valid session found');
-          setUser(null);
+        if (sessionResponse.ok) {
+          const data = await sessionResponse.json();
+          setUser(data.user);
+          setLoading(false);
+          return;
         }
+
+        // If session fails, try persistent token for mobile PWA
+        const persistentToken = localStorage.getItem('persistent_token');
+        if (persistentToken) {
+          const tokenResponse = await fetch(`${config.apiUrl}/api/verify-token`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ token: persistentToken }),
+            credentials: 'include'
+          });
+
+          if (tokenResponse.ok) {
+            const data = await tokenResponse.json();
+            setUser(data.user);
+            setLoading(false);
+            return;
+          } else {
+            // Token invalid, remove it
+            localStorage.removeItem('persistent_token');
+          }
+        }
+
+        setUser(null);
       } catch (error) {
-        console.error('Error checking session:', error);
+        console.error('Auth check failed:', error);
         setUser(null);
       } finally {
         setLoading(false);
       }
     };
 
-    checkSession();
+    checkAuth();
 
-    // Set up periodic session checks (every 4 hours)
+    // Set up periodic auth checks (every hour for mobile)
     const interval = setInterval(() => {
       if (user) {
-        checkSession();
+        checkAuth();
       }
-    }, 4 * 60 * 60 * 1000); // 4 hours
+    }, 60 * 60 * 1000); // 1 hour
 
     return () => clearInterval(interval);
   }, [user]);
 
-  const handleLogin = (userData) => {
+  const handleLogin = (userData, persistentToken = null) => {
     setUser(userData);
-    // Store login timestamp for PWA
+    
+    // Store in localStorage for mobile PWA
     localStorage.setItem('lastLogin', Date.now().toString());
-    localStorage.setItem('lastAuthCheck', Date.now().toString());
+    
+    if (persistentToken) {
+      localStorage.setItem('persistent_token', persistentToken);
+    }
   };
 
   const handleLogout = async () => {
@@ -69,13 +93,12 @@ function App() {
       console.error('Logout error:', error);
     } finally {
       setUser(null);
-      // Clear local storage
+      // Clear all local storage
       localStorage.removeItem('lastLogin');
-      localStorage.removeItem('lastAuthCheck');
+      localStorage.removeItem('persistent_token');
     }
   };
 
-  // Small wrapper for protected routes
   const ProtectedRoute = ({ children }) => {
     if (!user) {
       return <Navigate to="/" replace />;
@@ -83,7 +106,6 @@ function App() {
     return children;
   };
 
-  // Show loading spinner while checking authentication
   if (loading) {
     return (
       <div className="loading-container">
@@ -98,15 +120,12 @@ function App() {
       <div className="App">
         <Navbar user={user} onLogout={handleLogout} />
         <Routes>
-          {/* ✅ If user already logged in, redirect from "/" to "/shops" */}
-          <Route
-            path="/"
+          <Route 
+            path="/" 
             element={
               user ? <Navigate to="/shops" /> : <Login onLogin={handleLogin} />
-            }
+            } 
           />
-          
-          {/* ✅ Protect shops, products, wishlist */}
           <Route
             path="/shops"
             element={
@@ -131,8 +150,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-          
-          {/* Catch all route - redirect to home */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
