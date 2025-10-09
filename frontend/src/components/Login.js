@@ -21,7 +21,7 @@ function Login({ onLogin }) {
     // Check if user is already logged in using session
     const checkExistingAuth = async () => {
       try {
-        const response = await fetch(`${config.apiUrl}/api/verify-session`, {
+        const response = await fetch(`${config.apiUrl}verify-session`, {
           method: 'GET',
           credentials: 'include'
         });
@@ -68,7 +68,7 @@ function Login({ onLogin }) {
     setLoading(true);
     
     try {
-      const response = await fetch(`${config.apiUrl}/api/login`, {
+      const response = await fetch(`${config.apiUrl}/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
