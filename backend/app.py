@@ -20,8 +20,8 @@ app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SECURE=True,  # True for HTTPS
     SESSION_COOKIE_SAMESITE='None',  # Important for cross-site
-    PERMANENT_SESSION_LIFETIME=timedelta(days=30),  # 30 days
-    SESSION_REFRESH_EACH_REQUEST=True  
+    PERMANENT_SESSION_LIFETIME=timedelta(days=365),  # 1 year for mobile
+    SESSION_REFRESH_EACH_REQUEST=True
 )
 
 CORS(app, supports_credentials=True, origins=[
@@ -39,12 +39,27 @@ def serialize_doc(doc):
         doc['_id'] = str(doc['_id'])
     return doc
 
+persistent_tokens = {}
+
 def auth_required(f):
-    """Decorator to check if user is authenticated via session"""
+    """Decorator to check if user is authenticated via session or persistent token"""
     def decorated(*args, **kwargs):
-        if 'user_id' not in session:
-            return jsonify({'error': 'Not authenticated'}), 401
-        return f(*args, **kwargs)
+        # Check session first
+        if 'user_id' in session:
+            return f(*args, **kwargs)
+        
+        # Check persistent token from header
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            if token in persistent_tokens:
+                user_data = persistent_tokens[token]
+                # Set session for this request
+                session['user_id'] = user_data['user_id']
+                session['user_mobile'] = user_data['mobile']
+                return f(*args, **kwargs)
+        
+        return jsonify({'error': 'Not authenticated'}), 401
     decorated.__name__ = f.__name__
     return decorated
 
@@ -66,7 +81,7 @@ def verify_session():
     
     return jsonify({'valid': False}), 401
 
-# Updated Login Endpoint with persistent session
+# Updated Login Endpoint with persistent token
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.json
@@ -82,15 +97,48 @@ def login():
         result = mongo.db.users.insert_one(user_obj.to_dict())
         user = mongo.db.users.find_one({'_id': result.inserted_id})
     
-    # Set permanent session for 30 days
+    # Set permanent session for 1 year
     session.permanent = True
     session['user_id'] = str(user['_id'])
     session['user_mobile'] = user['mobile']
     
+    # Generate persistent token for mobile PWA
+    persistent_token = secrets.token_urlsafe(32)
+    persistent_tokens[persistent_token] = {
+        'user_id': str(user['_id']),
+        'mobile': user['mobile'],
+        'created_at': datetime.utcnow()
+    }
+    
     return jsonify({
         'message': 'Login successful', 
-        'user': serialize_doc(user)
+        'user': serialize_doc(user),
+        'persistent_token': persistent_token  # Send to frontend for storage
     })
+
+# Token verification endpoint for mobile
+@app.route('/api/verify-token', methods=['POST'])
+def verify_token():
+    """Verify persistent token for mobile PWA"""
+    data = request.json
+    token = data.get('token')
+    
+    if token and token in persistent_tokens:
+        user_data = persistent_tokens[token]
+        user = mongo.db.users.find_one({'_id': ObjectId(user_data['user_id'])})
+        if user:
+            # Set session for this request
+            session['user_id'] = user_data['user_id']
+            session['user_mobile'] = user_data['mobile']
+            return jsonify({
+                'valid': True,
+                'user': serialize_doc(user)
+            })
+    
+    return jsonify({'valid': False}), 401
+
+# ... REST OF YOUR ROUTES REMAIN EXACTLY THE SAME ...
+
 
 @app.route('/api/user', methods=['GET'])
 @auth_required
