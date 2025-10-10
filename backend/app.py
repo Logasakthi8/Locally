@@ -733,8 +733,6 @@ def increment_delivery_count():
 
 @app.route('/api/user/orders', methods=['GET'])
 def get_user_orders():
-    """Get user's order history"""
-@@ -80,17 +740,19 @@ def get_user_orders():
             'user_id': ObjectId(user_id)
         }).sort('created_at', -1))  # Most recent first
 
