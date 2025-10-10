@@ -16,7 +16,7 @@ function App() {
     const checkSession = async () => {
       try {
         console.log('🔐 Checking user session...');
-        const response = await fetch(`${config.apiUrl}/api/user`, { // ✅ Fixed: added /api/
+        const response = await fetch(`${config.apiUrl}/user`, { // ✅ Fixed: added /api/
           method: 'GET',
           credentials: 'include'
         });
@@ -48,7 +48,7 @@ function App() {
 
   const handleLogout = async () => {
     try {
-      await fetch(`${config.apiUrl}/api/logout`, { // ✅ Fixed: added /api/
+      await fetch(`${config.apiUrl}/logout`, { // ✅ Fixed: added /api/
         method: 'POST',
         credentials: 'include'
       });
