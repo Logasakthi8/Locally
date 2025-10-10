@@ -381,7 +381,7 @@ function Wishlist() {
                       onClick={() => checkoutViaWhatsApp(shopId)} 
                       className={`btn ${meetsMinimum && shopOpen ? 'btn-whatsapp' : 'btn-disabled'}`}
                       disabled={selectedCount === 0 || !meetsMinimum || !shopOpen}
-                      title={!shopOpen ? `Sorry! The shop is closed. Come back tomorrow after ${shop.opening_time} to place your order.` : !meetsMinimum ? `Add ₹${100 - subtotal} more to checkout` : ''}
+                      title={!shopOpen ? `Sorry! The shop is closed. Please place the order after ${shop.opening_time}.` : !meetsMinimum ? `Add ₹${100 - subtotal} more to checkout` : ''}
                     >
                       <span>💬</span>
                       WhatsApp ({selectedCount})
@@ -390,7 +390,7 @@ function Wishlist() {
                       onClick={() => meetsMinimum && shopOpen && callToOrder(YOUR_PHONE_NUMBER, shopId)} 
                       className={`btn ${meetsMinimum && shopOpen ? 'btn-call' : 'btn-disabled'}`}
                       disabled={!meetsMinimum || !shopOpen}
-                      title={!shopOpen ? `Sorry! The shop is closed. Come back tomorrow after ${shop.opening_time} to place your order.` : !meetsMinimum ? `Add ₹${100 - subtotal} more to call` : ''}
+                      title={!shopOpen ? `Sorry! The shop is closed. Please place the order after ${shop.opening_time}.` : !meetsMinimum ? `Add ₹${100 - subtotal} more to call` : ''}
                     >
                       <span>📞</span>
                       Call to Order
@@ -400,7 +400,7 @@ function Wishlist() {
                 
                 {!shopOpen && (
                   <div className="shop-closed-message">
-                    <p>Sorry! The shop is closed. Come back tomorrow after {shop.opening_time} to place your order.</p>
+                    <p>Sorry! The shop is closed. Please place the order after ${shop.opening_time}.</p>
                   </div>
                 )}
                 
