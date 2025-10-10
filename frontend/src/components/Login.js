@@ -5,8 +5,7 @@ import config from '../config';
 function Login({ onLogin }) {
   const [mobile, setMobile] = useState('');
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [checkingExistingLogin, setCheckingExistingLogin] = useState(true); // ✅ Added for initial auth check
+  const [loading, setLoading] = useState(false); // ✅ added loading state
   const navigate = useNavigate();
 
   // Array of startup messages to rotate through
@@ -20,28 +19,6 @@ function Login({ onLogin }) {
   ];
 
   useEffect(() => {
-    // Check if user is already logged in (persistent login)
-    const checkExistingLogin = async () => {
-      try {
-        const response = await fetch(`${config.apiUrl}/check-auth`, {
-          method: 'GET',
-          credentials: 'include' // This sends cookies/session automatically
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          onLogin(data.user);
-          navigate('/shops'); // ✅ Auto-redirect if already logged in
-        }
-      } catch (error) {
-        console.error('Auth check failed:', error);
-      } finally {
-        setCheckingExistingLogin(false); // ✅ Stop initial loading
-      }
-    };
-
-    checkExistingLogin();
-
     // Set up interval to rotate messages every 3 seconds
     const interval = setInterval(() => {
       setCurrentTextIndex((prevIndex) => 
@@ -51,11 +28,11 @@ function Login({ onLogin }) {
 
     // Clean up interval on component unmount
     return () => clearInterval(interval);
-  }, [startupMessages.length, navigate, onLogin]);
+  }, [startupMessages.length]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setLoading(true); // ✅ show loading when request starts
     try {
       const response = await fetch(`${config.apiUrl}/login`, {
         method: 'POST',
@@ -76,24 +53,9 @@ function Login({ onLogin }) {
     } catch (error) {
       console.error('Error:', error);
     } finally {
-      setLoading(false);
+      setLoading(false); // ✅ stop loading after request finishes
     }
   };
-
-  // Show loading while checking existing login session
-  if (checkingExistingLogin) {
-    return (
-      <div className="login-container">
-        <div className="login-form">
-          <div className="logo-header">
-            <img src="/images/logo.png" alt="Locally Logo" className="logo" />
-            <h2>Locally</h2>
-          </div>
-          <p>Checking authentication...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="login-container">
@@ -112,10 +74,10 @@ function Login({ onLogin }) {
             required
             pattern="[0-9]{10}"
             title="Please enter a 10-digit mobile number"
-            disabled={loading}
+            disabled={loading} // ✅ disable input while logging in
           />
           <button type="submit" disabled={loading}>
-            {loading ? "Logging in..." : "Continue"}
+            {loading ? "Logging in..." : "Continue"} {/* ✅ dynamic text */}
           </button>
         </form>
 
