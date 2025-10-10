@@ -730,16 +730,22 @@ def increment_delivery_count():
         print(f"Error updating delivery count: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
-
 @app.route('/api/user/orders', methods=['GET'])
 def get_user_orders():
+    """Get user's order history"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    user_id = session['user_id']
+    
+    try:
+        orders = list(mongo.db.orders.find({
             'user_id': ObjectId(user_id)
         }).sort('created_at', -1))  # Most recent first
 
         # Get user's delivery count from orders (fallback)
         delivery_count = mongo.db.orders.count_documents({
             'user_id': ObjectId(user_id)
-
         })
 
         return jsonify({
