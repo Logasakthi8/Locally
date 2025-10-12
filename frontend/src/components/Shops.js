@@ -13,35 +13,55 @@ function Shops() {
   }, []);
 
   const isShopOpen = (shop) => {
-    if (!shop.opening_time || !shop.closing_time) return true;
+  if (!shop.opening_time || !shop.closing_time) return true;
 
-    const now = new Date();
-    const currentTime = now.getHours() * 60 + now.getMinutes(); // Current time in minutes
+  const now = new Date();
+  const currentTime = now.getHours() * 60 + now.getMinutes(); // Current time in minutes
 
-    // Function to convert "HH:MM AM/PM" to minutes since midnight
-    const convertTimeToMinutes = (timeStr) => {
-      // Match the time parts and AM/PM indicator
-      const match = timeStr.match(/(\d{1,2}):(\d{2})\s?(AM|PM)/i);
-      if (!match) return 0; // Return 0 if format is invalid
+  // Function to convert "HH:MM AM/PM" to minutes since midnight
+  const convertTimeToMinutes = (timeStr) => {
+    // Handle different time formats (HH:MM, HH.MM)
+    const normalizedTime = timeStr.replace(/\./g, ':');
+    const match = normalizedTime.match(/(\d{1,2}):(\d{2})\s?(AM|PM)/i);
+    if (!match) return 0; // Return 0 if format is invalid
 
-      let [, hours, minutes, period] = match;
-      hours = parseInt(hours);
-      minutes = parseInt(minutes);
+    let [, hours, minutes, period] = match;
+    hours = parseInt(hours);
+    minutes = parseInt(minutes);
 
-      // Convert to 24-hour format
-      if (period.toUpperCase() === 'PM' && hours !== 12) {
-        hours += 12;
-      } else if (period.toUpperCase() === 'AM' && hours === 12) {
-        hours = 0;
-      }
-      return hours * 60 + minutes;
-    };
-
-    const openingTime = convertTimeToMinutes(shop.opening_time);
-    const closingTime = convertTimeToMinutes(shop.closing_time);
-
-    return currentTime >= openingTime && currentTime <= closingTime;
+    // Convert to 24-hour format
+    if (period.toUpperCase() === 'PM' && hours !== 12) {
+      hours += 12;
+    } else if (period.toUpperCase() === 'AM' && hours === 12) {
+      hours = 0;
+    }
+    return hours * 60 + minutes;
   };
+
+  try {
+    // Split the opening and closing times by "and" or comma
+    const openingTimes = shop.opening_time.split(/\s+and\s+|\s*,\s*/);
+    const closingTimes = shop.closing_time.split(/\s+and\s+|\s*,\s*/);
+    
+    // Check if we have matching number of opening and closing times
+    if (openingTimes.length === closingTimes.length) {
+      for (let i = 0; i < openingTimes.length; i++) {
+        const openingTime = convertTimeToMinutes(openingTimes[i].trim());
+        const closingTime = convertTimeToMinutes(closingTimes[i].trim());
+        
+        // Check if current time falls within this time range
+        if (currentTime >= openingTime && currentTime <= closingTime) {
+          return true;
+        }
+      }
+    }
+    
+    return false; // Shop is closed if no time range matches
+  } catch (error) {
+    console.error('Error parsing shop times:', error);
+    return true; // Default to open if there's an error
+  }
+};
 
   const fetchShops = async () => {
     try {
