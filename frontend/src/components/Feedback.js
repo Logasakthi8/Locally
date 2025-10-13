@@ -1,27 +1,33 @@
 import React, { useState, useEffect } from 'react';
+import './Feedback.css';
 
- 
-const FeedbackSystem = () => {
+const FeedbackSystem = ({ user }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showFollowup, setShowFollowup] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     shop_type: '',
+    shop_name: '',
+    shop_address: '',
     products: '',
     notify_me: 'no',
     contact: '',
     preference: 'no_preference'
   });
   const [loading, setLoading] = useState(false);
+  const [hasShown, setHasShown] = useState(false);
 
-  // Auto-show popup after 15 seconds
+  // Auto-show popup after 10 seconds when user logs in
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsOpen(true);
-    }, 15000);
+    if (user && !hasShown) {
+      const timer = setTimeout(() => {
+        setIsOpen(true);
+        setHasShown(true);
+      }, 10000); // 10 seconds
 
-    return () => clearTimeout(timer);
-  }, []);
+      return () => clearTimeout(timer);
+    }
+  }, [user, hasShown]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -56,6 +62,8 @@ const FeedbackSystem = () => {
         body: JSON.stringify({
           name: formData.name || null,
           shop_type: formData.shop_type,
+          shop_name: formData.shop_name || null,
+          shop_address: formData.shop_address || null,
           products: formData.products || null,
           notify_me: formData.notify_me === 'yes',
           contact: formData.notify_me === 'yes' ? formData.contact : null
@@ -95,7 +103,6 @@ const FeedbackSystem = () => {
       showSuccessMessage();
     } catch (error) {
       console.error('Error submitting followup:', error);
-      // Still proceed with success message even if followup fails
       handleClose();
       showSuccessMessage();
     } finally {
@@ -106,10 +113,11 @@ const FeedbackSystem = () => {
   const handleClose = () => {
     setIsOpen(false);
     setShowFollowup(false);
-    // Reset form
     setFormData({
       name: '',
       shop_type: '',
+      shop_name: '',
+      shop_address: '',
       products: '',
       notify_me: 'no',
       contact: '',
@@ -148,7 +156,7 @@ const FeedbackSystem = () => {
             <div className="feedback-body">
               <form onSubmit={handleSubmitFeedback}>
                 <div className="form-group">
-                  <label htmlFor="name">Name (optional)</label>
+                  <label htmlFor="name">Your Name (optional)</label>
                   <input 
                     type="text" 
                     id="name" 
@@ -158,8 +166,9 @@ const FeedbackSystem = () => {
                     placeholder="Your name"
                   />
                 </div>
+                
                 <div className="form-group">
-                  <label htmlFor="shop_type">What shop would you like to add? *</label>
+                  <label htmlFor="shop_type">What type of shop would you like to add? *</label>
                   <input 
                     type="text" 
                     id="shop_type" 
@@ -167,9 +176,34 @@ const FeedbackSystem = () => {
                     value={formData.shop_type}
                     onChange={handleInputChange}
                     required 
-                    placeholder="e.g., bakery, fresh fruits, ayurvedic medicine..."
+                    placeholder="e.g., bakery, fresh fruits, ayurvedic medicine, pet store..."
                   />
                 </div>
+
+                <div className="form-group">
+                  <label htmlFor="shop_name">Shop Name (if you know)</label>
+                  <input 
+                    type="text" 
+                    id="shop_name" 
+                    name="shop_name"
+                    value={formData.shop_name}
+                    onChange={handleInputChange}
+                    placeholder="e.g., Fresh Mart, Organic Delights..."
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="shop_address">Shop Location/Address (if you know)</label>
+                  <textarea 
+                    id="shop_address" 
+                    name="shop_address"
+                    value={formData.shop_address}
+                    onChange={handleInputChange}
+                    placeholder="e.g., Near Whitefield Main Road, Opposite Metro Station..."
+                    rows="3"
+                  ></textarea>
+                </div>
+
                 <div className="form-group">
                   <label htmlFor="products">What specific products do you want to see?</label>
                   <textarea 
@@ -177,9 +211,11 @@ const FeedbackSystem = () => {
                     name="products"
                     value={formData.products}
                     onChange={handleInputChange}
-                    placeholder="e.g., whole wheat bread, organic apples..."
+                    placeholder="e.g., whole wheat bread, organic apples, gluten-free products..."
+                    rows="3"
                   ></textarea>
                 </div>
+
                 <div className="form-group">
                   <label>Would you like us to inform you when it's added?</label>
                   <div className="radio-group">
@@ -190,7 +226,7 @@ const FeedbackSystem = () => {
                         value="yes"
                         checked={formData.notify_me === 'yes'}
                         onChange={handleInputChange}
-                      /> Yes
+                      /> Yes, please notify me
                     </label>
                     <label>
                       <input 
@@ -199,13 +235,14 @@ const FeedbackSystem = () => {
                         value="no"
                         checked={formData.notify_me === 'no'}
                         onChange={handleInputChange}
-                      /> No
+                      /> No, thanks
                     </label>
                   </div>
                 </div>
+
                 {formData.notify_me === 'yes' && (
                   <div className="form-group">
-                    <label htmlFor="contact">Email or Phone *</label>
+                    <label htmlFor="contact">Your Email or Phone *</label>
                     <input 
                       type="text" 
                       id="contact" 
@@ -217,6 +254,7 @@ const FeedbackSystem = () => {
                     />
                   </div>
                 )}
+
                 <button type="submit" className="btn-primary" disabled={loading}>
                   {loading ? 'Submitting...' : 'Suggest Now'}
                 </button>
@@ -238,7 +276,7 @@ const FeedbackSystem = () => {
             <div className="feedback-body">
               <form onSubmit={handleSubmitFollowup}>
                 <div className="form-group">
-                  <label>Would you prefer home delivery or shop pickup? *</label>
+                  <label>How would you prefer to get your orders? *</label>
                   <div className="radio-group">
                     <label>
                       <input 
@@ -247,7 +285,7 @@ const FeedbackSystem = () => {
                         value="home_delivery"
                         checked={formData.preference === 'home_delivery'}
                         onChange={handleInputChange}
-                      /> Home Delivery
+                      /> 🚚 Home Delivery
                     </label>
                     <label>
                       <input 
@@ -256,7 +294,7 @@ const FeedbackSystem = () => {
                         value="shop_pickup"
                         checked={formData.preference === 'shop_pickup'}
                         onChange={handleInputChange}
-                      /> Shop Pickup
+                      /> 🏪 Shop Pickup
                     </label>
                     <label>
                       <input 
@@ -265,7 +303,7 @@ const FeedbackSystem = () => {
                         value="both"
                         checked={formData.preference === 'both'}
                         onChange={handleInputChange}
-                      /> Both
+                      /> 🤝 Both options
                     </label>
                     <label>
                       <input 
@@ -274,7 +312,7 @@ const FeedbackSystem = () => {
                         value="no_preference"
                         checked={formData.preference === 'no_preference'}
                         onChange={handleInputChange}
-                      /> No Preference
+                      /> 🤷 No Preference
                     </label>
                   </div>
                 </div>
