@@ -5,7 +5,7 @@ import Login from './components/Login';
 import Shops from './components/Shops';
 import Products from './components/Products';
 import Wishlist from './components/Wishlist';
-import FeedbackSystem from './components/FeedbackSystem'; // Add this import
+import FeedbackSystem from './components/Feedback'; // Add this import
 import './App.css';
 import config from './config';
 
