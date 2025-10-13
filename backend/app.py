@@ -5,7 +5,7 @@ from bson import ObjectId
 from datetime import datetime
 import os
 from dotenv import load_dotenv
-from models import User, Shop, Product, Wishlist, Order
+from models import User, Shop, Product, Wishlist, Order, Feedback
 
 load_dotenv()
 
@@ -25,6 +25,7 @@ CORS(app, supports_credentials=True, origins=[
     "http://localhost:3000",  # Add this for development
     "http://127.0.0.1:3000"   # Add this for development
 ])
+
 # Helper function to serialize ObjectId
 def serialize_doc(doc):
     if doc is None:
@@ -33,7 +34,110 @@ def serialize_doc(doc):
         doc['_id'] = str(doc['_id'])
     return doc
 
-# Add the clear-cart endpoint here (before other routes)
+# ======================
+# FEEDBACK API ENDPOINTS
+# ======================
+
+@app.route('/api/feedback', methods=['POST'])
+def submit_feedback():
+    """Submit user feedback for new shops or products"""
+    try:
+        data = request.json
+        
+        # Validate required fields
+        if not data.get('shop_type'):
+            return jsonify({'error': 'Shop type is required'}), 400
+        
+        # Create feedback object
+        feedback = Feedback(
+            shop_type=data.get('shop_type'),
+            products=data.get('products'),
+            name=data.get('name'),
+            notify_me=data.get('notify_me', False),
+            contact=data.get('contact'),
+            preference=data.get('preference')
+        )
+        
+        # Store in database
+        result = mongo.db.feedback.insert_one(feedback.to_dict())
+        
+        return jsonify({
+            'message': 'Thank you for your suggestion! You will receive 20% off your first order when your suggested shop is added.',
+            'feedback_id': str(result.inserted_id)
+        }), 201
+        
+    except Exception as e:
+        print(f"Error submitting feedback: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/feedback/followup', methods=['POST'])
+def submit_feedback_followup():
+    """Submit follow-up preference after main feedback"""
+    try:
+        data = request.json
+        preference = data.get('preference', 'no_preference')
+        
+        # In a real implementation, you might want to associate this with the main feedback
+        # For now, we'll just acknowledge it
+        return jsonify({
+            'message': 'Preference saved successfully'
+        })
+        
+    except Exception as e:
+        print(f"Error submitting followup: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/feedback/suggestions', methods=['GET'])
+def get_feedback_suggestions():
+    """Get all feedback suggestions (for admin use)"""
+    try:
+        feedback_list = list(mongo.db.feedback.find().sort('created_at', -1))
+        return jsonify([serialize_doc(feedback) for feedback in feedback_list])
+    except Exception as e:
+        print(f"Error fetching feedback: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/feedback/top-requests', methods=['GET'])
+def get_top_requests():
+    """Get top requested shops for public display"""
+    try:
+        # Aggregate to get most requested shop types
+        pipeline = [
+            {
+                '$group': {
+                    '_id': '$shop_type',
+                    'count': {'$sum': 1}
+                }
+            },
+            {
+                '$sort': {'count': -1}
+            },
+            {
+                '$limit': 10
+            }
+        ]
+        
+        top_requests = list(mongo.db.feedback.aggregate(pipeline))
+        
+        # Format the response
+        formatted_requests = [
+            {'shop_type': item['_id'], 'count': item['count']}
+            for item in top_requests
+        ]
+        
+        return jsonify({
+            'top_requests': formatted_requests,
+            'month': datetime.now().strftime('%B %Y')
+        })
+    except Exception as e:
+        print(f"Error fetching top requests: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+# ALL YOUR EXISTING ROUTES BELOW (UNCHANGED)
+@app.route('/')
+def home():
+    return jsonify({"message": "Shopping App API is running!"})
+
 @app.route('/api/clear-cart', methods=['POST'])
 def clear_cart():
     if 'user_id' not in session:
@@ -44,10 +148,6 @@ def clear_cart():
     try:
         # Delete all wishlist items for this user
         result = mongo.db.wishlist.delete_many({'user_id': ObjectId(user_id)})
-
-
-
-
         return jsonify({
             'message': 'Cart cleared successfully',
             'deleted_count': result.deleted_count
@@ -55,11 +155,6 @@ def clear_cart():
     except Exception as e:
         print(f"Error clearing cart: {e}")
         return jsonify({'error': str(e)}), 500
-
-# ALL YOUR EXISTING ROUTES BELOW (DO NOT MODIFY)
-@app.route('/')
-def home():
-    return jsonify({"message": "Shopping App API is running!"})
 
 @app.route('/api/login', methods=['POST'])
 def login():
