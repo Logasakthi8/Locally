@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request, session
 from flask_pymongo import PyMongo
 from flask_cors import CORS
 from bson import ObjectId
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
 from models import User, Shop, Product, Wishlist, Order, Feedback
@@ -14,16 +14,19 @@ app.secret_key = os.getenv('SECRET_KEY')
 app.config["MONGO_URI"] = os.getenv('MONGO_URI')
 mongo = PyMongo(app)
 
+# Configure session for longer duration
 app.config.update(
     SESSION_COOKIE_SAMESITE="None",
-    SESSION_COOKIE_SECURE=True,  # True if using HTTPS
-    SESSION_COOKIE_HTTPONLY=True
+    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_HTTPONLY=True,
+    PERMANENT_SESSION_LIFETIME=timedelta(days=30)  # 30-day session
 )
+
 CORS(app, supports_credentials=True, origins=[
     "https://locallys.in",
     "https://www.locallys.in", 
-    "http://localhost:3000",  # Add this for development
-    "http://127.0.0.1:3000"   # Add this for development
+    "http://localhost:3000",
+    "http://127.0.0.1:3000"
 ])
 
 # Helper function to serialize ObjectId
@@ -35,103 +38,138 @@ def serialize_doc(doc):
     return doc
 
 # ======================
-# FEEDBACK API ENDPOINTS
+# IMPROVED AUTH ENDPOINTS
 # ======================
 
-@app.route('/api/feedback', methods=['POST'])
-def submit_feedback():
-    """Submit user feedback for new shops or products"""
+@app.route('/api/check-session', methods=['GET'])
+def check_session():
+    """Check if user has an active session"""
+    try:
+        if 'user_id' in session:
+            # Verify user still exists in database
+            user = mongo.db.users.find_one({'_id': ObjectId(session['user_id'])})
+            if user:
+                return jsonify({
+                    'user': serialize_doc(user),
+                    'message': 'Session active'
+                })
+        
+        # Clear invalid session
+        session.clear()
+        return jsonify({'user': None, 'message': 'No active session'})
+        
+    except Exception as e:
+        print(f"Session check error: {e}")
+        session.clear()
+        return jsonify({'user': None, 'error': 'Session check failed'}), 500
+
+@app.route('/api/check-user', methods=['POST'])
+def check_user():
+    """Quick check if user exists before login"""
     try:
         data = request.json
+        mobile = data.get('mobile')
         
-        # Validate required fields
-        if not data.get('shop_type'):
-            return jsonify({'error': 'Shop type is required'}), 400
+        if not mobile:
+            return jsonify({'error': 'Mobile number is required'}), 400
         
-        # Create feedback object
-        feedback = Feedback(
-            shop_type=data.get('shop_type'),
-            products=data.get('products'),
-            name=data.get('name'),
-            notify_me=data.get('notify_me', False),
-            contact=data.get('contact'),
-            preference=data.get('preference')
-        )
-        
-        # Store in database
-        result = mongo.db.feedback.insert_one(feedback.to_dict())
+        user = mongo.db.users.find_one({'mobile': mobile})
         
         return jsonify({
-            'message': 'Thank you for your suggestion! You will receive 20% off your first order when your suggested shop is added.',
-            'feedback_id': str(result.inserted_id)
+            'userExists': bool(user),
+            'message': 'Customer verified' if user else 'New customer'
+        })
+        
+    except Exception as e:
+        print(f"User check error: {e}")
+        return jsonify({'error': 'User check failed'}), 500
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    """Improved login with session persistence"""
+    try:
+        data = request.json
+        mobile = data.get('mobile')
+        remember_me = data.get('rememberMe', True)  # Default to True for long sessions
+        
+        if not mobile:
+            return jsonify({'error': 'Mobile number is required'}), 400
+        
+        # Find existing user
+        user = mongo.db.users.find_one({'mobile': mobile})
+        
+        if not user:
+            # Create new user
+            user_obj = User(mobile)
+            result = mongo.db.users.insert_one(user_obj.to_dict())
+            user = mongo.db.users.find_one({'_id': result.inserted_id})
+            user_message = 'New account created'
+        else:
+            user_message = 'Welcome back'
+        
+        # Set session data
+        session['user_id'] = str(user['_id'])
+        session['user_mobile'] = user['mobile']
+        
+        # Set longer session if remember_me is True
+        if remember_me:
+            session.permanent = True
+        else:
+            session.permanent = False
+        
+        return jsonify({
+            'message': 'Login successful',
+            'user': serialize_doc(user),
+            'userMessage': user_message
+        })
+        
+    except Exception as e:
+        print(f"Login error: {e}")
+        return jsonify({'error': 'Login failed'}), 500
+
+@app.route('/api/register', methods=['POST'])
+def register():
+    """Separate registration endpoint for new users"""
+    try:
+        data = request.json
+        mobile = data.get('mobile')
+        
+        if not mobile:
+            return jsonify({'error': 'Mobile number is required'}), 400
+        
+        # Check if user already exists
+        existing_user = mongo.db.users.find_one({'mobile': mobile})
+        if existing_user:
+            return jsonify({'error': 'User already exists'}), 400
+        
+        # Create new user
+        user_obj = User(mobile)
+        result = mongo.db.users.insert_one(user_obj.to_dict())
+        user = mongo.db.users.find_one({'_id': result.inserted_id})
+        
+        # Set session
+        session['user_id'] = str(user['_id'])
+        session['user_mobile'] = user['mobile']
+        session.permanent = True  # Long session for new users
+        
+        return jsonify({
+            'message': 'Registration successful',
+            'user': serialize_doc(user)
         }), 201
         
     except Exception as e:
-        print(f"Error submitting feedback: {e}")
-        return jsonify({'error': 'Internal server error'}), 500
+        print(f"Registration error: {e}")
+        return jsonify({'error': 'Registration failed'}), 500
 
-@app.route('/api/feedback/followup', methods=['POST'])
-def submit_feedback_followup():
-    """Submit follow-up preference after main feedback"""
+@app.route('/api/logout', methods=['POST'])
+def logout():
+    """Clear session on logout"""
     try:
-        data = request.json
-        preference = data.get('preference', 'no_preference')
-        
-        # In a real implementation, you might want to associate this with the main feedback
-        # For now, we'll just acknowledge it
-        return jsonify({
-            'message': 'Preference saved successfully'
-        })
-        
+        session.clear()
+        return jsonify({'message': 'Logged out successfully'})
     except Exception as e:
-        print(f"Error submitting followup: {e}")
-        return jsonify({'error': 'Internal server error'}), 500
-
-@app.route('/api/feedback/suggestions', methods=['GET'])
-def get_feedback_suggestions():
-    """Get all feedback suggestions (for admin use)"""
-    try:
-        feedback_list = list(mongo.db.feedback.find().sort('created_at', -1))
-        return jsonify([serialize_doc(feedback) for feedback in feedback_list])
-    except Exception as e:
-        print(f"Error fetching feedback: {e}")
-        return jsonify({'error': 'Internal server error'}), 500
-
-@app.route('/api/feedback/top-requests', methods=['GET'])
-def get_top_requests():
-    """Get top requested shops for public display"""
-    try:
-        # Aggregate to get most requested shop types
-        pipeline = [
-            {
-                '$group': {
-                    '_id': '$shop_type',
-                    'count': {'$sum': 1}
-                }
-            },
-            {
-                '$sort': {'count': -1}
-            },
-            {
-                '$limit': 10
-            }
-        ]
-        
-        top_requests = list(mongo.db.feedback.aggregate(pipeline))
-        
-        # Format the response
-        formatted_requests = [
-            {'shop_type': item['_id'], 'count': item['count']}
-            for item in top_requests
-        ]
-        
-        return jsonify({
-            'top_requests': formatted_requests,
-            'month': datetime.now().strftime('%B %Y')
-        })
-    except Exception as e:
-        print(f"Error fetching top requests: {e}")
-        return jsonify({'error': 'Internal server error'}), 500
+        print(f"Logout error: {e}")
+        return jsonify({'error': 'Logout failed'}), 500
 
 # ALL YOUR EXISTING ROUTES BELOW (UNCHANGED)
 @app.route('/')
@@ -155,25 +193,6 @@ def clear_cart():
     except Exception as e:
         print(f"Error clearing cart: {e}")
         return jsonify({'error': str(e)}), 500
-
-@app.route('/api/login', methods=['POST'])
-def login():
-    data = request.json
-    mobile = data.get('mobile')
-    
-    if not mobile:
-        return jsonify({'error': 'Mobile number is required'}), 400
-    
-    user = mongo.db.users.find_one({'mobile': mobile})
-    
-    if not user:
-        user_obj = User(mobile)
-        result = mongo.db.users.insert_one(user_obj.to_dict())
-        user = mongo.db.users.find_one({'_id': result.inserted_id})
-    
-    session['user_id'] = str(user['_id'])
-    session['user_mobile'] = user['mobile']
-    return jsonify({'message': 'Login successful', 'user': serialize_doc(user)})
 
 @app.route('/api/shops', methods=['GET'])
 def get_shops():
@@ -387,13 +406,6 @@ def get_user():
         return jsonify(serialize_doc(user))
     else:
         return jsonify({'error': 'User not found'}), 404
-
-
-@app.route('/api/logout', methods=['POST'])
-def logout():
-    session.pop('user_id', None)
-    session.pop('user_mobile', None)
-    return jsonify({'message': 'Logged out successfully'})
 
 @app.route('/api/shops/batch', methods=['POST'])
 def get_shops_batch():
@@ -850,6 +862,105 @@ def get_user_orders():
         })
     except Exception as e:
         print(f"Error fetching user orders: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+# ======================
+# FEEDBACK API ENDPOINTS (UNCHANGED)
+# ======================
+
+@app.route('/api/feedback', methods=['POST'])
+def submit_feedback():
+    """Submit user feedback for new shops or products"""
+    try:
+        data = request.json
+        
+        # Validate required fields
+        if not data.get('shop_type'):
+            return jsonify({'error': 'Shop type is required'}), 400
+        
+        # Create feedback object
+        feedback = Feedback(
+            shop_type=data.get('shop_type'),
+            products=data.get('products'),
+            name=data.get('name'),
+            notify_me=data.get('notify_me', False),
+            contact=data.get('contact'),
+            preference=data.get('preference')
+        )
+        
+        # Store in database
+        result = mongo.db.feedback.insert_one(feedback.to_dict())
+        
+        return jsonify({
+            'message': 'Thank you for your suggestion! You will receive 20% off your first order when your suggested shop is added.',
+            'feedback_id': str(result.inserted_id)
+        }), 201
+        
+    except Exception as e:
+        print(f"Error submitting feedback: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/feedback/followup', methods=['POST'])
+def submit_feedback_followup():
+    """Submit follow-up preference after main feedback"""
+    try:
+        data = request.json
+        preference = data.get('preference', 'no_preference')
+        
+        # In a real implementation, you might want to associate this with the main feedback
+        # For now, we'll just acknowledge it
+        return jsonify({
+            'message': 'Preference saved successfully'
+        })
+        
+    except Exception as e:
+        print(f"Error submitting followup: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/feedback/suggestions', methods=['GET'])
+def get_feedback_suggestions():
+    """Get all feedback suggestions (for admin use)"""
+    try:
+        feedback_list = list(mongo.db.feedback.find().sort('created_at', -1))
+        return jsonify([serialize_doc(feedback) for feedback in feedback_list])
+    except Exception as e:
+        print(f"Error fetching feedback: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/feedback/top-requests', methods=['GET'])
+def get_top_requests():
+    """Get top requested shops for public display"""
+    try:
+        # Aggregate to get most requested shop types
+        pipeline = [
+            {
+                '$group': {
+                    '_id': '$shop_type',
+                    'count': {'$sum': 1}
+                }
+            },
+            {
+                '$sort': {'count': -1}
+            },
+            {
+                '$limit': 10
+            }
+        ]
+        
+        top_requests = list(mongo.db.feedback.aggregate(pipeline))
+        
+        # Format the response
+        formatted_requests = [
+            {'shop_type': item['_id'], 'count': item['count']}
+            for item in top_requests
+        ]
+        
+        return jsonify({
+            'top_requests': formatted_requests,
+            'month': datetime.now().strftime('%B %Y')
+        })
+    except Exception as e:
+        print(f"Error fetching top requests: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
