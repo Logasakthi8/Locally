@@ -944,7 +944,7 @@ def send_to_whatsapp(message):
     """Send message to your WhatsApp number - HARDCODED"""
     try:
         # HARDCODED - Your WhatsApp number
-        your_whatsapp_number = "+919361437688"
+        your_whatsapp_number = "+919361437687"
         
         # Method 1: Print to console (for testing)
         print(f"📱 TO: {your_whatsapp_number}")
