@@ -80,7 +80,8 @@ function App() {
         </Routes>
         
         {/* ✅ ADD FEEDBACK SYSTEM HERE - Outside Routes but inside Router */}
-        <FeedbackSystem />
+        {/* PASS THE USER PROP TO FEEDBACKSYSTEM */}
+        <FeedbackSystem user={user} />
       </div>
     </Router>
   );
