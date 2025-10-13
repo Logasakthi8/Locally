@@ -865,101 +865,57 @@ def get_user_orders():
         return jsonify({'error': 'Internal server error'}), 500
 
 # ======================
-# FEEDBACK API ENDPOINTS (UNCHANGED)
-# ======================
-
-# ======================
-# WHATSAPP FEEDBACK ENDPOINT - HARDCODED TO YOUR NUMBER
+# UPDATED FEEDBACK API ENDPOINTS
 # ======================
 
 @app.route('/api/feedback', methods=['POST'])
 def submit_feedback():
-    """Submit user feedback and send to WhatsApp - Hardcoded to your number"""
+    """Submit user feedback for new shops or products"""
     try:
         data = request.json
-        print("📝 Received feedback:", data)  # Debug log
         
         # Validate required fields
         if not data.get('shop_type'):
             return jsonify({'error': 'Shop type is required'}), 400
         
-        # Format the WhatsApp message
-        whatsapp_message = f"""
-🚀 *NEW SHOP SUGGESTION*
-
-👤 *Name:* {data.get('name', 'Not provided')}
-🏪 *Shop Type:* {data.get('shop_type')}
-🏷️ *Shop Name:* {data.get('shop_name', 'Not provided')}
-📍 *Location:* {data.get('shop_address', 'Not provided')}
-📦 *Products Wanted:* {data.get('products', 'Not provided')}
-🔔 *Notify User:* {'Yes' if data.get('notify_me') else 'No'}
-📞 *Contact:* {data.get('contact', 'Not provided')}
-
-⏰ *Submitted at:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-        """.strip()
+        # Create feedback object with new fields
+        feedback = Feedback(
+            shop_type=data.get('shop_type'),
+            products=data.get('products'),
+            name=data.get('name'),
+            shop_name=data.get('shop_name'),  # Add this field
+            shop_address=data.get('shop_address'),  # Add this field
+            notify_me=data.get('notify_me', False),
+            contact=data.get('contact'),
+            preference=data.get('preference')
+        )
         
-        print("💬 WhatsApp message:", whatsapp_message)
-        
-        # Send to your WhatsApp number
-        send_to_whatsapp(whatsapp_message)
+        # Store in database
+        result = mongo.db.feedback.insert_one(feedback.to_dict())
         
         return jsonify({
             'message': 'Thank you for your suggestion! You will receive 20% off your first order when your suggested shop is added.',
-            'success': True
+            'feedback_id': str(result.inserted_id)
         }), 201
         
     except Exception as e:
-        print(f"❌ Error submitting feedback: {e}")
+        print(f"Error submitting feedback: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/api/feedback/followup', methods=['POST'])
 def submit_feedback_followup():
-    """Submit follow-up preference to WhatsApp"""
+    """Submit follow-up preference after main feedback"""
     try:
         data = request.json
         preference = data.get('preference', 'no_preference')
-        
-        # Format preference message
-        preference_message = f"""
-📋 *DELIVERY PREFERENCE*
-
-🚚 *Preferred Method:* {preference.replace('_', ' ').title()}
-⏰ *Submitted at:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-        """.strip()
-        
-        print("💬 Preference message:", preference_message)
-        
-        # Send to your WhatsApp number
-        send_to_whatsapp(preference_message)
         
         return jsonify({
             'message': 'Preference saved successfully'
         })
         
     except Exception as e:
-        print(f"❌ Error submitting followup: {e}")
+        print(f"Error submitting followup: {e}")
         return jsonify({'error': 'Internal server error'}), 500
-
-def send_to_whatsapp(message):
-    """Send message to your WhatsApp number - HARDCODED"""
-    try:
-        # HARDCODED - Your WhatsApp number
-        your_whatsapp_number = "+919361437687"
-        
-        # Method 1: Print to console (for testing)
-        print(f"📱 TO: {your_whatsapp_number}")
-        print(f"💬 MESSAGE: {message}")
-        print("✅ Message ready to send to your WhatsApp!")
-        
-        # Method 2: You can integrate with WhatsApp API here
-        # For now, it just prints to console
-        # You'll see the complete message in your Flask console
-        
-        return True
-        
-    except Exception as e:
-        print(f"❌ Failed to prepare WhatsApp message: {e}")
-        return False
         
 if __name__ == '__main__':
     app.run(debug=True)
