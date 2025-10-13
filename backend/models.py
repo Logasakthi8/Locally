@@ -128,4 +128,3 @@ class Feedback:
             "preference": self.preference
         }
 
-        }
