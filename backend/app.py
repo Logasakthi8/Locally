@@ -883,6 +883,8 @@ def submit_feedback():
             shop_type=data.get('shop_type'),
             products=data.get('products'),
             name=data.get('name'),
+            shop_name=data.get('shop_name'),  # Make sure this is included
+            shop_address=data.get('shop_address'),  # Make sure this is included
             notify_me=data.get('notify_me', False),
             contact=data.get('contact'),
             preference=data.get('preference')
