@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import './Feedback.css';
+
 
 const FeedbackSystem = () => {
   const [isOpen, setIsOpen] = useState(false);
