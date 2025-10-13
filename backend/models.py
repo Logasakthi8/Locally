@@ -14,14 +14,14 @@ class User:
         }
 
 class Shop:
-    def __init__(self, name, owner_mobile, category, opening_time, closing_time, image_url,address):
+    def __init__(self, name, owner_mobile, category, opening_time, closing_time, image_url, address):
         self.name = name
         self.owner_mobile = owner_mobile
         self.category = category
         self.opening_time = opening_time
         self.closing_time = closing_time
         self.image_url = image_url
-        self.address=address
+        self.address = address
     
     def to_dict(self):
         return {
@@ -31,7 +31,7 @@ class Shop:
             "opening_time": self.opening_time,
             "closing_time": self.closing_time,
             "image_url": self.image_url,
-            "address":self.address
+            "address": self.address
         }
 
 class Product:
@@ -86,6 +86,7 @@ class Order:
             'status': self.status,
             'created_at': self.created_at
         }
+
 class Review:
     def __init__(self, shop_id, user_id, rating, comment=""):
         self.shop_id = shop_id
@@ -101,4 +102,27 @@ class Review:
             "rating": self.rating,
             "comment": self.comment,
             "created_at": self.created_at
+        }
+
+# FEEDBACK MODEL - Only store user responses
+class Feedback:
+    def __init__(self, shop_type, products=None, name=None, notify_me=False, 
+                 contact=None, preference=None):
+        self.shop_type = shop_type
+        self.products = products
+        self.name = name
+        self.notify_me = notify_me
+        self.contact = contact
+        self.preference = preference
+        self.created_at = datetime.utcnow()
+    
+    def to_dict(self):
+        return {
+            'shop_type': self.shop_type,
+            'products': self.products,
+            'name': self.name,
+            'notify_me': self.notify_me,
+            'contact': self.contact,
+            'preference': self.preference,
+            'created_at': self.created_at
         }
