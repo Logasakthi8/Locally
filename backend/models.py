@@ -106,27 +106,26 @@ class Review:
 
 # UPDATED FEEDBACK MODEL - With shop_name and shop_address
 class Feedback:
-    def __init__(self, shop_type, products=None, name=None, shop_name=None, shop_address=None, notify_me=False, 
-                 contact=None, preference=None):
+    def __init__(self, shop_type, products, name, shop_name, shop_address, notify_me, contact, preference):
         self.shop_type = shop_type
         self.products = products
         self.name = name
-        self.shop_name = shop_name  # Add this field
-        self.shop_address = shop_address  # Add this field
+        self.shop_name = shop_name
+        self.shop_address = shop_address
         self.notify_me = notify_me
         self.contact = contact
         self.preference = preference
-        self.created_at = datetime.utcnow()
-    
+
     def to_dict(self):
         return {
-            'shop_type': self.shop_type,
-            'products': self.products,
-            'name': self.name,
-            'shop_name': self.shop_name,  # Add this field
-            'shop_address': self.shop_address,  # Add this field
-            'notify_me': self.notify_me,
-            'contact': self.contact,
-            'preference': self.preference,
-            'created_at': self.created_at
+            "shop_type": self.shop_type,
+            "products": self.products,
+            "name": self.name,
+            "shop_name": self.shop_name,
+            "shop_address": self.shop_address,
+            "notify_me": self.notify_me,
+            "contact": self.contact,
+            "preference": self.preference
+        }
+
         }
