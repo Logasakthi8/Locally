@@ -25,8 +25,6 @@ app.config.update(
 CORS(app, supports_credentials=True, origins=[
     "https://locallys.in",
     "https://www.locallys.in", 
-    "http://localhost:3000",
-    "http://127.0.0.1:3000"
 ])
 
 # Helper function to serialize ObjectId
