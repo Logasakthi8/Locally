@@ -16,7 +16,6 @@ const FeedbackSystem = ({ user }) => {
   });
   const [loading, setLoading] = useState(false);
   const [showCount, setShowCount] = useState(0);
-  const [hasSubmitted, setHasSubmitted] = useState(false);
   const [isBlinking, setIsBlinking] = useState(false);
 
   // Blinking effect for the button
@@ -28,9 +27,9 @@ const FeedbackSystem = ({ user }) => {
     return () => clearInterval(blinkInterval);
   }, []);
 
-  // Auto-show popup 2 times until they submit
+  // Auto-show popup 2 times until they submit (but button stays)
   useEffect(() => {
-    if (user && !hasSubmitted && showCount < 2) {
+    if (user && showCount < 2) {
       const timer = setTimeout(() => {
         setIsOpen(true);
         setShowCount(prev => prev + 1);
@@ -38,7 +37,7 @@ const FeedbackSystem = ({ user }) => {
 
       return () => clearTimeout(timer);
     }
-  }, [user, hasSubmitted, showCount]);
+  }, [user, showCount]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -84,7 +83,6 @@ const FeedbackSystem = ({ user }) => {
       if (response.ok) {
         const result = await response.json();
         console.log('Feedback submitted successfully:', result);
-        setHasSubmitted(true);
         handleClose();
         setShowSuccess(true); // Show custom success popup
       } else {
@@ -117,11 +115,6 @@ const FeedbackSystem = ({ user }) => {
     setShowSuccess(false);
   };
 
-  // Don't show button if user has already submitted
-  if (hasSubmitted) {
-    return null;
-  }
-
   return (
     <>
       {/* Main Feedback Popup */}
@@ -137,7 +130,6 @@ const FeedbackSystem = ({ user }) => {
             </div>
             <div className="feedback-body">
               <form onSubmit={handleSubmitFeedback}>
-                {/* ... your existing form fields ... */}
                 <div className="form-group">
                   <label htmlFor="name">Your Name (optional)</label>
                   <input 
@@ -199,7 +191,47 @@ const FeedbackSystem = ({ user }) => {
                   ></textarea>
                 </div>
 
-                
+                <div className="form-group">
+                  <label>How would you prefer to get your orders?</label>
+                  <div className="radio-group">
+                    <label>
+                      <input 
+                        type="radio" 
+                        name="preference" 
+                        value="home_delivery"
+                        checked={formData.preference === 'home_delivery'}
+                        onChange={handleInputChange}
+                      /> 🚚 Home Delivery
+                    </label>
+                    <label>
+                      <input 
+                        type="radio" 
+                        name="preference" 
+                        value="shop_pickup"
+                        checked={formData.preference === 'shop_pickup'}
+                        onChange={handleInputChange}
+                      /> 🏪 Shop Pickup
+                    </label>
+                    <label>
+                      <input 
+                        type="radio" 
+                        name="preference" 
+                        value="both"
+                        checked={formData.preference === 'both'}
+                        onChange={handleInputChange}
+                      /> 🤝 Both
+                    </label>
+                    <label>
+                      <input 
+                        type="radio" 
+                        name="preference" 
+                        value="no_preference"
+                        checked={formData.preference === 'no_preference'}
+                        onChange={handleInputChange}
+                      /> 🤷 No Preference
+                    </label>
+                  </div>
+                </div>
 
                 <div className="form-group">
                   <label>Would you like us to inform you when it's added?</label>
@@ -279,7 +311,7 @@ const FeedbackSystem = ({ user }) => {
         </div>
       )}
 
-      {/* Floating Suggest Button with blinking effect */}
+      {/* Floating Suggest Button with blinking effect - ALWAYS VISIBLE */}
       <button 
         className={`suggest-btn ${isBlinking ? 'suggest-btn-blink' : ''}`}
         onClick={() => setIsOpen(true)}
