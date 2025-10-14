@@ -865,26 +865,27 @@ def get_user_orders():
         return jsonify({'error': 'Internal server error'}), 500
 
 # ======================
-# UPDATED FEEDBACK API ENDPOINTS
+# FEEDBACK API ENDPOINTS - STORE IN DB ONLY
 # ======================
 
 @app.route('/api/feedback', methods=['POST'])
 def submit_feedback():
-    """Submit user feedback for new shops or products"""
+    """Submit user feedback - Store in DB only"""
     try:
         data = request.json
+        print("📝 Received feedback:", data)  # Debug log
         
         # Validate required fields
         if not data.get('shop_type'):
             return jsonify({'error': 'Shop type is required'}), 400
         
-        # Create feedback object with new fields
+        # Create feedback object with ALL fields
         feedback = Feedback(
             shop_type=data.get('shop_type'),
             products=data.get('products'),
             name=data.get('name'),
-            shop_name=data.get('shop_name'),  # Add this field
-            shop_address=data.get('shop_address'),  # Add this field
+            shop_name=data.get('shop_name'),
+            shop_address=data.get('shop_address'),
             notify_me=data.get('notify_me', False),
             contact=data.get('contact'),
             preference=data.get('preference')
@@ -892,29 +893,80 @@ def submit_feedback():
         
         # Store in database
         result = mongo.db.feedback.insert_one(feedback.to_dict())
+        print("✅ Stored in DB - ID:", str(result.inserted_id))
         
         return jsonify({
             'message': 'Thank you for your suggestion! You will receive 20% off your first order when your suggested shop is added.',
-            'feedback_id': str(result.inserted_id)
+            'feedback_id': str(result.inserted_id),
+            'success': True
         }), 201
         
     except Exception as e:
-        print(f"Error submitting feedback: {e}")
+        print(f"❌ Error submitting feedback: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/api/feedback/followup', methods=['POST'])
 def submit_feedback_followup():
-    """Submit follow-up preference after main feedback"""
+    """Submit follow-up preference"""
     try:
         data = request.json
         preference = data.get('preference', 'no_preference')
         
+        # For now, we'll just acknowledge it
+        # In a real implementation, you might update the main feedback record
         return jsonify({
             'message': 'Preference saved successfully'
         })
         
     except Exception as e:
-        print(f"Error submitting followup: {e}")
+        print(f"❌ Error submitting followup: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+# Keep these existing endpoints for admin access
+@app.route('/api/feedback/suggestions', methods=['GET'])
+def get_feedback_suggestions():
+    """Get all feedback suggestions (for admin use)"""
+    try:
+        feedback_list = list(mongo.db.feedback.find().sort('created_at', -1))
+        return jsonify([serialize_doc(feedback) for feedback in feedback_list])
+    except Exception as e:
+        print(f"Error fetching feedback: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/feedback/top-requests', methods=['GET'])
+def get_top_requests():
+    """Get top requested shops for public display"""
+    try:
+        # Aggregate to get most requested shop types
+        pipeline = [
+            {
+                '$group': {
+                    '_id': '$shop_type',
+                    'count': {'$sum': 1}
+                }
+            },
+            {
+                '$sort': {'count': -1}
+            },
+            {
+                '$limit': 10
+            }
+        ]
+        
+        top_requests = list(mongo.db.feedback.aggregate(pipeline))
+        
+        # Format the response
+        formatted_requests = [
+            {'shop_type': item['_id'], 'count': item['count']}
+            for item in top_requests
+        ]
+        
+        return jsonify({
+            'top_requests': formatted_requests,
+            'month': datetime.now().strftime('%B %Y')
+        })
+    except Exception as e:
+        print(f"Error fetching top requests: {e}")
         return jsonify({'error': 'Internal server error'}), 500
         
 if __name__ == '__main__':
