@@ -2919,3 +2919,25 @@ body {
     font-size: 1.1em;
   }
 }
+/* Add to Feedback.css */
+.success-container {
+  text-align: center;
+  max-width: 450px;
+}
+
+.success-body {
+  text-align: left;
+}
+
+.success-message {
+  line-height: 1.6;
+  color: #333;
+}
+
+.success-message p {
+  margin-bottom: 10px;
+}
+
+.success-message strong {
+  color: #10B981;
+}
