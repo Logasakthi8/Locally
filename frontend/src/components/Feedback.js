@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import config from '../config';
 
-
 const FeedbackSystem = ({ user }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [showFollowup, setShowFollowup] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     shop_type: '',
@@ -16,19 +15,30 @@ const FeedbackSystem = ({ user }) => {
     preference: 'no_preference'
   });
   const [loading, setLoading] = useState(false);
-  const [hasShown, setHasShown] = useState(false);
+  const [showCount, setShowCount] = useState(0);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [isBlinking, setIsBlinking] = useState(false);
 
-  // Auto-show popup after 10 seconds when user logs in
+  // Blinking effect for the button
   useEffect(() => {
-    if (user && !hasShown) {
+    const blinkInterval = setInterval(() => {
+      setIsBlinking(prev => !prev);
+    }, 1000);
+
+    return () => clearInterval(blinkInterval);
+  }, []);
+
+  // Auto-show popup 2 times until they submit
+  useEffect(() => {
+    if (user && !hasSubmitted && showCount < 2) {
       const timer = setTimeout(() => {
         setIsOpen(true);
-        setHasShown(true);
-      }, 10000); // 10 seconds
+        setShowCount(prev => prev + 1);
+      }, 10000);
 
       return () => clearTimeout(timer);
     }
-  }, [user, hasShown]);
+  }, [user, hasSubmitted, showCount]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -41,7 +51,6 @@ const FeedbackSystem = ({ user }) => {
   const handleSubmitFeedback = async (e) => {
     e.preventDefault();
     
-    // Validate form
     if (!formData.shop_type.trim()) {
       alert('Please tell us what type of shop you would like to see.');
       return;
@@ -67,45 +76,24 @@ const FeedbackSystem = ({ user }) => {
           shop_address: formData.shop_address || null,
           products: formData.products || null,
           notify_me: formData.notify_me === 'yes',
-          contact: formData.notify_me === 'yes' ? formData.contact : null
-        })
-      });
-
-      if (response.ok) {
-        setIsOpen(false);
-        setShowFollowup(true);
-      } else {
-        throw new Error('Failed to submit feedback');
-      }
-    } catch (error) {
-      console.error('Error submitting feedback:', error);
-      alert('Error submitting feedback. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmitFollowup = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      await fetch(`${config.apiUrl}/feedback/followup`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+          contact: formData.notify_me === 'yes' ? formData.contact : null,
           preference: formData.preference
         })
       });
 
-      handleClose();
-      showSuccessMessage();
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Feedback submitted successfully:', result);
+        setHasSubmitted(true);
+        handleClose();
+        setShowSuccess(true); // Show custom success popup
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to submit feedback');
+      }
     } catch (error) {
-      console.error('Error submitting followup:', error);
-      handleClose();
-      showSuccessMessage();
+      console.error('Error submitting feedback:', error);
+      alert(`Error: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -113,7 +101,6 @@ const FeedbackSystem = ({ user }) => {
 
   const handleClose = () => {
     setIsOpen(false);
-    setShowFollowup(false);
     setFormData({
       name: '',
       shop_type: '',
@@ -126,20 +113,13 @@ const FeedbackSystem = ({ user }) => {
     });
   };
 
-  const showSuccessMessage = () => {
-    alert('Thank you for your suggestion! You will receive 20% off your first order when your suggested shop is added. 🎉');
+  const handleCloseSuccess = () => {
+    setShowSuccess(false);
   };
 
-  // Don't render anything if neither popup is open
-  if (!isOpen && !showFollowup) {
-    return (
-      <button 
-        className="suggest-btn"
-        onClick={() => setIsOpen(true)}
-      >
-        💬 Suggest a Shop
-      </button>
-    );
+  // Don't show button if user has already submitted
+  if (hasSubmitted) {
+    return null;
   }
 
   return (
@@ -150,12 +130,14 @@ const FeedbackSystem = ({ user }) => {
           <div className="feedback-overlay" onClick={handleClose}></div>
           <div className="feedback-container">
             <div className="feedback-header">
-              <h3>💬 Help us grow Whitefield's online market!</h3>
+              <h3>💬 Help us grow your local market!</h3>
               <p>Tell us what shop or product you'd love to see next 👇</p>
+              <p style={{fontSize: '12px', color: '#666', marginTop: '5px'}}>Share this with your friends too!</p>
               <button className="feedback-close" onClick={handleClose}>&times;</button>
             </div>
             <div className="feedback-body">
               <form onSubmit={handleSubmitFeedback}>
+                {/* ... your existing form fields ... */}
                 <div className="form-group">
                   <label htmlFor="name">Your Name (optional)</label>
                   <input 
@@ -200,8 +182,8 @@ const FeedbackSystem = ({ user }) => {
                     name="shop_address"
                     value={formData.shop_address}
                     onChange={handleInputChange}
-                    placeholder="e.g., Near Whitefield Main Road, Opposite Metro Station..."
-                    rows="3"
+                    placeholder="e.g., Near Main Road, Opposite Metro Station..."
+                    rows="2"
                   ></textarea>
                 </div>
 
@@ -213,9 +195,11 @@ const FeedbackSystem = ({ user }) => {
                     value={formData.products}
                     onChange={handleInputChange}
                     placeholder="e.g., whole wheat bread, organic apples, gluten-free products..."
-                    rows="3"
+                    rows="2"
                   ></textarea>
                 </div>
+
+                
 
                 <div className="form-group">
                   <label>Would you like us to inform you when it's added?</label>
@@ -265,70 +249,39 @@ const FeedbackSystem = ({ user }) => {
         </div>
       )}
 
-      {/* Follow-up Popup */}
-      {showFollowup && (
+      {/* Success Message Popup */}
+      {showSuccess && (
         <div className="feedback-popup">
-          <div className="feedback-overlay" onClick={handleClose}></div>
-          <div className="feedback-container">
+          <div className="feedback-overlay" onClick={handleCloseSuccess}></div>
+          <div className="feedback-container success-container">
             <div className="feedback-header">
-              <h3>One more quick question! 🙏</h3>
-              <button className="feedback-close" onClick={handleClose}>&times;</button>
+              <h3>🎉 Thank You!</h3>
+              <button className="feedback-close" onClick={handleCloseSuccess}>&times;</button>
             </div>
-            <div className="feedback-body">
-              <form onSubmit={handleSubmitFollowup}>
-                <div className="form-group">
-                  <label>How would you prefer to get your orders? *</label>
-                  <div className="radio-group">
-                    <label>
-                      <input 
-                        type="radio" 
-                        name="preference" 
-                        value="home_delivery"
-                        checked={formData.preference === 'home_delivery'}
-                        onChange={handleInputChange}
-                      /> 🚚 Home Delivery
-                    </label>
-                    <label>
-                      <input 
-                        type="radio" 
-                        name="preference" 
-                        value="shop_pickup"
-                        checked={formData.preference === 'shop_pickup'}
-                        onChange={handleInputChange}
-                      /> 🏪 Shop Pickup
-                    </label>
-                    <label>
-                      <input 
-                        type="radio" 
-                        name="preference" 
-                        value="both"
-                        checked={formData.preference === 'both'}
-                        onChange={handleInputChange}
-                      /> 🤝 Both options
-                    </label>
-                    <label>
-                      <input 
-                        type="radio" 
-                        name="preference" 
-                        value="no_preference"
-                        checked={formData.preference === 'no_preference'}
-                        onChange={handleInputChange}
-                      /> 🤷 No Preference
-                    </label>
-                  </div>
-                </div>
-                <button type="submit" className="btn-primary" disabled={loading}>
-                  {loading ? 'Submitting...' : 'Submit Preference'}
-                </button>
-              </form>
+            <div className="feedback-body success-body">
+              <div className="success-message">
+                <p><strong>Thank you for your suggestion!</strong></p>
+                <p>You're helping us grow our local delivery network. 🙏</p>
+                <p>We'll try to add your requested shop soon.</p>
+                <br />
+                <p>💡 <strong>Want your favorite shop added faster?</strong></p>
+                <p>Tell them about our website or share their name with us on WhatsApp! 📱</p>
+              </div>
+              <button 
+                className="btn-primary" 
+                onClick={handleCloseSuccess}
+                style={{marginTop: '20px'}}
+              >
+                Got it!
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Floating Suggest Button */}
+      {/* Floating Suggest Button with blinking effect */}
       <button 
-        className="suggest-btn"
+        className={`suggest-btn ${isBlinking ? 'suggest-btn-blink' : ''}`}
         onClick={() => setIsOpen(true)}
       >
         💬 Suggest a Shop
