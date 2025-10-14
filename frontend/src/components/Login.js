@@ -11,12 +11,11 @@ function Login({ onLogin }) {
 
   // Array of startup messages to rotate through
   const startupMessages = [
-    "Discover the best local shops near you",
-    "Get exclusive deals from your favorite stores",
-    "Fast, convenient, and personalized shopping experience",
-    "Support local businesses with every purchase",
-    "Your one-stop app for all shopping needs",
-    "Buy Products from your Trusted shops"
+   " 🏪 Buy from shops you already trust — now just a click away!"
+   "🤝 Support local businesses and help Whitefield grow together."
+  "🚚 Fast, friendly, and convenient doorstep delivery from nearby stores."
+   "💬 Stay connected with your favorite shopkeepers — online and offline."
+    "❤️ Your trusted neighborhood, your trusted marketplace."
   ];
 
   // Check for existing session on component mount
@@ -161,17 +160,10 @@ function Login({ onLogin }) {
         <div className="login-header">
           <div className="logo-section">
             <div className="logo-circle">
-              <div className="marketplace-scene">
-                <div className="shop-icon">🏪</div>
-                <div className="people-connection">
-                  <div className="shopkeeper">🛒</div>
-                  <div className="connection-arrow">➡️</div>
-                  <div className="customer">📱</div>
-                </div>
-              </div>
+              <img src="/images/logo.png" alt="Locally Logo" className="logo" />
             </div>
             <h1 className="app-title">Locally</h1>
-            <p className="app-tagline">Local Shops → Your Doorstep</p>
+            <p className="app-tagline">Your Local Shopping Companion</p>
           </div>
         </div>
 
