@@ -11,10 +11,10 @@ function Login({ onLogin }) {
 
   // Array of startup messages to rotate through
   const startupMessages = [
-   " 🏪 Buy from shops you already trust — now just a click away!"
-   "🤝 Support local businesses and help Whitefield grow together."
-  "🚚 Fast, friendly, and convenient doorstep delivery from nearby stores."
-   "💬 Stay connected with your favorite shopkeepers — online and offline."
+   " 🏪 Buy from shops you already trust — now just a click away!",
+   "🤝 Support local businesses and help Whitefield grow together.",
+  "🚚 Fast, friendly, and convenient doorstep delivery from nearby stores.",
+   "💬 Stay connected with your favorite shopkeepers — online and offline.",
     "❤️ Your trusted neighborhood, your trusted marketplace."
   ];
 
