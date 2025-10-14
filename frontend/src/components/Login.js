@@ -156,22 +156,24 @@ function Login({ onLogin }) {
       {/* Background gradient */}
       <div className="login-background"></div>
       
-      <div className="login-header">
-  <div className="logo-section">
-    <div className="logo-circle">
-      <div className="marketplace-scene">
-        <div className="shop-icon">🏪</div>
-        <div className="people-connection">
-          <div className="shopkeeper">🛒</div>
-          <div className="connection-arrow">➡️</div>
-          <div className="customer">📱</div>
+      <div className="login-form">
+        {/* Header Section */}
+        <div className="login-header">
+          <div className="logo-section">
+            <div className="logo-circle">
+              <div className="marketplace-scene">
+                <div className="shop-icon">🏪</div>
+                <div className="people-connection">
+                  <div className="shopkeeper">🛒</div>
+                  <div className="connection-arrow">➡️</div>
+                  <div className="customer">📱</div>
+                </div>
+              </div>
+            </div>
+            <h1 className="app-title">Locally</h1>
+            <p className="app-tagline">Local Shops → Your Doorstep</p>
+          </div>
         </div>
-      </div>
-    </div>
-    <h1 className="app-title">Locally</h1>
-    <p className="app-tagline">Local Shops → Your Doorstep</p>
-  </div>
-</div>
 
         {/* Form Section */}
         <div className="form-section">
