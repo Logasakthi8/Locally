@@ -153,52 +153,105 @@ function Login({ onLogin }) {
 
   return (
     <div className="login-container">
+      {/* Background gradient */}
+      <div className="login-background"></div>
+      
       <div className="login-form">
-        <div className="logo-header">
-          <img src="/images/logo.png" alt="Locally Logo" className="logo" />
-          <h2>Locally</h2>
-        </div>
-        <p>Enter your mobile number to get started</p>
-        
-        <form onSubmit={handleSubmit}>
-          <input
-            type="tel"
-            placeholder="Enter your mobile number"
-            value={mobile}
-            onChange={(e) => setMobile(e.target.value)}
-            required
-            pattern="[0-9]{10}"
-            title="Please enter a 10-digit mobile number"
-            disabled={loading}
-          />
-          <button type="submit" disabled={loading}>
-            {loading ? (
-              <div className="button-loading">
-                <span className="spinner"></span>
-                {statusMessage || "Processing..."}
-              </div>
-            ) : (
-              "Continue"
-            )}
-          </button>
-        </form>
-
-        {/* Status message display */}
-        {statusMessage && (
-          <div className={`status-message ${loading ? 'status-loading' : ''}`}>
-            {statusMessage}
+        {/* Header Section */}
+        <div className="login-header">
+          <div className="logo-section">
+            <div className="logo-circle">
+              <img src="/images/logo.png" alt="Locally Logo" className="logo" />
+            </div>
+            <h1 className="app-title">Locally</h1>
+            <p className="app-tagline">Your Local Shopping Companion</p>
           </div>
-        )}
+        </div>
 
-        {/* Rotating startup messages section */}
-        <div className="startup-messages">
-          <p key={currentTextIndex} className="fade-in">
-            {startupMessages[currentTextIndex]}
-          </p>
+        {/* Form Section */}
+        <div className="form-section">
+          <h2 className="form-title">Welcome!</h2>
+          <p className="form-subtitle">Enter your mobile number to get started</p>
+          
+          <form onSubmit={handleSubmit} className="mobile-form">
+            <div className="input-container">
+              <div className="input-prefix">+91</div>
+              <input
+                type="tel"
+                placeholder="Enter your mobile number"
+                value={mobile}
+                onChange={(e) => setMobile(e.target.value)}
+                required
+                pattern="[0-9]{10}"
+                title="Please enter a 10-digit mobile number"
+                disabled={loading}
+                className="mobile-input"
+                maxLength="10"
+              />
+            </div>
+            
+            <button 
+              type="submit" 
+              disabled={loading || mobile.length !== 10}
+              className={`submit-btn ${loading ? 'loading' : ''}`}
+            >
+              {loading ? (
+                <div className="button-loading">
+                  <span className="spinner"></span>
+                  {statusMessage || "Processing..."}
+                </div>
+              ) : (
+                "Continue"
+              )}
+            </button>
+          </form>
+
+          {/* Status message display */}
+          {statusMessage && (
+            <div className={`status-message ${loading ? 'status-loading' : ''}`}>
+              <div className="status-icon">
+                {loading ? '⏳' : '✅'}
+              </div>
+              {statusMessage}
+            </div>
+          )}
+        </div>
+
+        {/* Features Section */}
+        <div className="features-section">
+          <div className="features-header">
+            <h3>Why Choose Locally?</h3>
+          </div>
+          
+          {/* Rotating startup messages section */}
+          <div className="startup-messages">
+            <div className="message-container">
+              <div className="message-icon">✨</div>
+              <p key={currentTextIndex} className="fade-in">
+                {startupMessages[currentTextIndex]}
+              </p>
+            </div>
+          </div>
+
+          {/* Static Features */}
+          <div className="static-features">
+            <div className="feature-item">
+              <span className="feature-icon">🚚</span>
+              <span>Fast Delivery</span>
+            </div>
+            <div className="feature-item">
+              <span className="feature-icon">🛡️</span>
+              <span>Trusted Shops</span>
+            </div>
+            <div className="feature-item">
+              <span className="feature-icon">💰</span>
+              <span>Best Prices</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 }
-               
+
 export default Login;
