@@ -868,16 +868,22 @@ def get_user_orders():
 
 @app.route('/api/feedback', methods=['POST'])
 def submit_feedback():
-    """Submit user feedback - Store in DB only"""
+    """Submit user feedback - Store in DB with user mobile"""
     try:
         data = request.json
-        print("📝 Received feedback:", data)  # Debug log
+        print("📝 Received feedback:", data)
         
         # Validate required fields
         if not data.get('shop_type'):
             return jsonify({'error': 'Shop type is required'}), 400
         
-        # Create feedback object with ALL fields
+        # Get user mobile from session if user is logged in
+        user_mobile = None
+        if 'user_mobile' in session:
+            user_mobile = session['user_mobile']
+            print("📱 User mobile from session:", user_mobile)
+        
+        # Create feedback object with user mobile
         feedback = Feedback(
             shop_type=data.get('shop_type'),
             products=data.get('products'),
@@ -886,7 +892,8 @@ def submit_feedback():
             shop_address=data.get('shop_address'),
             notify_me=data.get('notify_me', False),
             contact=data.get('contact'),
-            preference=data.get('preference')
+            preference=data.get('preference'),
+            user_mobile=user_mobile  # Automatically include user's mobile
         )
         
         # Store in database
