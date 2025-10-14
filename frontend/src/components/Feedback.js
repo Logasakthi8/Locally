@@ -55,7 +55,7 @@ const FeedbackSystem = ({ user }) => {
     setLoading(true);
 
     try {
-      const response = await fetch(`${config.apiUrl}feedback`, {
+      const response = await fetch(`${config.apiUrl}/feedback`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
