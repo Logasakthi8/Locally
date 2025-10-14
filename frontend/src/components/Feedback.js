@@ -191,48 +191,7 @@ const FeedbackSystem = ({ user }) => {
                   ></textarea>
                 </div>
 
-                <div className="form-group">
-                  <label>How would you prefer to get your orders?</label>
-                  <div className="radio-group">
-                    <label>
-                      <input 
-                        type="radio" 
-                        name="preference" 
-                        value="home_delivery"
-                        checked={formData.preference === 'home_delivery'}
-                        onChange={handleInputChange}
-                      /> 🚚 Home Delivery
-                    </label>
-                    <label>
-                      <input 
-                        type="radio" 
-                        name="preference" 
-                        value="shop_pickup"
-                        checked={formData.preference === 'shop_pickup'}
-                        onChange={handleInputChange}
-                      /> 🏪 Shop Pickup
-                    </label>
-                    <label>
-                      <input 
-                        type="radio" 
-                        name="preference" 
-                        value="both"
-                        checked={formData.preference === 'both'}
-                        onChange={handleInputChange}
-                      /> 🤝 Both
-                    </label>
-                    <label>
-                      <input 
-                        type="radio" 
-                        name="preference" 
-                        value="no_preference"
-                        checked={formData.preference === 'no_preference'}
-                        onChange={handleInputChange}
-                      /> 🤷 No Preference
-                    </label>
-                  </div>
-                </div>
-
+                
                 <div className="form-group">
                   <label>Would you like us to inform you when it's added?</label>
                   <div className="radio-group">
