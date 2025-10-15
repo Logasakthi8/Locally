@@ -115,7 +115,7 @@ function Products() {
           onClick={handleWhatsAppRequest}
           className="whatsapp-btn"
         >
-          📱 Request Medicine
+          📱 Request Products
         </button>
         <p className="whatsapp-description">
           Can't find the Product? Request it via WhatsApp and we'll help you get it fast!
