@@ -873,6 +873,11 @@ def submit_feedback():
         data = request.json
         print("📝 Received feedback:", data)
         
+        # Debug session data
+        print("🔍 Session data:", dict(session))
+        print("🔍 User mobile in session:", session.get('user_mobile'))
+        print("🔍 User ID in session:", session.get('user_id'))
+        
         # Validate required fields
         if not data.get('shop_type'):
             return jsonify({'error': 'Shop type is required'}), 400
@@ -882,6 +887,14 @@ def submit_feedback():
         if 'user_mobile' in session:
             user_mobile = session['user_mobile']
             print("📱 User mobile from session:", user_mobile)
+        else:
+            print("❌ No user_mobile found in session")
+            # Try to get mobile from database using user_id
+            if 'user_id' in session:
+                user = mongo.db.users.find_one({'_id': ObjectId(session['user_id'])})
+                if user and 'mobile' in user:
+                    user_mobile = user['mobile']
+                    print("📱 User mobile from DB:", user_mobile)
         
         # Create feedback object with user mobile and preference
         feedback = Feedback(
@@ -892,22 +905,32 @@ def submit_feedback():
             shop_address=data.get('shop_address'),
             notify_me=data.get('notify_me', False),
             contact=data.get('contact'),
-            preference=data.get('preference', 'no_preference'),  # Include preference in main form
+            preference=data.get('preference', 'no_preference'),
             user_mobile=user_mobile
         )
         
+        feedback_data = feedback.to_dict()
+        print("💾 Storing feedback data:", feedback_data)
+        
         # Store in database
-        result = mongo.db.feedback.insert_one(feedback.to_dict())
+        result = mongo.db.feedback.insert_one(feedback_data)
         print("✅ Stored in DB - ID:", str(result.inserted_id))
+        
+        # Verify the stored data
+        stored_feedback = mongo.db.feedback.find_one({'_id': result.inserted_id})
+        print("🔍 Stored feedback verification:", stored_feedback)
         
         return jsonify({
             'message': 'Thank you for your suggestion! Share this with your friends too! You will receive 20% off your first order when your suggested shop is added.',
             'feedback_id': str(result.inserted_id),
-            'success': True
+            'success': True,
+            'user_mobile_stored': user_mobile is not None
         }), 201
         
     except Exception as e:
         print(f"❌ Error submitting feedback: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': 'Internal server error'}), 500
         
 if __name__ == '__main__':
