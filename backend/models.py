@@ -104,7 +104,7 @@ class Review:
             "created_at": self.created_at
         }
 
-# UPDATED FEEDBACK MODEL - With shop_name and shop_address
+# UPDATED FEEDBACK MODEL - With proper user_mobile handling
 class Feedback:
     def __init__(self, shop_type, products=None, name=None, shop_name=None, shop_address=None, 
                  notify_me=False, contact=None, preference=None, user_mobile=None):
@@ -116,8 +116,9 @@ class Feedback:
         self.notify_me = notify_me
         self.contact = contact
         self.preference = preference
-        self.user_mobile = user_mobile  # Automatically captured from session
+        self.user_mobile = user_mobile  # This should NOT be None
         self.created_at = datetime.utcnow()
+        print(f"🔍 Feedback object created - user_mobile: {self.user_mobile}")  # Debug log
     
     def to_dict(self):
         return {
@@ -129,7 +130,6 @@ class Feedback:
             'notify_me': self.notify_me,
             'contact': self.contact,
             'preference': self.preference,
-            'user_mobile': self.user_mobile,  # Store user's mobile
+            'user_mobile': self.user_mobile,  # This will be None if not passed
             'created_at': self.created_at
         }
-
