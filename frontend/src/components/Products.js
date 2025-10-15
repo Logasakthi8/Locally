@@ -53,7 +53,7 @@ function Products() {
   };
 
   const handleWhatsAppRequest = () => {
-    const message = "Hi, I can't find my medicine. Please check if it's available: _____";
+    const message = "Hi, I can't find the Product. Please check if it's available: _____";
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
     window.open(whatsappUrl, '_blank');
@@ -118,7 +118,7 @@ function Products() {
           📱 Request Medicine
         </button>
         <p className="whatsapp-description">
-          Can't find your medicine? Request it via WhatsApp and we'll help you get it fast!
+          Can't find the Product? Request it via WhatsApp and we'll help you get it fast!
         </p>
       </div>
       
@@ -126,8 +126,8 @@ function Products() {
         <div className="empty-state">
           {searchTerm ? (
             <>
-              <p>Can't find medicine "{searchTerm}"</p>
-              <p>Use the Request Medicine button above to get your medicine fast!</p>
+              <p>Can't find  "{searchTerm}"</p>
+              <p>Use the Request Product button above to get the product fast!</p>
             </>
           ) : (
             <p>No products available in this shop.</p>
