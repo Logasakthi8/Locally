@@ -889,14 +889,14 @@ def submit_feedback():
             print("📱 User mobile from session:", user_mobile)
         else:
             print("❌ No user_mobile found in session")
-            # Try to get mobile from database using user_id
+            # Try to get from users collection using user_id
             if 'user_id' in session:
                 user = mongo.db.users.find_one({'_id': ObjectId(session['user_id'])})
                 if user and 'mobile' in user:
                     user_mobile = user['mobile']
                     print("📱 User mobile from DB:", user_mobile)
         
-        # Create feedback object with user mobile and preference
+        # Create feedback object with user mobile - MAKE SURE user_mobile is passed
         feedback = Feedback(
             shop_type=data.get('shop_type'),
             products=data.get('products'),
@@ -906,7 +906,7 @@ def submit_feedback():
             notify_me=data.get('notify_me', False),
             contact=data.get('contact'),
             preference=data.get('preference', 'no_preference'),
-            user_mobile=user_mobile
+            user_mobile=user_mobile  # This is crucial - pass the user_mobile
         )
         
         feedback_data = feedback.to_dict()
@@ -915,10 +915,6 @@ def submit_feedback():
         # Store in database
         result = mongo.db.feedback.insert_one(feedback_data)
         print("✅ Stored in DB - ID:", str(result.inserted_id))
-        
-        # Verify the stored data
-        stored_feedback = mongo.db.feedback.find_one({'_id': result.inserted_id})
-        print("🔍 Stored feedback verification:", stored_feedback)
         
         return jsonify({
             'message': 'Thank you for your suggestion! Share this with your friends too! You will receive 20% off your first order when your suggested shop is added.',
@@ -929,8 +925,6 @@ def submit_feedback():
         
     except Exception as e:
         print(f"❌ Error submitting feedback: {e}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'error': 'Internal server error'}), 500
         
 if __name__ == '__main__':
