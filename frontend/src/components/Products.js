@@ -12,7 +12,7 @@ function Products() {
   const { shopId } = useParams();
   const navigate = useNavigate();
 
-  const whatsappNumber = '9876543212';
+  const whatsappNumber = '9361437687';
 
   useEffect(() => {
     fetchProducts();
