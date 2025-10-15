@@ -115,6 +115,11 @@ const FeedbackSystem = ({ user }) => {
     setShowSuccess(false);
   };
 
+  // Only show the button if user is logged in
+  if (!user) {
+    return null;
+  }
+
   return (
     <>
       {/* Main Feedback Popup */}
@@ -270,13 +275,15 @@ const FeedbackSystem = ({ user }) => {
         </div>
       )}
 
-      {/* Floating Suggest Button with blinking effect - ALWAYS VISIBLE */}
-      <button 
-        className={`suggest-btn ${isBlinking ? 'suggest-btn-blink' : ''}`}
-        onClick={() => setIsOpen(true)}
-      >
-        💬 Suggest a Shop
-      </button>
+      {/* Floating Suggest Button with blinking effect - ONLY SHOW IF USER IS LOGGED IN */}
+      {user && (
+        <button 
+          className={`suggest-btn ${isBlinking ? 'suggest-btn-blink' : ''}`}
+          onClick={() => setIsOpen(true)}
+        >
+          💬 Suggest a Shop
+        </button>
+      )}
     </>
   );
 };
