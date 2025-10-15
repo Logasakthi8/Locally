@@ -102,7 +102,7 @@ function Products() {
       <div className="search-container">
         <input
           type="text"
-          placeholder="Search for medicines..."
+          placeholder="Search the Products here..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="search-input"
