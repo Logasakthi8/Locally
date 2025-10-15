@@ -7,7 +7,7 @@ function ProductCard({ product, onWishlistUpdate }) {
   const [error, setError] = useState('');
   const [quantity, setQuantity] = useState(1);
 
-  const whatsappNumber = '9876543212';
+  const whatsappNumber = '9361437687';
 
   const handleWhatsAppRequest = () => {
     const message = `Hi, I'm interested in ${product.name}. Please provide more details.`;
