@@ -5,20 +5,18 @@ import config from '../config';
 function Navbar({ user, onLogout }) {
   const navigate = useNavigate();
 
-
   const handleLogout = async () => {
-  try {
-    await fetch(`${config.apiUrl}/logout`, {
-      method: 'POST',
-      credentials: 'include'
-    });
-    onLogout();
-    navigate("/"); // redirect to login
-  } catch (error) {
-    console.error("Error logging out:", error);
-  }
-};
-
+    try {
+      await fetch(`${config.apiUrl}/logout`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      onLogout();
+      navigate("/"); // redirect to login
+    } catch (error) {
+      console.error("Error logging out:", error);
+    }
+  };
 
   return (
     <nav className="navbar">
@@ -29,6 +27,8 @@ function Navbar({ user, onLogout }) {
             <>
               <button onClick={() => navigate('/shops')}>Shops</button>
               <button onClick={() => navigate('/wishlist')}>Cart</button>
+              {/* Added Return Products button */}
+              <button onClick={() => navigate('/return-policy')}>Return Products</button>
               <div className="user-info">
                 <span>👤 {user.mobile}</span>
                 <button onClick={handleLogout}>Logout</button>
