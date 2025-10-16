@@ -6,6 +6,7 @@ import Shops from './components/Shops';
 import Products from './components/Products';
 import Wishlist from './components/Wishlist';
 import FeedbackSystem from './components/Feedback'; // Add this import
+import ReturnPolicy from './components/ReturnPolicy'; // Add this import
 import './App.css';
 import config from './config';
 
@@ -74,6 +75,16 @@ function App() {
             element={
               <ProtectedRoute>
                 <Wishlist />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* ✅ Add Return Policy Route - Protected since it's in navbar */}
+          <Route
+            path="/return-policy"
+            element={
+              <ProtectedRoute>
+                <ReturnPolicy />
               </ProtectedRoute>
             }
           />
