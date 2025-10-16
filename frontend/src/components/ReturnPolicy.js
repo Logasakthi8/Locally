@@ -3,7 +3,7 @@ import React from 'react';
 
 function ReturnPolicy() {
   const handleWhatsAppClick = () => {
-    const phoneNumber = '987654321';
+    const phoneNumber = '9361437687';
     const message = 'Hello, I would like to request a return/exchange for my product.';
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
