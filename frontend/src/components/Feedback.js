@@ -47,55 +47,81 @@ const FeedbackSystem = ({ user }) => {
     }));
   };
 
-  const handleSubmitFeedback = async (e) => {
-    e.preventDefault();
+ const handleSubmitFeedback = async (e) => {
+  e.preventDefault();
+  
+  if (!formData.shop_type.trim()) {
+    alert('Please tell us what type of shop you would like to see.');
+    return;
+  }
+
+  if (formData.notify_me === 'yes' && !formData.contact.trim()) {
+    alert('Please provide your email or phone number so we can notify you.');
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    // FIRST: Check if user session is active
+    const sessionCheck = await fetch(`${config.apiUrl}/check-session`, {
+      method: 'GET',
+      credentials: 'include' // Important for cookies
+    });
     
-    if (!formData.shop_type.trim()) {
-      alert('Please tell us what type of shop you would like to see.');
-      return;
-    }
-
-    if (formData.notify_me === 'yes' && !formData.contact.trim()) {
-      alert('Please provide your email or phone number so we can notify you.');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const response = await fetch(`${config.apiUrl}/submit_feedback`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: formData.name || null,
-          shop_type: formData.shop_type,
-          shop_name: formData.shop_name || null,
-          shop_address: formData.shop_address || null,
-          products: formData.products || null,
-          notify_me: formData.notify_me === 'yes',
-          contact: formData.notify_me === 'yes' ? formData.contact : null,
-          preference: formData.preference
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Feedback submitted successfully:', result);
-        handleClose();
-        setShowSuccess(true); // Show custom success popup
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to submit feedback');
-      }
-    } catch (error) {
-      console.error('Error submitting feedback:', error);
-      alert(`Error: ${error.message}`);
-    } finally {
+    const sessionData = await sessionCheck.json();
+    console.log('🔍 Session check result:', sessionData);
+    
+    if (!sessionData.user) {
+      alert('Please log in again to submit feedback.');
       setLoading(false);
+      return;
     }
-  };
+
+    // NOW: Submit feedback with credentials
+    const response = await fetch(`${config.apiUrl}/feedback`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include', // ← THIS IS CRUCIAL - sends cookies
+      body: JSON.stringify({
+        name: formData.name || null,
+        shop_type: formData.shop_type,
+        shop_name: formData.shop_name || null,
+        shop_address: formData.shop_address || null,
+        products: formData.products || null,
+        notify_me: formData.notify_me === 'yes',
+        contact: formData.notify_me === 'yes' ? formData.contact : null,
+        preference: formData.preference
+      })
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      console.log('✅ Feedback submitted successfully:', result);
+      
+      // Check if mobile was stored
+      if (result.user_mobile_stored) {
+        console.log('📱 User mobile was stored with feedback');
+      } else {
+        console.log('⚠️ User mobile was NOT stored');
+      }
+      
+      handleClose();
+      setShowSuccess(true);
+    } else {
+      const errorData = await response.json();
+      console.error('❌ Backend error:', errorData);
+      throw new Error(errorData.error || 'Failed to submit feedback');
+    }
+  } catch (error) {
+    console.error('❌ Error submitting feedback:', error);
+    alert(`Error: ${error.message}`);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleClose = () => {
     setIsOpen(false);
