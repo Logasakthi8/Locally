@@ -3922,14 +3922,17 @@ body {
     margin-top: 65px;
   }
 }
-/* Logo styling similar to Swiggy/Zomato */
 .logo {
-  height: 45px;
-  cursor: pointer;
-  transition: transform 0.2s ease;
+  height: 55px;
+  width: auto;
+  border-radius: 50%;
+  background-color: white;
+  padding: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .logo:hover {
-  transform: scale(1.05);
+  transform: scale(1.08);
+  box-shadow: 0 3px 12px rgba(33, 150, 243, 0.4);
 }
-
