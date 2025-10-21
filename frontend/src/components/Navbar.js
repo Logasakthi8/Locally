@@ -21,33 +21,28 @@ function Navbar({ user, onLogout }) {
   return (
     <nav className="navbar">
       <div className="nav-container">
-        {/* ✅ Replaced text 'Locally' with logo */}
-        <div 
-          className="logo" 
+        {/* Replace text logo with image logo */}
+        <img 
+          src="/locallyLogo.png" 
+          alt="Locally" 
           onClick={() => navigate(user ? '/shops' : '/')} 
-          style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '8px' }}
-        >
-          <img 
-            src="/images/locally-logo.png" 
-            alt="Locally Logo" 
-            style={{
-              width: '45px',
-              height: '45px',
-              objectFit: 'contain',
-              backgroundColor: 'white',
-              borderRadius: '50%',
-              padding: '4px',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
-            }}
-          />
-          <h1 style={{ color: '#2196F3', margin: 0, fontWeight: '700', fontSize: '1.5rem' }}>Locally</h1>
-        </div>
-
+          className="logo" 
+          style={{cursor: 'pointer', height: '40px'}}
+        />
         <div className="nav-links">
           {user ? (
             <>
               <button onClick={() => navigate('/shops')}>Shops</button>
-              {/* 🗑️ Removed Cart button here */}
+              {/* Replace cart symbol with logo image */}
+              <button onClick={() => navigate('/wishlist')} className="cart-button">
+                <img 
+                  src="/locallyLogo.png" 
+                  alt="Cart" 
+                  style={{height: '20px', verticalAlign: 'middle'}}
+                />
+                Cart
+              </button>
+              {/* Added Return Products button */}
               <button onClick={() => navigate('/return-policy')}>Return Products</button>
               <div className="user-info">
                 <span>👤 {user.mobile}</span>
