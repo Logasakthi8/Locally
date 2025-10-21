@@ -3923,16 +3923,26 @@ body {
   }
 }
 .logo {
-  height: 55px;
+  height: 70px;               /* increased size for better visibility */
   width: auto;
   border-radius: 50%;
-  background-color: white;
-  padding: 6px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  background: none;            /* removed white background */
+  padding: 2px;                /* minimal padding to keep spacing clean */
+  transition: transform 0.25s ease, filter 0.25s ease;
+  filter: drop-shadow(0 0 6px rgba(33, 150, 243, 0.6)); /* subtle blue glow */
 }
 
 .logo:hover {
-  transform: scale(1.08);
-  box-shadow: 0 3px 12px rgba(33, 150, 243, 0.4);
+  transform: scale(1.1);       /* slightly enlarge on hover */
+  filter: drop-shadow(0 0 10px rgba(33, 150, 243, 0.9)); /* stronger glow on hover */
+}
+
+/* Navbar container adjustment for larger logo */
+.nav-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 40px;
+  height: 80px;                /* ensures navbar height fits the larger logo */
+  box-sizing: border-box;
 }
