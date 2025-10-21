@@ -157,15 +157,31 @@ function Login({ onLogin }) {
       
       <div className="login-form">
         {/* Header Section */}
-        <div className="login-header">
-          <div className="logo-section">
-            <div className="logo-circle">
-              <img src="/images/logo.png" alt="Locally Logo" className="logo" />
-            </div>
-            <h1 className="app-title">Locally</h1>
-            <p className="app-tagline">Your Local Shopping Companion</p>
-          </div>
-        </div>
+        {/* Header Section */}
+<div className="login-header">
+  <div className="logo-section">
+    <div className="logo-circle">
+      {/* Replace old logo with the new visible one */}
+      <img 
+        src="/images/locallyLogo.png" 
+        alt="Locally Logo" 
+        className="logo" 
+        style={{
+          width: '100px',
+          height: '100px',
+          objectFit: 'contain',
+          borderRadius: '50%',
+          backgroundColor: 'white',
+          padding: '10px',
+          boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)',
+        }}
+      />
+    </div>
+    <h1 className="app-title" style={{ color: '#2196F3', fontWeight: '700' }}>Locally</h1>
+    <p className="app-tagline" style={{ color: '#444' }}>Your Local Shopping Companion</p>
+  </div>
+</div>
+
 
         {/* Form Section */}
         <div className="form-section">
