@@ -3923,26 +3923,14 @@ body {
   }
 }
 .logo {
-  height: 70px;               /* increased size for better visibility */
+  height: 65px;
   width: auto;
-  border-radius: 50%;
-  background: none;            /* removed white background */
-  padding: 2px;                /* minimal padding to keep spacing clean */
-  transition: transform 0.25s ease, filter 0.25s ease;
-  filter: drop-shadow(0 0 6px rgba(33, 150, 243, 0.6)); /* subtle blue glow */
+  cursor: pointer;
+  transition: transform 0.25s ease;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
 .logo:hover {
-  transform: scale(1.1);       /* slightly enlarge on hover */
-  filter: drop-shadow(0 0 10px rgba(33, 150, 243, 0.9)); /* stronger glow on hover */
-}
-
-/* Navbar container adjustment for larger logo */
-.nav-container {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 40px;
-  height: 80px;                /* ensures navbar height fits the larger logo */
-  box-sizing: border-box;
+  transform: scale(1.08);
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
 }
