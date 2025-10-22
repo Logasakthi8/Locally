@@ -3922,9 +3922,30 @@ body {
     margin-top: 65px;
   }
 }
-/* 🌐 Desktop & general view */
+/* 🌐 Desktop & General View */
+.navbar {
+  width: 100%;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  overflow: hidden; /* ensures no element sticks out */
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.nav-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 25px;
+  height: 90px; /* fits the large logo */
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+/* ✅ Logo Styling */
 .logo {
-  height: 90px; /* large, visible logo on desktop */
+  height: 85px; /* slightly reduced for better fit */
   width: auto;
   border-radius: 50%;
   background: transparent;
@@ -3932,41 +3953,90 @@ body {
   transition: transform 0.3s ease, filter 0.3s ease;
   filter: drop-shadow(0 0 10px rgba(0, 145, 255, 0.8))
           drop-shadow(0 0 15px rgba(0, 145, 255, 0.5));
+  object-fit: contain;
+  max-width: 100%;
 }
 
+.logo:hover {
+  transform: scale(1.08);
+  filter: drop-shadow(0 0 15px rgba(0, 145, 255, 1))
+          drop-shadow(0 0 25px rgba(0, 145, 255, 0.7));
+}
 
-
-/* 🧭 Navbar container */
-.nav-container {
+/* 🧭 Nav Links */
+.nav-links {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 25px;
-  height: 100px;
-  box-sizing: border-box;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
-/* 📱 Mobile view adjustments */
+.nav-links button {
+  background: transparent;
+  border: none;
+  color: #333;
+  font-size: 16px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.nav-links button:hover {
+  color: #2196F3;
+}
+
+/* 👤 User Info */
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-info span {
+  font-size: 15px;
+  color: #333;
+}
+
+.user-info button {
+  background-color: #2196F3;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.user-info button:hover {
+  background-color: #0d8ae3;
+}
+
+/* 📱 Responsive Mobile Fix */
 @media (max-width: 768px) {
-  .logo {
-    height: 60px; /* smaller but still clear */
-    filter: drop-shadow(0 0 8px rgba(0, 145, 255, 0.8));
-  }
-
   .nav-container {
-    padding: 8px 15px;
-    height: 80px; /* shorter navbar for mobile */
-  }
-
-  /* Optional: center logo if you want it aligned on mobile */
-  .navbar {
-    text-align: center;
-  }
-
-  /* Make nav links stack or adjust spacing */
-  .nav-links {
-    gap: 10px;
-    flex-wrap: wrap;
+    flex-direction: column;
     justify-content: center;
+    padding: 5px 10px;
+    height: auto;
+  }
+
+  .logo {
+    height: 65px; /* smaller but still visible */
+    margin-bottom: 8px;
+  }
+
+  .nav-links {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .nav-links button {
+    font-size: 15px;
+  }
+
+  .user-info {
+    justify-content: center;
+    flex-wrap: wrap;
   }
 }
