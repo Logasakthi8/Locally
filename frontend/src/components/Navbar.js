@@ -23,11 +23,11 @@ function Navbar({ user, onLogout }) {
       <div className="nav-container">
         {/* Replace text logo with image logo */}
         <img 
-          src="/myLogo1.png" 
+          src="/myLogo2.png" 
           alt="Locally" 
           onClick={() => navigate(user ? '/shops' : '/')} 
           className="logo" 
-          style={{cursor: 'pointer', height: '40px'}}
+          
         />
         <div className="nav-links">
           {user ? (
@@ -35,11 +35,6 @@ function Navbar({ user, onLogout }) {
               <button onClick={() => navigate('/shops')}>Shops</button>
               {/* Replace cart symbol with logo image */}
               <button onClick={() => navigate('/wishlist')} className="cart-button">
-                <img 
-                  src="/locallyLogo.png" 
-                  alt="Cart" 
-                  style={{height: '20px', verticalAlign: 'middle'}}
-                />
                 Cart
               </button>
               {/* Added Return Products button */}
