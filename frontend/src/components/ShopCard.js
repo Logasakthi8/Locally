@@ -1,5 +1,5 @@
-// Enhanced Medical Prescription Modal with WhatsApp Share Button
-import React, { useState, useRef } from 'react';
+// Simplified Medical Prescription Modal with Direct WhatsApp Share
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import config from '../config';
 
@@ -10,10 +10,6 @@ function ShopCard({ shop }) {
   const [showReview, setShowReview] = useState(false);
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
   const [showGroceryModal, setShowGroceryModal] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [filePreview, setFilePreview] = useState(null);
-  const fileInputRef = useRef(null);
-  const cameraInputRef = useRef(null);
 
   const submitRating = async (rating) => {
     try {
@@ -49,88 +45,40 @@ function ShopCard({ shop }) {
     navigate(`/products/${shop._id}`);
   };
 
-  // WhatsApp function for medical prescriptions
-  const sharePrescriptionToWhatsApp = (file) => {
-    const whatsappNumber = '9361437687';
+  // Direct WhatsApp function for medical prescriptions
+  const sharePrescriptionToWhatsApp = () => {
+    const whatsappNumber = '9361437687'; // Your default number
     
     const message = `🏥 PRESCRIPTION ORDER\n\nShop: ${shop.name}\nCategory: ${shop.category}\n\n*Prescription Details:*\n- Please process this prescription order\n- I need home delivery\n- Please provide generic alternatives if available\n\n*Contact Details:*\n[Please add your name and address here]`;
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
     
-    // Open WhatsApp
+    // Open WhatsApp directly
     window.open(whatsappUrl, '_blank');
-    
-    // Show detailed instructions for file sharing
-    setTimeout(() => {
-      alert(`📋 INSTRUCTIONS TO SHARE PRESCRIPTION:\n\n1. WhatsApp has opened with a pre-filled message\n2. In the WhatsApp chat, click the attachment icon (📎)\n3. Select "${file.type.includes('image') ? 'Gallery' : 'Document'}"\n4. Find and select your prescription file: ${file.name}\n5. Press SEND to share with the medical shop`);
-    }, 1500);
   };
 
-  // WhatsApp function for grocery lists
-  const shareGroceryListToWhatsApp = (file, listType) => {
-    const whatsappNumber = '9361437687';
+  // Direct WhatsApp function for grocery lists
+  const shareGroceryListToWhatsApp = () => {
+    const whatsappNumber = '9361437687'; // Your default number
     
-    const message = `🛒 ${listType.toUpperCase()} GROCERY LIST ORDER\n\nShop: ${shop.name}\nCategory: ${shop.category}\nList Type: ${listType}\n\n*Grocery Order Details:*\n- Please process my ${listType} grocery list\n- I need home delivery\n- Please confirm availability and pricing\n\n*Contact Details:*\n[Please add your name and address here]`;
+    const message = `🛒 GROCERY LIST ORDER\n\nShop: ${shop.name}\nCategory: ${shop.category}\n\n*Grocery Order Details:*\n- Please process my grocery list\n- I need home delivery\n- Please confirm availability and pricing\n\n*Contact Details:*\n[Please add your name and address here]`;
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
     
-    // Open WhatsApp
+    // Open WhatsApp directly
     window.open(whatsappUrl, '_blank');
-    
-    // Show instructions
-    setTimeout(() => {
-      alert(`📋 INSTRUCTIONS TO SHARE GROCERY LIST:\n\n1. WhatsApp has opened with a pre-filled message\n2. In the WhatsApp chat, click the attachment icon (📎)\n3. Select "${file.type.includes('image') ? 'Gallery' : 'Document'}"\n4. Find and select your grocery list: ${file.name}\n5. Press SEND to share with the grocery shop`);
-    }, 1500);
   };
 
   // Medical Shop Functions
   const handlePrescriptionUpload = () => {
     setShowPrescriptionModal(true);
-    setSelectedFile(null);
-    setFilePreview(null);
-  };
-
-  const triggerCamera = () => {
-    cameraInputRef.current?.click();
-  };
-
-  const triggerGallery = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileSelect = (event, type) => {
-    const file = event.target.files[0];
-    if (file) {
-      setSelectedFile(file);
-      
-      // Create preview for images
-      if (file.type.includes('image')) {
-        const reader = new FileReader();
-        reader.onload = (e) => setFilePreview(e.target.result);
-        reader.readAsDataURL(file);
-      } else {
-        setFilePreview(null);
-      }
-    }
-  };
-
-  const handleShareToWhatsApp = () => {
-    if (selectedFile) {
-      if (isMedicalShop) {
-        sharePrescriptionToWhatsApp(selectedFile);
-      } else if (isGroceryShop) {
-        shareGroceryListToWhatsApp(selectedFile, 'weekly');
-      }
-    }
   };
 
   // Grocery Shop Functions
   const handleGroceryListUpload = () => {
     setShowGroceryModal(true);
-    setSelectedFile(null);
-    setFilePreview(null);
   };
 
   // Category detection
@@ -178,23 +126,6 @@ function ShopCard({ shop }) {
             ))}
           </div>
         )}
-
-        {/* Hidden file inputs */}
-        <input
-          type="file"
-          ref={fileInputRef}
-          style={{ display: 'none' }}
-          accept="image/*,application/pdf"
-          onChange={(e) => handleFileSelect(e, isMedicalShop ? 'prescription' : 'grocery')}
-        />
-        <input
-          type="file"
-          ref={cameraInputRef}
-          style={{ display: 'none' }}
-          accept="image/*"
-          capture="camera"
-          onChange={(e) => handleFileSelect(e, isMedicalShop ? 'prescription' : 'grocery')}
-        />
 
         {/* Category-Specific Actions */}
         <div className="shop-actions">
@@ -249,17 +180,8 @@ function ShopCard({ shop }) {
       {showPrescriptionModal && (
         <PrescriptionModal 
           shop={shop}
-          onClose={() => {
-            setShowPrescriptionModal(false);
-            setSelectedFile(null);
-            setFilePreview(null);
-          }}
-          onCamera={triggerCamera}
-          onGallery={triggerGallery}
-          selectedFile={selectedFile}
-          filePreview={filePreview}
-          onShareToWhatsApp={handleShareToWhatsApp}
-          onFileSelect={handleFileSelect}
+          onClose={() => setShowPrescriptionModal(false)}
+          onShareToWhatsApp={sharePrescriptionToWhatsApp}
         />
       )}
 
@@ -267,173 +189,81 @@ function ShopCard({ shop }) {
       {showGroceryModal && (
         <GroceryListModal 
           shop={shop}
-          onClose={() => {
-            setShowGroceryModal(false);
-            setSelectedFile(null);
-            setFilePreview(null);
-          }}
-          onCamera={triggerCamera}
-          onGallery={triggerGallery}
-          selectedFile={selectedFile}
-          filePreview={filePreview}
-          onShareToWhatsApp={handleShareToWhatsApp}
-          onFileSelect={handleFileSelect}
+          onClose={() => setShowGroceryModal(false)}
+          onShareToWhatsApp={shareGroceryListToWhatsApp}
         />
       )}
     </div>
   );
 }
 
-// Enhanced Prescription Modal Component with Clear Instructions
-function PrescriptionModal({ shop, onClose, onCamera, onGallery, selectedFile, filePreview, onShareToWhatsApp, onFileSelect }) {
+// Simplified Prescription Modal Component - Only Instructions & WhatsApp Button
+function PrescriptionModal({ shop, onClose, onShareToWhatsApp }) {
   return (
     <div className="modal-overlay">
       <div className="modal-content prescription-modal">
         <div className="modal-header">
-          <h3>📄 Upload Prescription</h3>
+          <h3>📄 Share Prescription via WhatsApp</h3>
           <button className="close-btn" onClick={onClose}>×</button>
         </div>
 
         <div className="modal-body">
-          {!selectedFile ? (
-            <>
-              <div className="upload-instructions">
-                <h4>How to Upload Your Prescription</h4>
-                <div className="instruction-steps">
-                  <div className="step">
-                    <span className="step-number">1</span>
-                    <span className="step-text">Take a clear photo of your prescription or select from gallery</span>
-                  </div>
-                  <div className="step">
-                    <span className="step-number">2</span>
-                    <span className="step-text">Review your prescription photo</span>
-                  </div>
-                  <div className="step">
-                    <span className="step-number">3</span>
-                    <span className="step-text">Share directly to WhatsApp with one click</span>
-                  </div>
+          <div className="instructions-section">
+            <div className="instruction-header">
+              <div className="instruction-icon">📋</div>
+              <h4>How to Share Your Prescription</h4>
+            </div>
+            
+            <div className="instruction-steps">
+              <div className="step">
+                <span className="step-number">1</span>
+                <div className="step-content">
+                  <strong>Click the WhatsApp Button Below</strong>
+                  <p>This will open WhatsApp with a pre-filled message</p>
                 </div>
               </div>
-
-              <div className="upload-options">
-                <button 
-                  className="upload-option-btn camera-btn" 
-                  onClick={() => {
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.accept = 'image/*';
-                    input.capture = 'camera';
-                    input.onchange = (e) => onFileSelect(e, 'prescription');
-                    input.click();
-                  }}
-                >
-                  <div className="option-icon">📷</div>
-                  <div className="option-text">
-                    <strong>Take Photo</strong>
-                    <span>Use camera</span>
-                  </div>
-                </button>
-                <button 
-                  className="upload-option-btn gallery-btn" 
-                  onClick={() => {
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.accept = 'image/*,application/pdf';
-                    input.onchange = (e) => onFileSelect(e, 'prescription');
-                    input.click();
-                  }}
-                >
-                  <div className="option-icon">🖼️</div>
-                  <div className="option-text">
-                    <strong>Choose File</strong>
-                    <span>From gallery</span>
-                  </div>
-                </button>
-              </div>
-
-              <div className="upload-info">
-                <div className="info-box">
-                  <strong>📋 Important Notes:</strong>
-                  <ul>
-                    <li>Ensure prescription is clear and readable</li>
-                    <li>All text should be visible in the photo</li>
-                    <li>Supported formats: Images (JPG, PNG), PDF</li>
-                    <li>File size should be less than 10MB</li>
-                  </ul>
+              
+              <div className="step">
+                <span className="step-number">2</span>
+                <div className="step-content">
+                  <strong>Attach Your Prescription</strong>
+                  <p>In WhatsApp, click the attachment icon (📎) and select your prescription file</p>
                 </div>
               </div>
-            </>
-          ) : (
-            <>
-              <div className="file-preview-section">
-                <div className="success-header">
-                  <div className="success-icon">✅</div>
-                  <h4>Prescription Ready to Share!</h4>
-                </div>
-                
-                <div className="preview-container">
-                  {filePreview ? (
-                    <div className="image-preview">
-                      <img src={filePreview} alt="Prescription preview" />
-                      <div className="preview-overlay">
-                        <span>Prescription Preview</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="file-info-card">
-                      <div className="file-icon">📄</div>
-                      <div className="file-details">
-                        <strong>{selectedFile.name}</strong>
-                        <span>Size: {(selectedFile.size / 1024).toFixed(2)} KB</span>
-                        <span>Type: {selectedFile.type.split('/')[1]?.toUpperCase() || 'FILE'}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="whatsapp-instructions">
-                  <h5>Next Steps:</h5>
-                  <div className="instruction-steps">
-                    <div className="step">
-                      <span className="step-icon">1</span>
-                      <span>Click "Share Prescription to WhatsApp" below</span>
-                    </div>
-                    <div className="step">
-                      <span className="step-icon">2</span>
-                      <span>WhatsApp will open with a pre-filled message</span>
-                    </div>
-                    <div className="step">
-                      <span className="step-icon">3</span>
-                      <span>Attach the prescription file in the chat</span>
-                    </div>
-                    <div className="step">
-                      <span className="step-icon">4</span>
-                      <span>Send to complete your order</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="action-buttons">
-                  <button 
-                    className="whatsapp-share-btn"
-                    onClick={onShareToWhatsApp}
-                  >
-                    <span className="whatsapp-icon">📱</span>
-                    Share Prescription to WhatsApp
-                  </button>
-                  
-                  <button 
-                    className="change-file-btn"
-                    onClick={() => {
-                      onFileSelect({ target: { files: [] } }, 'prescription');
-                    }}
-                  >
-                    🔄 Choose Different File
-                  </button>
+              
+              <div className="step">
+                <span className="step-number">3</span>
+                <div className="step-content">
+                  <strong>Send to Medical Shop</strong>
+                  <p>Press send to share your prescription with {shop.name}</p>
                 </div>
               </div>
-            </>
-          )}
+            </div>
+          </div>
+
+          <div className="important-notes">
+            <h5>📌 Important Notes:</h5>
+            <ul>
+              <li>Ensure your prescription is clear and readable</li>
+              <li>Take a good quality photo in proper lighting</li>
+              <li>All text should be visible and not blurry</li>
+              <li>You can share images (JPG, PNG) or PDF files</li>
+            </ul>
+          </div>
+
+          <div className="whatsapp-action-section">
+            <button 
+              className="whatsapp-direct-btn"
+              onClick={onShareToWhatsApp}
+            >
+              <span className="whatsapp-icon">📱</span>
+              Open WhatsApp to Share Prescription
+            </button>
+            
+            <p className="whatsapp-note">
+              WhatsApp will open with a pre-filled message. Just attach your prescription file and send.
+            </p>
+          </div>
         </div>
 
         <div className="modal-actions">
@@ -450,119 +280,63 @@ function PrescriptionModal({ shop, onClose, onCamera, onGallery, selectedFile, f
   );
 }
 
-// Grocery List Modal Component (Similar structure)
-function GroceryListModal({ shop, onClose, onCamera, onGallery, selectedFile, filePreview, onShareToWhatsApp, onFileSelect }) {
-  const [listType, setListType] = useState('weekly');
-
+// Simplified Grocery List Modal Component
+function GroceryListModal({ shop, onClose, onShareToWhatsApp }) {
   return (
     <div className="modal-overlay">
       <div className="modal-content">
         <div className="modal-header">
-          <h3>📝 Upload Grocery List</h3>
+          <h3>📝 Share Grocery List via WhatsApp</h3>
           <button className="close-btn" onClick={onClose}>×</button>
         </div>
 
         <div className="modal-body">
-          {!selectedFile ? (
-            <>
-              <p>Upload your {listType} grocery list for <strong>{shop.name}</strong></p>
+          <div className="instructions-section">
+            <div className="instruction-header">
+              <div className="instruction-icon">🛒</div>
+              <h4>How to Share Your Grocery List</h4>
+            </div>
+            
+            <div className="instruction-steps">
+              <div className="step">
+                <span className="step-number">1</span>
+                <div className="step-content">
+                  <strong>Click the WhatsApp Button</strong>
+                  <p>Open WhatsApp with a pre-filled order message</p>
+                </div>
+              </div>
               
-              <div className="list-type-selector">
-                <label>List Type:</label>
-                <div className="radio-group">
-                  <label>
-                    <input
-                      type="radio"
-                      value="weekly"
-                      checked={listType === 'weekly'}
-                      onChange={(e) => setListType(e.target.value)}
-                    />
-                    Weekly List
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      value="monthly"
-                      checked={listType === 'monthly'}
-                      onChange={(e) => setListType(e.target.value)}
-                    />
-                    Monthly List
-                  </label>
+              <div className="step">
+                <span className="step-number">2</span>
+                <div className="step-content">
+                  <strong>Attach Your Grocery List</strong>
+                  <p>In WhatsApp, attach your list as an image or document</p>
                 </div>
               </div>
-
-              <div className="upload-options">
-                <button 
-                  className="upload-option-btn camera-btn" 
-                  onClick={() => {
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.accept = 'image/*';
-                    input.capture = 'camera';
-                    input.onchange = (e) => onFileSelect(e, 'grocery');
-                    input.click();
-                  }}
-                >
-                  📷 Take Photo
-                </button>
-                <button 
-                  className="upload-option-btn gallery-btn" 
-                  onClick={() => {
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.accept = 'image/*,application/pdf';
-                    input.onchange = (e) => onFileSelect(e, 'grocery');
-                    input.click();
-                  }}
-                >
-                  🖼️ Choose from Gallery
-                </button>
-              </div>
-
-              <div className="upload-info">
-                <p><strong>Note:</strong> Your grocery list will be sent to WhatsApp</p>
-                <p>Supported formats: Images (JPG, PNG), PDF</p>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="file-preview-section">
-                <h4>Grocery List Selected ✅</h4>
-                <p>List Type: <strong>{listType}</strong></p>
-                {filePreview ? (
-                  <div className="image-preview">
-                    <img src={filePreview} alt="Grocery list preview" />
-                  </div>
-                ) : (
-                  <div className="file-info">
-                    <p>📄 {selectedFile.name}</p>
-                    <p>Size: {(selectedFile.size / 1024).toFixed(2)} KB</p>
-                  </div>
-                )}
-                
-                <div className="whatsapp-instructions">
-                  <p><strong>Instructions:</strong> Click below to open WhatsApp and share your grocery list</p>
+              
+              <div className="step">
+                <span className="step-number">3</span>
+                <div className="step-content">
+                  <strong>Send to Grocery Shop</strong>
+                  <p>Share your list with {shop.name} for processing</p>
                 </div>
-                
-                <button 
-                  className="whatsapp-share-btn"
-                  onClick={onShareToWhatsApp}
-                >
-                  <span className="whatsapp-icon">📱</span>
-                  Share Grocery List to WhatsApp
-                </button>
-                
-                <button 
-                  className="change-file-btn"
-                  onClick={() => {
-                    onFileSelect({ target: { files: [] } }, 'grocery');
-                  }}
-                >
-                  🔄 Choose Different File
-                </button>
               </div>
-            </>
-          )}
+            </div>
+          </div>
+
+          <div className="whatsapp-action-section">
+            <button 
+              className="whatsapp-direct-btn grocery"
+              onClick={onShareToWhatsApp}
+            >
+              <span className="whatsapp-icon">📱</span>
+              Open WhatsApp to Share Grocery List
+            </button>
+            
+            <p className="whatsapp-note">
+              WhatsApp will open with your order details. Attach your grocery list and send.
+            </p>
+          </div>
         </div>
 
         <div className="modal-actions">
