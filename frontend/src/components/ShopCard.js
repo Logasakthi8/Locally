@@ -48,7 +48,7 @@ function ShopCard({ shop }) {
   };
 
   const handleWhatsAppContact = (message, file = null) => {
-    const whatsappNumber = '9089876590';
+    const whatsappNumber = '9361437687';
     
     if (file) {
       // For file uploads, we'll use a different approach
