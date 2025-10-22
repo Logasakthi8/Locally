@@ -4638,3 +4638,103 @@ body {
     font-size: 1.5rem;
   }
 }
+/* Add this to your CSS for the new menu button */
+.menu-btn {
+  background: #fd7e14;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  flex: 1;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.menu-btn:hover {
+  background: #e9690c;
+  transform: translateY(-2px);
+}
+
+/* Keep all existing button styles */
+.prescription-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  flex: 1;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.prescription-btn:hover {
+  background: #c82333;
+  transform: translateY(-2px);
+}
+
+.grocery-list-btn {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  flex: 1;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.grocery-list-btn:hover {
+  background: #218838;
+  transform: translateY(-2px);
+}
+
+.primary-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  flex: 1;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.primary-btn:hover {
+  background: #0056b3;
+  transform: translateY(-2px);
+}
+
+.secondary-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.shop-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 1rem 0;
+}
+
+@media (max-width: 768px) {
+  .shop-actions {
+    flex-direction: column;
+  }
+  
+  .prescription-btn,
+  .grocery-list-btn,
+  .primary-btn,
+  .menu-btn {
+    width: 100%;
+  }
+}
