@@ -1,8 +1,7 @@
-// Enhanced ShopCard.js with hybrid system
-import React, { useState } from 'react';
+// Enhanced ShopCard.js with category-specific actions
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import config from '../config';
-import PrescriptionModal from './PrescriptionModal';
 
 function ShopCard({ shop }) {
   const navigate = useNavigate();
@@ -10,6 +9,9 @@ function ShopCard({ shop }) {
   const [userRating, setUserRating] = useState(shop.avgRating || 0);
   const [showReview, setShowReview] = useState(false);
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
+  const [showGroceryModal, setShowGroceryModal] = useState(false);
+  const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
 
   const submitRating = async (rating) => {
     try {
@@ -45,14 +47,68 @@ function ShopCard({ shop }) {
     navigate(`/products/${shop._id}`);
   };
 
-  const handleWhatsAppContact = () => {
-    const message = `Hi ${shop.name}, I would like to know more about your products/services.`;
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/${shop.owner_mobile}?text=${encodedMessage}`;
-    window.open(whatsappUrl, '_blank');
+  const handleWhatsAppContact = (message, file = null) => {
+    const whatsappNumber = '9089876590';
+    
+    if (file) {
+      // For file uploads, we'll use a different approach
+      const textMessage = `${message}\n\nShop: ${shop.name}\nCategory: ${shop.category}`;
+      const encodedMessage = encodeURIComponent(textMessage);
+      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
+      window.open(whatsappUrl, '_blank');
+    } else {
+      const encodedMessage = encodeURIComponent(message);
+      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
+      window.open(whatsappUrl, '_blank');
+    }
   };
 
-  const isMedicalShop = shop.category === 'Medical';
+  // Medical Shop Functions
+  const handlePrescriptionUpload = () => {
+    setShowPrescriptionModal(true);
+  };
+
+  const triggerCamera = () => {
+    cameraInputRef.current?.click();
+  };
+
+  const triggerGallery = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = (event, type) => {
+    const file = event.target.files[0];
+    if (file) {
+      if (type === 'prescription') {
+        handlePrescriptionSubmit(file);
+      } else if (type === 'grocery') {
+        handleGroceryListSubmit(file);
+      }
+    }
+  };
+
+  const handlePrescriptionSubmit = (file) => {
+    const message = `🏥 PRESCRIPTION ORDER\n\nShop: ${shop.name}\nPrescription attached\n\nPlease process this prescription order.`;
+    handleWhatsAppContact(message, file);
+    setShowPrescriptionModal(false);
+    alert('Prescription submitted! Opening WhatsApp...');
+  };
+
+  // Grocery Shop Functions
+  const handleGroceryListUpload = () => {
+    setShowGroceryModal(true);
+  };
+
+  const handleGroceryListSubmit = (file) => {
+    const message = `🛒 GROCERY LIST ORDER\n\nShop: ${shop.name}\nGrocery list attached\n\nPlease process this grocery order.`;
+    handleWhatsAppContact(message, file);
+    setShowGroceryModal(false);
+    alert('Grocery list submitted! Opening WhatsApp...');
+  };
+
+  const isMedicalShop = shop.category === 'Medicals';
+  const isGroceryShop = shop.category === 'Grocery';
+  const isOtherShop = !isMedicalShop && !isGroceryShop;
 
   return (
     <div className="shop-card">
@@ -95,38 +151,63 @@ function ShopCard({ shop }) {
           </div>
         )}
 
-        {/* Hybrid System Buttons */}
+        {/* Hidden file inputs */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          style={{ display: 'none' }}
+          accept="image/*,application/pdf"
+          onChange={(e) => handleFileSelect(e, showPrescriptionModal ? 'prescription' : 'grocery')}
+        />
+        <input
+          type="file"
+          ref={cameraInputRef}
+          style={{ display: 'none' }}
+          accept="image/*"
+          capture="camera"
+          onChange={(e) => handleFileSelect(e, showPrescriptionModal ? 'prescription' : 'grocery')}
+        />
+
+        {/* Category-Specific Actions */}
         <div className="shop-actions">
-          {isMedicalShop ? (
+          {isMedicalShop && (
             <>
-              {/* Medical Shop - Prescription Upload Model */}
-              <button 
-                className="whatsapp-btn"
-                onClick={handleWhatsAppContact}
-              >
-                📞 WhatsApp Contact
-              </button>
+              {/* Medical Shop - Upload Prescription Only */}
               <button 
                 className="prescription-btn"
-                onClick={() => setShowPrescriptionModal(true)}
+                onClick={handlePrescriptionUpload}
               >
                 📄 Upload Prescription
               </button>
             </>
-          ) : (
+          )}
+
+          {isGroceryShop && (
             <>
-              {/* Other Shops - Product Listing Model */}
+              {/* Grocery Shop - Product List + Upload Grocery List */}
+              <button 
+                className="primary-btn"
+                onClick={handleShopClick}
+              >
+                View Product List
+              </button>
+              <button 
+                className="grocery-list-btn"
+                onClick={handleGroceryListUpload}
+              >
+                📝 Upload Grocery List
+              </button>
+            </>
+          )}
+
+          {isOtherShop && (
+            <>
+              {/* Other Shops - View Products Only */}
               <button 
                 className="primary-btn"
                 onClick={handleShopClick}
               >
                 View Products
-              </button>
-              <button 
-                className="whatsapp-btn"
-                onClick={handleWhatsAppContact}
-              >
-                💬 Contact Shop
               </button>
             </>
           )}
@@ -147,8 +228,130 @@ function ShopCard({ shop }) {
         <PrescriptionModal 
           shop={shop}
           onClose={() => setShowPrescriptionModal(false)}
+          onCamera={triggerCamera}
+          onGallery={triggerGallery}
         />
       )}
+
+      {/* Grocery List Modal for Grocery Shops */}
+      {showGroceryModal && (
+        <GroceryListModal 
+          shop={shop}
+          onClose={() => setShowGroceryModal(false)}
+          onCamera={triggerCamera}
+          onGallery={triggerGallery}
+        />
+      )}
+    </div>
+  );
+}
+
+// Prescription Modal Component
+function PrescriptionModal({ shop, onClose, onCamera, onGallery }) {
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <div className="modal-header">
+          <h3>📄 Upload Prescription</h3>
+          <button className="close-btn" onClick={onClose}>×</button>
+        </div>
+
+        <div className="modal-body">
+          <p>Choose how you want to upload your prescription for <strong>{shop.name}</strong></p>
+          
+          <div className="upload-options">
+            <button className="upload-option-btn camera-btn" onClick={onCamera}>
+              📷 Take Photo
+            </button>
+            <button className="upload-option-btn gallery-btn" onClick={onGallery}>
+              🖼️ Choose from Gallery
+            </button>
+          </div>
+
+          <div className="upload-info">
+            <p><strong>Note:</strong> Your prescription will be sent to our medical partner via WhatsApp</p>
+            <p>Supported formats: Images (JPG, PNG), PDF</p>
+          </div>
+        </div>
+
+        <div className="modal-actions">
+          <button 
+            type="button" 
+            className="secondary-btn" 
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Grocery List Modal Component
+function GroceryListModal({ shop, onClose, onCamera, onGallery }) {
+  const [listType, setListType] = useState('weekly');
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <div className="modal-header">
+          <h3>📝 Upload Grocery List</h3>
+          <button className="close-btn" onClick={onClose}>×</button>
+        </div>
+
+        <div className="modal-body">
+          <p>Upload your {listType} grocery list for <strong>{shop.name}</strong></p>
+          
+          <div className="list-type-selector">
+            <label>List Type:</label>
+            <div className="radio-group">
+              <label>
+                <input
+                  type="radio"
+                  value="weekly"
+                  checked={listType === 'weekly'}
+                  onChange={(e) => setListType(e.target.value)}
+                />
+                Weekly List
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  value="monthly"
+                  checked={listType === 'monthly'}
+                  onChange={(e) => setListType(e.target.value)}
+                />
+                Monthly List
+              </label>
+            </div>
+          </div>
+
+          <div className="upload-options">
+            <button className="upload-option-btn camera-btn" onClick={onCamera}>
+              📷 Take Photo
+            </button>
+            <button className="upload-option-btn gallery-btn" onClick={onGallery}>
+              🖼️ Choose from Gallery
+            </button>
+          </div>
+
+          <div className="upload-info">
+            <p><strong>Note:</strong> Your {listType} grocery list will be sent to the shop via WhatsApp</p>
+            <p>Supported formats: Images (JPG, PNG), PDF</p>
+          </div>
+        </div>
+
+        <div className="modal-actions">
+          <button 
+            type="button" 
+            className="secondary-btn" 
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
