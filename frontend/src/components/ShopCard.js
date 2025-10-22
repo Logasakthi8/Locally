@@ -1,12 +1,15 @@
+// Enhanced ShopCard.js with hybrid system
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import config from '../config';
+import PrescriptionModal from './PrescriptionModal';
 
 function ShopCard({ shop }) {
   const navigate = useNavigate();
   const [hoverRating, setHoverRating] = useState(0);
   const [userRating, setUserRating] = useState(shop.avgRating || 0);
   const [showReview, setShowReview] = useState(false);
+  const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
 
   const submitRating = async (rating) => {
     try {
@@ -21,12 +24,11 @@ function ShopCard({ shop }) {
       });
 
       if (response.ok) {
-        // ✅ Fetch updated average rating after submitting
         const avgRes = await fetch(`${config.apiUrl}/reviews/${shop._id}/average`);
         const avgData = await avgRes.json();
 
         setUserRating(rating);
-        shop.avgRating = avgData.average_rating; // update shop object directly
+        shop.avgRating = avgData.average_rating;
         alert('Thank you for your review!');
         setShowReview(false);
       } else {
@@ -42,6 +44,15 @@ function ShopCard({ shop }) {
   const handleShopClick = () => {
     navigate(`/products/${shop._id}`);
   };
+
+  const handleWhatsAppContact = () => {
+    const message = `Hi ${shop.name}, I would like to know more about your products/services.`;
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${shop.owner_mobile}?text=${encodedMessage}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
+  const isMedicalShop = shop.category === 'Medical';
 
   return (
     <div className="shop-card">
@@ -60,7 +71,6 @@ function ShopCard({ shop }) {
         <p><strong>Owner:</strong> {shop.owner_mobile}</p>
         <p><strong>Hours:</strong> {shop.opening_time} - {shop.closing_time}</p>
         <p><strong>Address:</strong> {shop.address}</p>
-
         <p><strong>Average Rating:</strong> {shop.avgRating ? shop.avgRating.toFixed(1) : "0.0"} ⭐</p>
 
         {/* Show stars only if user clicks Give Review */}
@@ -85,12 +95,42 @@ function ShopCard({ shop }) {
           </div>
         )}
 
-        <button 
-          className="primary-btn"
-          onClick={handleShopClick}
-        >
-          View Shop
-        </button>
+        {/* Hybrid System Buttons */}
+        <div className="shop-actions">
+          {isMedicalShop ? (
+            <>
+              {/* Medical Shop - Prescription Upload Model */}
+              <button 
+                className="whatsapp-btn"
+                onClick={handleWhatsAppContact}
+              >
+                📞 WhatsApp Contact
+              </button>
+              <button 
+                className="prescription-btn"
+                onClick={() => setShowPrescriptionModal(true)}
+              >
+                📄 Upload Prescription
+              </button>
+            </>
+          ) : (
+            <>
+              {/* Other Shops - Product Listing Model */}
+              <button 
+                className="primary-btn"
+                onClick={handleShopClick}
+              >
+                View Products
+              </button>
+              <button 
+                className="whatsapp-btn"
+                onClick={handleWhatsAppContact}
+              >
+                💬 Contact Shop
+              </button>
+            </>
+          )}
+        </div>
 
         {/* Give Review Button */}
         <button 
@@ -101,6 +141,14 @@ function ShopCard({ shop }) {
           {showReview ? "Cancel Review" : "Give Review"}
         </button>
       </div>
+
+      {/* Prescription Modal for Medical Shops */}
+      {showPrescriptionModal && (
+        <PrescriptionModal 
+          shop={shop}
+          onClose={() => setShowPrescriptionModal(false)}
+        />
+      )}
     </div>
   );
 }
