@@ -1,4 +1,4 @@
-// ShopCard.js with both View Products and Upload Grocery List for grocery shops
+// ShopCard.js with Hotel/FastFood category showing "View Menus"
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import config from '../config';
@@ -84,7 +84,8 @@ function ShopCard({ shop }) {
   // Category detection
   const isMedicalShop = shop.category === 'Medicals';
   const isGroceryShop = shop.category === 'Grocery';
-  const isOtherShop = !isMedicalShop && !isGroceryShop;
+  const isHotelFastFood = shop.category === 'Hotel/FastFood';
+  const isOtherShop = !isMedicalShop && !isGroceryShop && !isHotelFastFood;
 
   return (
     <div className="shop-card">
@@ -155,6 +156,18 @@ function ShopCard({ shop }) {
                 onClick={handleGroceryListUpload}
               >
                 📝 Upload Grocery List
+              </button>
+            </>
+          )}
+
+          {isHotelFastFood && (
+            <>
+              {/* Hotel/FastFood Shop - View Menus Only */}
+              <button 
+                className="menu-btn"
+                onClick={handleShopClick}
+              >
+                🍽️ View Menus
               </button>
             </>
           )}
