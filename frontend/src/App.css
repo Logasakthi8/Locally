@@ -3922,23 +3922,51 @@ body {
     margin-top: 65px;
   }
 }
+/* 🌐 Desktop & general view */
 .logo {
-  height: 90px;                 /* ⬆️ Increased for strong visibility */
+  height: 90px; /* large, visible logo on desktop */
   width: auto;
   border-radius: 50%;
   background: transparent;
-  padding: 0;                   /* no extra space around */
+  padding: 0;
   transition: transform 0.3s ease, filter 0.3s ease;
-  filter: drop-shadow(0 0 10px rgba(0, 145, 255, 0.8)) 
-          drop-shadow(0 0 15px rgba(0, 145, 255, 0.5));  /* dual glow for clarity */
+  filter: drop-shadow(0 0 10px rgba(0, 145, 255, 0.8))
+          drop-shadow(0 0 15px rgba(0, 145, 255, 0.5));
 }
 
 
+
+/* 🧭 Navbar container */
 .nav-container {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 40px;
-  height: 100px;                /* fit larger logo perfectly */
+  padding: 10px 25px;
+  height: 100px;
   box-sizing: border-box;
+}
+
+/* 📱 Mobile view adjustments */
+@media (max-width: 768px) {
+  .logo {
+    height: 60px; /* smaller but still clear */
+    filter: drop-shadow(0 0 8px rgba(0, 145, 255, 0.8));
+  }
+
+  .nav-container {
+    padding: 8px 15px;
+    height: 80px; /* shorter navbar for mobile */
+  }
+
+  /* Optional: center logo if you want it aligned on mobile */
+  .navbar {
+    text-align: center;
+  }
+
+  /* Make nav links stack or adjust spacing */
+  .nav-links {
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
 }
