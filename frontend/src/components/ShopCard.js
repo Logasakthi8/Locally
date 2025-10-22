@@ -1,4 +1,4 @@
-// Simplified Medical Prescription Modal with Direct WhatsApp Share
+// ShopCard.js with both View Products and Upload Grocery List for grocery shops
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import config from '../config';
@@ -143,7 +143,13 @@ function ShopCard({ shop }) {
 
           {isGroceryShop && (
             <>
-              {/* Grocery Shop - Upload Grocery List Only */}
+              {/* Grocery Shop - BOTH View Products AND Upload Grocery List */}
+              <button 
+                className="primary-btn"
+                onClick={handleShopClick}
+              >
+                View Products
+              </button>
               <button 
                 className="grocery-list-btn"
                 onClick={handleGroceryListUpload}
