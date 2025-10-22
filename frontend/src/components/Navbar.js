@@ -23,7 +23,7 @@ function Navbar({ user, onLogout }) {
       <div className="nav-container">
         {/* Replace text logo with image logo */}
         <img 
-          src="/myLogo.png" 
+          src="/myLogo1.png" 
           alt="Locally" 
           onClick={() => navigate(user ? '/shops' : '/')} 
           className="logo" 
