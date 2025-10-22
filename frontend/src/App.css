@@ -3697,6 +3697,7 @@ body {
   font-size: 14px;
   transition: all 0.3s ease;
   backdrop-filter: blur(10px);
+  white-space: nowrap;
 }
 
 .nav-links button:hover {
@@ -3720,6 +3721,7 @@ body {
   padding: 8px 15px;
   border-radius: 20px;
   backdrop-filter: blur(10px);
+  white-space: nowrap;
 }
 
 /* Cart Button Specific Styles */
@@ -3740,32 +3742,77 @@ body {
   background-repeat: no-repeat;
 }
 
-/* Mobile Responsive Styles */
+/* Mobile Menu Button */
+.mobile-menu-btn {
+  display: none;
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 20px;
+  backdrop-filter: blur(10px);
+}
+
+/* Tablet Styles (768px - 1024px) */
+@media (max-width: 1024px) {
+  .nav-container {
+    padding: 10px 20px;
+    height: 90px;
+  }
+
+  .logo {
+    height: 75px;
+  }
+
+  .nav-links {
+    gap: 15px;
+  }
+
+  .nav-links button {
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+
+  .user-info {
+    gap: 12px;
+  }
+
+  .user-info span {
+    padding: 6px 12px;
+    font-size: 14px;
+  }
+}
+
+/* Mobile Styles (768px and below) */
 @media (max-width: 768px) {
   .nav-container {
     padding: 8px 15px;
     height: 80px;
-    flex-direction: row;
-    gap: 10px;
   }
 
   .logo {
     height: 60px;
-    filter: drop-shadow(0 0 8px rgba(0, 145, 255, 0.8));
+  }
+
+  .mobile-menu-btn {
+    display: block;
   }
 
   .nav-links {
-    position: absolute;
-    top: 100%;
+    position: fixed;
+    top: 80px;
     left: 0;
     right: 0;
-    background: rgba(135, 206, 235, 0.95);
+    background: rgba(135, 206, 235, 0.98);
     backdrop-filter: blur(20px);
     flex-direction: column;
     gap: 0;
-    padding: 15px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     display: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.3);
   }
 
   .nav-links.active {
@@ -3774,9 +3821,9 @@ body {
 
   .nav-links button {
     width: 100%;
-    margin: 5px 0;
+    margin: 8px 0;
     padding: 12px 20px;
-    font-size: 14px;
+    font-size: 16px;
     text-align: center;
     background: rgba(255, 255, 255, 0.25);
     border: 2px solid rgba(255, 255, 255, 0.4);
@@ -3784,34 +3831,72 @@ body {
 
   .user-info {
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
     width: 100%;
-    padding: 10px 0;
+    padding: 15px 0 5px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    margin-top: 10px;
   }
 
   .user-info span {
     width: 100%;
     text-align: center;
     background: rgba(255, 255, 255, 0.25);
+    padding: 10px 15px;
+    font-size: 15px;
   }
 }
 
+/* Small Mobile Styles (480px and below) */
 @media (max-width: 480px) {
   .nav-container {
-    height: 80px;
-    padding: 8px 12px;
+    padding: 6px 12px;
+    height: 70px;
   }
 
   .logo {
-    height: 55px;
+    height: 50px;
   }
 
   .nav-links {
-    padding: 12px;
+    top: 70px;
+    padding: 15px;
   }
 
   .nav-links button {
     padding: 10px 15px;
-    font-size: 13px;
+    font-size: 14px;
+    margin: 6px 0;
+  }
+
+  .user-info {
+    padding: 10px 0 5px 0;
+    gap: 10px;
+  }
+
+  .user-info span {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  .mobile-menu-btn {
+    padding: 8px;
+    font-size: 18px;
+  }
+}
+
+/* Large Desktop Styles (1200px and above) */
+@media (min-width: 1200px) {
+  .nav-container {
+    padding: 15px 30px;
+  }
+  
+  .nav-links {
+    gap: 25px;
+  }
+  
+  .nav-links button {
+    padding: 12px 24px;
+    font-size: 15px;
   }
 }
