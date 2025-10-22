@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ShopCard from './ShopCard';
 import config from '../config';
-import './Shops.css';
+
 
 function Shops() {
   const [shops, setShops] = useState([]);
