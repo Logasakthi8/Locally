@@ -49,7 +49,7 @@ function ShopCard({ shop }) {
   const sharePrescriptionToWhatsApp = () => {
     const whatsappNumber = '9361437687'; // Your default number
     
-    const message = `🏥 PRESCRIPTION ORDER\n\nShop: ${shop.name}\nCategory: ${shop.category}\n\n*Prescription Details:*\n- Please process this prescription order\n- I need home delivery\n- Please provide generic alternatives if available\n\n*Contact Details:*\n[Please add your name and address here]`;
+    const message = `Prescription Order - I want to order through prescription`;
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
@@ -62,7 +62,7 @@ function ShopCard({ shop }) {
   const shareGroceryListToWhatsApp = () => {
     const whatsappNumber = '9361437687'; // Your default number
     
-    const message = `🛒 GROCERY LIST ORDER\n\nShop: ${shop.name}\nCategory: ${shop.category}\n\n*Grocery Order Details:*\n- Please process my grocery list\n- I need home delivery\n- Please confirm availability and pricing\n\n*Contact Details:*\n[Please add your name and address here]`;
+   const message = `Grocery Order - I want to order through my Grocery List`;
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
