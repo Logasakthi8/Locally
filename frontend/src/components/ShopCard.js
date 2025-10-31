@@ -1,180 +1,366 @@
-// ShopCard.js - Fixed version with proper error handling
-import React from 'react';
+// ShopCard.js with Hotel/FastFood category showing "View Menus"
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import config from '../config';
 
-function ShopCard({ shop, viewMode = 'grid', categoryConfig = {} }) {
+function ShopCard({ shop }) {
   const navigate = useNavigate();
+  const [hoverRating, setHoverRating] = useState(0);
+  const [userRating, setUserRating] = useState(shop.avgRating || 0);
+  const [showReview, setShowReview] = useState(false);
+  const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
+  const [showGroceryModal, setShowGroceryModal] = useState(false);
+
+  const submitRating = async (rating) => {
+    try {
+      const response = await fetch(`${config.apiUrl}/reviews/${shop._id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ rating }),
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const avgRes = await fetch(`${config.apiUrl}/reviews/${shop._id}/average`);
+        const avgData = await avgRes.json();
+
+        setUserRating(rating);
+        shop.avgRating = avgData.average_rating;
+        alert('Thank you for your review!');
+        setShowReview(false);
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Failed to submit rating');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error submitting rating');
+    }
+  };
 
   const handleShopClick = () => {
-    navigate(`/shop/${shop._id}`);
+    navigate(`/products/${shop._id}`);
   };
 
-  const getCategoryColor = (category) => {
-    return categoryConfig[category]?.color || '#667eea';
+  // Direct WhatsApp function for medical prescriptions
+  const sharePrescriptionToWhatsApp = () => {
+    const whatsappNumber = '9361437687'; // Your default number
+
+    const message = `Prescription Order - I want to order through prescription`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
+@@ -62,314 +62,314 @@
+  const shareGroceryListToWhatsApp = () => {
+    const whatsappNumber = '9361437687'; // Your default number
+
+   const message = `Grocery Order - I want to order through my Grocery List`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
+
+    // Open WhatsApp directly
+    window.open(whatsappUrl, '_blank');
   };
 
-  // Safe rating display function
-  const renderRatingStars = (rating) => {
-    // Convert rating to number and handle null/undefined
-    const numericRating = parseFloat(rating);
-    
-    if (isNaN(numericRating) || numericRating === 0) {
-      return <span className="new-badge">New</span>;
-    }
-    
-    const stars = [];
-    const fullStars = Math.floor(numericRating);
-    const hasHalfStar = numericRating % 1 >= 0.5;
-    
-    for (let i = 0; i < fullStars; i++) {
-      stars.push('⭐');
-    }
-    if (hasHalfStar) {
-      stars.push('✨');
-    }
-    
-    return (
-      <span className="rating-stars">
-        {stars.join('')} {numericRating.toFixed(1)}
-      </span>
-    );
+  // Medical Shop Functions
+  const handlePrescriptionUpload = () => {
+    setShowPrescriptionModal(true);
   };
 
-  // Safe number formatting
-  const formatNumber = (num) => {
-    if (!num && num !== 0) return '0';
-    const numericValue = typeof num === 'number' ? num : parseFloat(num);
-    return isNaN(numericValue) ? '0' : numericValue.toString();
+  // Grocery Shop Functions
+  const handleGroceryListUpload = () => {
+    setShowGroceryModal(true);
   };
 
-  // Safe delivery time display
-  const getDeliveryTime = () => {
-    if (!shop.deliveryTime) return '30-40 min';
-    const time = parseInt(shop.deliveryTime);
-    return isNaN(time) ? '30-40 min' : `${time} min`;
-  };
+  // Category detection
+  const isMedicalShop = shop.category === 'Medicals';
+  const isGroceryShop = shop.category === 'Grocery';
+  const isHotelFastFood = shop.category === 'Hotel/FastFood';
+  const isOtherShop = !isMedicalShop && !isGroceryShop && !isHotelFastFood;
 
-  // Safe price display
-  const getPriceForTwo = () => {
-    if (!shop.costForTwo) return '₹500 for two';
-    const price = parseInt(shop.costForTwo);
-    return isNaN(price) ? '₹500 for two' : `₹${price} for two`;
-  };
-
-  if (viewMode === 'list') {
-    return (
-      <div className="shop-card list-view" onClick={handleShopClick}>
-        <div className="shop-image">
-          <img 
-            src={shop.image || '/default-shop.jpg'} 
-            alt={shop.name} 
-            onError={(e) => {
-              e.target.src = '/default-shop.jpg';
-            }}
-          />
-          {shop.discount && (
-            <div className="discount-badge">{shop.discount}</div>
-          )}
-        </div>
-        
-        <div className="shop-info">
-          <div className="shop-header">
-            <h3>{shop.name || 'Unknown Shop'}</h3>
-            {shop.isPro && <span className="pro-badge">PRO</span>}
-          </div>
-          
-          <div className="shop-meta">
-            {renderRatingStars(shop.avgRating)}
-            <span>•</span>
-            <span className="delivery-time">{getDeliveryTime()}</span>
-            <span>•</span>
-            <span className="price">{getPriceForTwo()}</span>
-          </div>
-          
-          <p className="category" style={{ color: getCategoryColor(shop.category) }}>
-            {shop.category || 'General Store'}
-          </p>
-          
-          <p className="address">{shop.address || 'Address not available'}</p>
-          
-          <div className="shop-features">
-            {shop.safety && (
-              <span className="safety-badge">🛡️ {shop.safety}</span>
-            )}
-            {shop.offers && (
-              <span className="offer-badge">{shop.offers}</span>
-            )}
-          </div>
-        </div>
-        
-        <div className="shop-status">
-          {shop.isOpen ? (
-            <span className="open">🟢 Open {shop.closing_time && `• Until ${shop.closing_time}`}</span>
-          ) : (
-            <span className="closed">🔴 Closed {shop.opening_time && `• Opens at ${shop.opening_time}`}</span>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Grid View (default)
   return (
-    <div className="shop-card grid-view" onClick={handleShopClick}>
-      <div className="shop-image">
-        <img 
-          src={shop.image || '/default-shop.jpg'} 
-          alt={shop.name} 
-          onError={(e) => {
-            e.target.src = '/default-shop.jpg';
-          }}
-        />
-        
-        {/* Badges */}
-        <div className="image-badges">
-          {shop.discount && (
-            <div className="discount-badge">{shop.discount}</div>
-          )}
-          {shop.isPro && <div className="pro-badge">PRO</div>}
-          {shop.safety && (
-            <div className="safety-badge">🛡️ {shop.safety}</div>
-          )}
-        </div>
-        
-        {/* Status */}
-        <div className="shop-status-badge">
-          {shop.isOpen ? '🟢 Open' : '🔴 Closed'}
-        </div>
-      </div>
-      
-      <div className="shop-content">
+    <div className="shop-card">
+      <img src={shop.image_url} alt={shop.name} />
+      <div className="card-info">
         <div className="shop-header">
-          <h3>{shop.name || 'Unknown Shop'}</h3>
-          <div className="rating-badge">
-            {renderRatingStars(shop.avgRating)}
-          </div>
+          <h3>{shop.name}</h3>
+          <span 
+            className={`status-indicator ${shop.isOpen ? 'status-open' : 'status-closed'}`}
+            title={shop.isOpen ? 'Shop is currently open' : 'Shop is currently closed'}
+          >
+            {shop.isOpen ? '🟢 OPEN' : '🔴 CLOSED'}
+          </span>
         </div>
-        
-        <div className="shop-meta">
-          <span className="delivery-time">{getDeliveryTime()}</span>
-          <span>•</span>
-          <span className="price">{getPriceForTwo()}</span>
-        </div>
-        
-        <p className="category" style={{ color: getCategoryColor(shop.category) }}>
-          {shop.category || 'General Store'}
-        </p>
-        
-        <p className="address">{shop.address || 'Address not available'}</p>
-        
-        {shop.offers && (
-          <div className="offers-section">
-            <span className="offer-tag">🎁 {shop.offers}</span>
+        <p><strong>Category:</strong> {shop.category}</p>
+        <p><strong>Owner:</strong> {shop.owner_mobile}</p>
+        <p><strong>Hours:</strong> {shop.opening_time} - {shop.closing_time}</p>
+        <p><strong>Address:</strong> {shop.address}</p>
+        <p><strong>Average Rating:</strong> {shop.avgRating ? shop.avgRating.toFixed(1) : "0.0"} ⭐</p>
+
+        {/* Show stars only if user clicks Give Review */}
+        {showReview && (
+          <div className="stars" style={{ margin: '0.5rem 0' }}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <span
+                key={star}
+                style={{
+                  cursor: 'pointer',
+                  color: (hoverRating || userRating) >= star ? '#ffc107' : '#e4e5e9',
+                  fontSize: '1.5rem',
+                  marginRight: '2px'
+                }}
+                onMouseEnter={() => setHoverRating(star)}
+                onMouseLeave={() => setHoverRating(0)}
+                onClick={() => submitRating(star)}
+              >
+                ★
+              </span>
+            ))}
           </div>
         )}
-        
-        <div className="shop-footer">
-          <span className="review-count">{formatNumber(shop.reviewCount)}+ reviews</span>
+
+        {/* Category-Specific Actions */}
+        <div className="shop-actions">
+          {isMedicalShop && (
+            <>
+              {/* Medical Shop - Upload Prescription Only */}
+              <button 
+                className="prescription-btn"
+                onClick={handlePrescriptionUpload}
+              >
+                📄 Upload Prescription
+              </button>
+            </>
+          )}
+
+          {isGroceryShop && (
+            <>
+              {/* Grocery Shop - BOTH View Products AND Upload Grocery List */}
+              <button 
+                className="primary-btn"
+                onClick={handleShopClick}
+              >
+                View Products
+              </button>
+              <button 
+                className="grocery-list-btn"
+                onClick={handleGroceryListUpload}
+              >
+                📝 Upload Grocery List
+              </button>
+            </>
+          )}
+
+          {isHotelFastFood && (
+            <>
+              {/* Hotel/FastFood Shop - View Menus Only */}
+              <button 
+                className="menu-btn"
+                onClick={handleShopClick}
+              >
+                🍽️ View Menus
+              </button>
+            </>
+          )}
+
+          {isOtherShop && (
+            <>
+              {/* Other Shops - View Products Only */}
+              <button 
+                className="primary-btn"
+                onClick={handleShopClick}
+              >
+                View Products
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Give Review Button */}
+        <button 
+          className="secondary-btn" 
+          style={{ marginTop: '0.5rem' }}
+          onClick={() => setShowReview(!showReview)}
+        >
+          {showReview ? "Cancel Review" : "Give Review"}
+        </button>
+      </div>
+
+      {/* Prescription Modal for Medical Shops */}
+      {showPrescriptionModal && (
+        <PrescriptionModal 
+          shop={shop}
+          onClose={() => setShowPrescriptionModal(false)}
+          onShareToWhatsApp={sharePrescriptionToWhatsApp}
+        />
+      )}
+
+      {/* Grocery List Modal for Grocery Shops */}
+      {showGroceryModal && (
+        <GroceryListModal 
+          shop={shop}
+          onClose={() => setShowGroceryModal(false)}
+          onShareToWhatsApp={shareGroceryListToWhatsApp}
+        />
+      )}
+    </div>
+  );
+}
+
+// Simplified Prescription Modal Component - Only Instructions & WhatsApp Button
+function PrescriptionModal({ shop, onClose, onShareToWhatsApp }) {
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content prescription-modal">
+        <div className="modal-header">
+          <h3>📄 Share Prescription via WhatsApp</h3>
+          <button className="close-btn" onClick={onClose}>×</button>
+        </div>
+
+        <div className="modal-body">
+          <div className="instructions-section">
+            <div className="instruction-header">
+              <div className="instruction-icon">📋</div>
+              <h4>How to Share Your Prescription</h4>
+            </div>
+
+            <div className="instruction-steps">
+              <div className="step">
+                <span className="step-number">1</span>
+                <div className="step-content">
+                  <strong>Click the WhatsApp Button Below</strong>
+                  <p>This will open WhatsApp with a pre-filled message</p>
+                </div>
+              </div>
+
+              <div className="step">
+                <span className="step-number">2</span>
+                <div className="step-content">
+                  <strong>Attach Your Prescription</strong>
+                  <p>In WhatsApp, click the attachment icon (📎) and select your prescription file</p>
+                </div>
+              </div>
+
+              <div className="step">
+                <span className="step-number">3</span>
+                <div className="step-content">
+                  <strong>Send to Medical Shop</strong>
+                  <p>Press send to share your prescription with {shop.name}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="important-notes">
+            <h5>📌 Important Notes:</h5>
+            <ul>
+              <li>Ensure your prescription is clear and readable</li>
+              <li>Take a good quality photo in proper lighting</li>
+              <li>All text should be visible and not blurry</li>
+              <li>You can share images (JPG, PNG) or PDF files</li>
+            </ul>
+          </div>
+
+          <div className="whatsapp-action-section">
+            <button 
+              className="whatsapp-direct-btn"
+              onClick={onShareToWhatsApp}
+            >
+              <span className="whatsapp-icon">📱</span>
+              Open WhatsApp to Share Prescription
+            </button>
+
+            <p className="whatsapp-note">
+              WhatsApp will open with a pre-filled message. Just attach your prescription file and send.
+            </p>
+          </div>
+        </div>
+
+        <div className="modal-actions">
+          <button 
+            type="button" 
+            className="secondary-btn" 
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Simplified Grocery List Modal Component
+function GroceryListModal({ shop, onClose, onShareToWhatsApp }) {
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <div className="modal-header">
+          <h3>📝 Share Grocery List via WhatsApp</h3>
+          <button className="close-btn" onClick={onClose}>×</button>
+        </div>
+
+        <div className="modal-body">
+          <div className="instructions-section">
+            <div className="instruction-header">
+              <div className="instruction-icon">🛒</div>
+              <h4>How to Share Your Grocery List</h4>
+            </div>
+
+            <div className="instruction-steps">
+              <div className="step">
+                <span className="step-number">1</span>
+                <div className="step-content">
+                  <strong>Click the WhatsApp Button</strong>
+                  <p>Open WhatsApp with a pre-filled order message</p>
+                </div>
+              </div>
+
+              <div className="step">
+                <span className="step-number">2</span>
+                <div className="step-content">
+                  <strong>Attach Your Grocery List</strong>
+                  <p>In WhatsApp, attach your list as an image or document</p>
+                </div>
+              </div>
+
+              <div className="step">
+                <span className="step-number">3</span>
+                <div className="step-content">
+                  <strong>Send to Grocery Shop</strong>
+                  <p>Share your list with {shop.name} for processing</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="whatsapp-action-section">
+            <button 
+              className="whatsapp-direct-btn grocery"
+              onClick={onShareToWhatsApp}
+            >
+              <span className="whatsapp-icon">📱</span>
+              Open WhatsApp to Share Grocery List
+            </button>
+
+            <p className="whatsapp-note">
+              WhatsApp will open with your order details. Attach your grocery list and send.
+            </p>
+          </div>
+        </div>
+
+        <div className="modal-actions">
+          <button 
+            type="button" 
+            className="secondary-btn" 
+            onClick={onClose}
+          >
+            Cancel
+          </button>
         </div>
       </div>
     </div>
