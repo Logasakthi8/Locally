@@ -354,7 +354,7 @@ function GroceryListModal({ shop, onClose, onShareToWhatsApp }) {
         </div>
 
         <div className="modal-actions">
-          <button 
+          <button   
             type="button" 
             className="secondary-btn" 
             onClick={onClose}
