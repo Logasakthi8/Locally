@@ -48,17 +48,18 @@ function ShopCard({ shop }) {
   // Direct WhatsApp function for medical prescriptions
   const sharePrescriptionToWhatsApp = () => {
     const whatsappNumber = '9361437687'; // Your default number
-
     const message = `Prescription Order - I want to order through prescription`;
-
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
 
+    // Open WhatsApp directly
+    window.open(whatsappUrl, '_blank');
+  };
+
+  // Direct WhatsApp function for grocery lists
   const shareGroceryListToWhatsApp = () => {
     const whatsappNumber = '9361437687'; // Your default number
-
-   const message = `Grocery Order - I want to order through my Grocery List`;
-
+    const message = `Grocery Order - I want to order through my Grocery List`;
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
 
