@@ -126,63 +126,68 @@ function Shops() {
     }
   };
 
-  const fetchShops = async () => {
-    try {
-      const response = await fetch(`${config.apiUrl}/shops`);
-      const data = await response.json();
+  // In your Shops.js - Update the fetchShops function
+const fetchShops = async () => {
+  try {
+    const response = await fetch(`${config.apiUrl}/shops`);
+    const data = await response.json();
 
-      const shopsWithRatings = await Promise.all(
-        data.map(async (shop) => {
-          try {
-            const ratingRes = await fetch(`${config.apiUrl}/reviews/${shop._id}/average`);
-            const ratingData = await ratingRes.json();
-            
-            // Mock data for demonstration
-            const mockData = {
-              deliveryTime: Math.floor(Math.random() * 60) + 15,
-              costForTwo: Math.floor(Math.random() * 2000) + 300,
-              offers: ['20% OFF', 'Free Delivery', 'Buy 1 Get 1'][Math.floor(Math.random() * 3)],
-              isPro: Math.random() > 0.7,
-              discount: Math.random() > 0.5 ? `${Math.floor(Math.random() * 40) + 10}% OFF` : null,
-              safety: Math.random() > 0.3 ? 'MAX Safety' : null
-            };
+    const shopsWithRatings = await Promise.all(
+      data.map(async (shop) => {
+        try {
+          const ratingRes = await fetch(`${config.apiUrl}/reviews/${shop._id}/average`);
+          const ratingData = await ratingRes.json();
+          
+          // Ensure rating is a number
+          const avgRating = parseFloat(ratingData.average_rating) || null;
+          
+          // Mock data for demonstration with safe defaults
+          const mockData = {
+            deliveryTime: Math.floor(Math.random() * 60) + 15,
+            costForTwo: Math.floor(Math.random() * 2000) + 300,
+            offers: ['20% OFF', 'Free Delivery', 'Buy 1 Get 1'][Math.floor(Math.random() * 3)],
+            isPro: Math.random() > 0.7,
+            discount: Math.random() > 0.5 ? `${Math.floor(Math.random() * 40) + 10}% OFF` : null,
+            safety: Math.random() > 0.3 ? 'MAX Safety' : null
+          };
 
-            return { 
-              ...shop, 
-              ...mockData,
-              avgRating: ratingData.average_rating || (Math.random() * 2 + 3).toFixed(1),
-              isOpen: isShopOpen(shop),
-              reviewCount: Math.floor(Math.random() * 500) + 10
-            };
-          } catch {
-            const mockData = {
-              deliveryTime: Math.floor(Math.random() * 60) + 15,
-              costForTwo: Math.floor(Math.random() * 2000) + 300,
-              offers: null,
-              isPro: Math.random() > 0.7,
-              discount: null,
-              safety: null
-            };
+          return { 
+            ...shop, 
+            ...mockData,
+            avgRating: avgRating, // This is now guaranteed to be a number or null
+            isOpen: isShopOpen(shop),
+            reviewCount: Math.floor(Math.random() * 500) + 10
+          };
+        } catch (error) {
+          console.error('Error fetching rating for shop:', shop._id, error);
+          
+          const mockData = {
+            deliveryTime: Math.floor(Math.random() * 60) + 15,
+            costForTwo: Math.floor(Math.random() * 2000) + 300,
+            offers: null,
+            isPro: Math.random() > 0.7,
+            discount: null,
+            safety: null
+          };
 
-            return { 
-              ...shop, 
-              ...mockData,
-              avgRating: null,
-              isOpen: isShopOpen(shop),
-              reviewCount: 0
-            };
-          }
-        })
-      );
+          return { 
+            ...shop, 
+            ...mockData,
+            avgRating: null, // Explicitly set to null on error
+            isOpen: isShopOpen(shop),
+            reviewCount: 0
+          };
+        }
+      })
+    );
 
-      setShops(shopsWithRatings);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching shops:', error);
-      setLoading(false);
-    }
-  };
-
+    setShops(shopsWithRatings);
+    setLoading(false);
+  } catch (error) {
+    console.error('Error fetching shops:', error);
+    setLoading(false);
+  }
+};
   // Group shops by category
   const shopsByCategory = shops.reduce((acc, shop) => {
     const category = shop.category || 'Other';
