@@ -53,7 +53,7 @@ function ShopCard({ shop }) {
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
-@@ -62,314 +62,314 @@
+
   const shareGroceryListToWhatsApp = () => {
     const whatsappNumber = '9361437687'; // Your default number
 
