@@ -1,9 +1,8 @@
-// Shops.js - Enhanced with your specific categories
-import React, { useState, useEffect } from 'react';
+// Shops.js - Enhanced with horizontal scrollable categories
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ShopCard from './ShopCard';
 import config from '../config';
-
 
 function Shops() {
   const [shops, setShops] = useState([]);
@@ -11,6 +10,7 @@ function Shops() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
+  const categoryScrollRef = useRef(null);
 
   useEffect(() => {
     fetchShops();
@@ -138,6 +138,14 @@ function Shops() {
     ? getFilteredShops(shops) 
     : getFilteredShops(shopsByCategory[selectedCategory] || []);
 
+  // Scroll category buttons horizontally
+  const scrollCategories = (direction) => {
+    if (categoryScrollRef.current) {
+      const scrollAmount = 200;
+      categoryScrollRef.current.scrollLeft += direction * scrollAmount;
+    }
+  };
+
   if (loading) {
     return (
       <div className="container">
@@ -169,35 +177,61 @@ function Shops() {
         )}
       </div>
       
-      {/* Category Filter */}
-      <div className="category-filter">
+      {/* Horizontal Scrollable Category Filter */}
+      <div className="category-filter-container">
+        {/* Scroll left button */}
         <button 
-          className={`category-btn ${selectedCategory === 'all' ? 'active' : ''}`}
-          onClick={() => setSelectedCategory('all')}
+          className="scroll-btn scroll-left"
+          onClick={() => scrollCategories(-1)}
         >
-          🏪 All Shops ({shops.length})
+          ‹
         </button>
         
-        {existingCategories.map(category => (
-          <button
-            key={category}
-            className={`category-btn ${selectedCategory === category ? 'active' : ''}`}
-            onClick={() => setSelectedCategory(category)}
-          >
-            {categoryConfig[category].icon} {category} ({shopsByCategory[category]?.length || 0})
-          </button>
-        ))}
-        
-        {/* Other categories */}
-        {otherCategories.map(category => (
-          <button
-            key={category}
-            className={`category-btn ${selectedCategory === category ? 'active' : ''}`}
-            onClick={() => setSelectedCategory(category)}
-          >
-            🏪 {category} ({shopsByCategory[category]?.length || 0})
-          </button>
-        ))}
+        <div className="category-scroll-wrapper" ref={categoryScrollRef}>
+          <div className="category-filter-horizontal">
+            <button 
+              className={`category-btn-horizontal ${selectedCategory === 'all' ? 'active' : ''}`}
+              onClick={() => setSelectedCategory('all')}
+            >
+              <span className="category-icon">🏪</span>
+              <span className="category-text">All Shops</span>
+              <span className="category-count">({shops.length})</span>
+            </button>
+            
+            {existingCategories.map(category => (
+              <button
+                key={category}
+                className={`category-btn-horizontal ${selectedCategory === category ? 'active' : ''}`}
+                onClick={() => setSelectedCategory(category)}
+              >
+                <span className="category-icon">{categoryConfig[category].icon}</span>
+                <span className="category-text">{category}</span>
+                <span className="category-count">({shopsByCategory[category]?.length || 0})</span>
+              </button>
+            ))}
+            
+            {/* Other categories */}
+            {otherCategories.map(category => (
+              <button
+                key={category}
+                className={`category-btn-horizontal ${selectedCategory === category ? 'active' : ''}`}
+                onClick={() => setSelectedCategory(category)}
+              >
+                <span className="category-icon">🏪</span>
+                <span className="category-text">{category}</span>
+                <span className="category-count">({shopsByCategory[category]?.length || 0})</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Scroll right button */}
+        <button 
+          className="scroll-btn scroll-right"
+          onClick={() => scrollCategories(1)}
+        >
+          ›
+        </button>
       </div>
 
       {/* Search Results Info */}
