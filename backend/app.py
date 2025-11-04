@@ -129,10 +129,9 @@ def check_session():
 # ======================
 # OPTIMIZED AUTH ENDPOINTS
 # ======================
-
 @app.route('/api/auth/mobile', methods=['POST'])
 def auth_mobile():
-    """Single optimized endpoint for login/registration"""
+    """Working version without User model dependency"""
     try:
         data = request.get_json()
         mobile = data.get('mobile')
@@ -140,51 +139,49 @@ def auth_mobile():
         if not mobile or len(mobile) != 10 or not mobile.isdigit():
             return jsonify({'error': 'Valid 10-digit mobile number is required'}), 400
         
-        # Find or create user in single operation
         current_time = datetime.utcnow()
-        user = mongo.db.users.find_one_and_update(
-            {'mobile': mobile},
-            {
-                '$setOnInsert': {
-                    'createdAt': current_time,
-                    'lastLogin': current_time
-                },
-                '$set': {
-                    'lastLogin': current_time
-                }
-            },
-            upsert=True,
-            return_document=True,
-            projection={  # Only return essential fields
-                'mobile': 1, 
-                'createdAt': 1, 
-                'lastLogin': 1
-            }
-        )
         
-        # Set session data
+        # Check if user exists
+        user = mongo.db.users.find_one({'mobile': mobile})
+        
+        if user:
+            # Update last login for existing user
+            mongo.db.users.update_one(
+                {'_id': user['_id']},
+                {'$set': {'lastLogin': current_time}}
+            )
+            is_new_user = False
+            message = 'Welcome back!'
+        else:
+            # Create new user without User model
+            user_data = {
+                'mobile': mobile,
+                'createdAt': current_time,
+                'lastLogin': current_time,
+                'delivery_count': 0
+            }
+            result = mongo.db.users.insert_one(user_data)
+            user = mongo.db.users.find_one({'_id': result.inserted_id})
+            is_new_user = True
+            message = 'Account created successfully'
+        
+        # Set session
         session['user_id'] = str(user['_id'])
         session['user_mobile'] = user['mobile']
-        session.permanent = True  # Long session
-        
-        is_new_user = user['lastLogin'] == user['createdAt']
-        
-        print(f"✅ Login successful for: {user['mobile']} (New: {is_new_user})")
+        session.permanent = True
         
         return jsonify({
             'success': True,
             'user': serialize_doc(user),
-            'message': 'Account created successfully' if is_new_user else 'Welcome back!',
+            'message': message,
             'isNewUser': is_new_user
         })
         
     except Exception as e:
-        print(f"Auth error: {e}")
+        print(f"Auth error: {str(e)}")
+        import traceback
+        traceback.print_exc()  # This will show the full error
         return jsonify({'error': 'Authentication failed'}), 500
-
-# ======================
-# DEBUG ENDPOINT FOR SESSION
-# ======================
 
 @app.route('/api/debug-session', methods=['GET'])
 def debug_session():
