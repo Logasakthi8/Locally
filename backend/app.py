@@ -41,30 +41,6 @@ def serialize_doc(doc):
 
 @app.route('/api/check-session', methods=['GET'])
 def check_session():
-    """Fast session check with minimal database queries"""
-    try:
-        if 'user_id' in session:
-            # Only fetch essential user data for faster response
-            user = mongo.db.users.find_one(
-                {'_id': ObjectId(session['user_id'])},
-                {'mobile': 1, 'lastLogin': 1}  # Only get needed fields
-            )
-            if user:
-                return jsonify({
-                    'user': serialize_doc(user),
-                    'message': 'Session active'
-                })
-        
-        # Clear invalid session
-        session.clear()
-        return jsonify({'user': None, 'message': 'No active session'})
-        
-    except Exception as e:
-        print(f"Session check error: {e}")
-        session.clear()
-        return jsonify({'user': None, 'error': 'Session check failed'}), 500
-@app.route('/api/check-session', methods=['GET'])
-def check_session():
     """Enhanced session check with better debugging"""
     try:
         print(f"🔍 Checking session: {dict(session)}")
@@ -91,7 +67,6 @@ def check_session():
         print(f"Session check error: {e}")
         session.clear()
         return jsonify({'user': None, 'error': 'Session check failed'}), 500
-
 
 @app.route('/api/check-user', methods=['POST'])
 def check_user():
@@ -301,9 +276,6 @@ def logout():
         print(f"❌ Logout error: {e}")
         return jsonify({'error': 'Logout failed', 'success': False}), 500
 
-# ======================
-# ENHANCED SESSION CHECK
-# ======================
 # ALL YOUR EXISTING ROUTES BELOW (UNCHANGED)
 @app.route('/')
 def home():
@@ -1036,31 +1008,4 @@ def submit_feedback():
             shop_type=data.get('shop_type'),
             products=data.get('products'),
             name=data.get('name'),
-            shop_name=data.get('shop_name'),
-            shop_address=data.get('shop_address'),
-            notify_me=data.get('notify_me', False),
-            contact=data.get('contact'),
-            preference=data.get('preference', 'no_preference'),
-            user_mobile=user_mobile  # This is crucial - pass the user_mobile
-        )
-        
-        feedback_data = feedback.to_dict()
-        print("💾 Storing feedback data:", feedback_data)
-        
-        # Store in database
-        result = mongo.db.feedback.insert_one(feedback_data)
-        print("✅ Stored in DB - ID:", str(result.inserted_id))
-        
-        return jsonify({
-            'message': 'Thank you for your suggestion! Share this with your friends too! You will receive 20% off your first order when your suggested shop is added.',
-            'feedback_id': str(result.inserted_id),
-            'success': True,
-            'user_mobile_stored': user_mobile is not None
-        }), 201
-        
-    except Exception as e:
-        print(f"❌ Error submitting feedback: {e}")
-        return jsonify({'error': 'Internal server error'}), 500
-        
-if __name__ == '__main__':
-    app.run(debug=True)
+            shop_name=data.get
