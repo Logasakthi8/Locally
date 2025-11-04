@@ -66,25 +66,34 @@ function Products() {
 
   if (loading) {
     return (
-      <div className="container">
-        <button onClick={() => navigate('/shops')} className="back-btn">
-          Back to Shops
-        </button>
-        <div className="loading-state">Loading products...</div>
+      <div className="products-container">
+        <div className="products-header">
+          <button onClick={() => navigate('/shops')} className="back-btn">
+            ← Back to Shops
+          </button>
+        </div>
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Discovering amazing products...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="container">
-        <button onClick={() => navigate('/shops')} className="back-btn">
-          Back to Shops
-        </button>
-        <div className="error-state">
+      <div className="products-container">
+        <div className="products-header">
+          <button onClick={() => navigate('/shops')} className="back-btn">
+            ← Back to Shops
+          </button>
+        </div>
+        <div className="error-container">
+          <div className="error-icon">😔</div>
+          <h3>Oops! Something went wrong</h3>
           <p>{error}</p>
-          <button onClick={fetchProducts} className="primary-btn">
-            Try Again
+          <button onClick={fetchProducts} className="retry-btn">
+            🔄 Try Again
           </button>
         </div>
       </div>
@@ -92,56 +101,117 @@ function Products() {
   }
 
   return (
-    <div className="container">
-      <button onClick={() => navigate('/shops')} className="back-btn">
-        Back to Shops
-      </button>
-      <h2 className="page-title">Products</h2>
-      
-      {/* Search Bar */}
-      <div className="search-container">
-        <input
-          type="text"
-          placeholder="Search the Products here..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="search-input"
-        />
+    <div className="products-container">
+      {/* Header Section */}
+      <div className="products-header">
+        <button onClick={() => navigate('/shops')} className="back-btn">
+          ← Back to Shops
+        </button>
+        <h1 className="page-title">Products Menu</h1>
       </div>
 
-      {/* Request Medicine Button - Always visible */}
-      <div className="request-medicine-section">
+      {/* Search Section */}
+      <div className="search-section">
+        <div className="search-container">
+          <div className="search-icon">🔍</div>
+          <input
+            type="text"
+            placeholder="Search for products, items..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="search-input"
+          />
+          {searchTerm && (
+            <button 
+              className="clear-search"
+              onClick={() => setSearchTerm('')}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="quick-actions">
+        <div className="products-count">
+          <span className="count-badge">{filteredProducts.length}</span>
+          <span>Products Available</span>
+        </div>
+        
         <button 
           onClick={handleWhatsAppRequest}
-          className="whatsapp-btn"
+          className="whatsapp-request-btn"
         >
-          📱 Request Products
+          <span className="whatsapp-icon">💬</span>
+          Request Product
         </button>
-        <p className="whatsapp-description">
-          Can't find the Product? Request it via WhatsApp and we'll help you get it fast!
-        </p>
       </div>
-      
+
+      {/* Request Help Section */}
+      <div className="request-help-section">
+        <div className="help-content">
+          <div className="help-icon">❓</div>
+          <div className="help-text">
+            <h4>Can't find what you're looking for?</h4>
+            <p>We'll help you get it! Request any product via WhatsApp</p>
+          </div>
+        </div>
+        <button 
+          onClick={handleWhatsAppRequest}
+          className="help-action-btn"
+        >
+          Request Now
+        </button>
+      </div>
+
+      {/* Products Grid */}
       {filteredProducts.length === 0 ? (
-        <div className="empty-state">
-          {searchTerm ? (
-            <>
-              <p>Can't find  "{searchTerm}"</p>
-              <p>Use the Request Product button above to get the product fast!</p>
-            </>
-          ) : (
-            <p>No products available in this shop.</p>
+        <div className="empty-products">
+          <div className="empty-icon">📦</div>
+          <h3>
+            {searchTerm ? `No results for "${searchTerm}"` : 'No products available'}
+          </h3>
+          <p>
+            {searchTerm 
+              ? "Try searching with different keywords or request the product via WhatsApp"
+              : "This shop hasn't added any products yet. Check back later!"
+            }
+          </p>
+          {searchTerm && (
+            <button 
+              className="clear-search-btn"
+              onClick={() => setSearchTerm('')}
+            >
+              Clear Search
+            </button>
           )}
         </div>
       ) : (
-        <div className="products-grid">
-          {filteredProducts.map(product => (
-            <ProductCard 
-              key={product._id} 
-              product={product} 
-              onWishlistUpdate={handleWishlistUpdate}
-            />
-          ))}
+        <div className="products-content">
+          {/* Results Info */}
+          <div className="results-info">
+            <h2>
+              {searchTerm 
+                ? `Search Results for "${searchTerm}"`
+                : 'All Products'
+              }
+            </h2>
+            <span className="results-count">
+              {filteredProducts.length} item{filteredProducts.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+
+          {/* Products Grid */}
+          <div className="products-grid">
+            {filteredProducts.map(product => (
+              <ProductCard 
+                key={product._id} 
+                product={product} 
+                onWishlistUpdate={handleWishlistUpdate}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
