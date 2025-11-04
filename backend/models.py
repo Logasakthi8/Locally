@@ -2,17 +2,20 @@ from flask_pymongo import PyMongo
 from bson import ObjectId
 from datetime import datetime
 
+
 class User:
     def __init__(self, mobile):
         self.mobile = mobile
-        self.created_at = datetime.utcnow()
+        self.createdAt = datetime.utcnow()
+        self.lastLogin = datetime.utcnow()
     
     def to_dict(self):
         return {
-            "mobile": self.mobile,
-            "created_at": self.created_at 
+            'mobile': self.mobile,
+            'createdAt': self.createdAt,
+            'lastLogin': self.lastLogin,
+            'delivery_count': 0  # Add this field if missing
         }
-
 class Shop:
     def __init__(self, name, owner_mobile, category, opening_time, closing_time, image_url, address):
         self.name = name
