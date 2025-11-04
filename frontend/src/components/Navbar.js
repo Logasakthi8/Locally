@@ -6,29 +6,44 @@ function Navbar({ user, onLogout }) {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // In your Navbar component
-const handleLogout = async () => {
+ const handleLogout = async () => {
   try {
+    console.log('🔄 Starting logout...');
+    
     const response = await fetch(`${config.apiUrl}/logout`, {
       method: 'POST',
-      credentials: 'include'
+      credentials: 'include', // This is crucial for sending cookies
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
     
     const data = await response.json();
+    console.log('📋 Logout response:', data);
     
     if (data.success) {
-      // Clear local storage
+      // Clear all local storage
       localStorage.removeItem('userSession');
-      // Update app state
+      sessionStorage.clear();
+      
+      // Clear any app state
       onLogout();
-      // Redirect to login
-      navigate('/');
+      
+      // Force reload to clear any cached state
+      window.location.href = '/';
+      
+      console.log('✅ Logout successful');
+    } else {
+      console.error('❌ Logout failed:', data.error);
     }
   } catch (error) {
-    console.error('Logout failed:', error);
+    console.error('❌ Logout error:', error);
+    // Even if API call fails, clear local state
+    localStorage.removeItem('userSession');
+    onLogout();
+    window.location.href = '/';
   }
 };
-
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
