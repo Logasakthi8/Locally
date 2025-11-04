@@ -6,19 +6,28 @@ function Navbar({ user, onLogout }) {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const handleLogout = async () => {
-    try {
-      await fetch(`${config.apiUrl}/logout`, {
-        method: 'POST',
-        credentials: 'include'
-      });
+  // In your Navbar component
+const handleLogout = async () => {
+  try {
+    const response = await fetch(`${config.apiUrl}/logout`, {
+      method: 'POST',
+      credentials: 'include'
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      // Clear local storage
+      localStorage.removeItem('userSession');
+      // Update app state
       onLogout();
-      setIsMenuOpen(false);
-      navigate("/");
-    } catch (error) {
-      console.error("Error logging out:", error);
+      // Redirect to login
+      navigate('/');
     }
-  };
+  } catch (error) {
+    console.error('Logout failed:', error);
+  }
+};
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
