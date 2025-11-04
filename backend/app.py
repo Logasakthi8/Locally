@@ -36,16 +36,19 @@ def serialize_doc(doc):
     return doc
 
 # ======================
-# IMPROVED AUTH ENDPOINTS
+# OPTIMIZED AUTH ENDPOINTS FOR PERFORMANCE
 # ======================
 
 @app.route('/api/check-session', methods=['GET'])
 def check_session():
-    """Check if user has an active session"""
+    """Fast session check with minimal database queries"""
     try:
         if 'user_id' in session:
-            # Verify user still exists in database
-            user = mongo.db.users.find_one({'_id': ObjectId(session['user_id'])})
+            # Only fetch essential user data for faster response
+            user = mongo.db.users.find_one(
+                {'_id': ObjectId(session['user_id'])},
+                {'mobile': 1, 'lastLogin': 1}  # Only get needed fields
+            )
             if user:
                 return jsonify({
                     'user': serialize_doc(user),
@@ -63,15 +66,19 @@ def check_session():
 
 @app.route('/api/check-user', methods=['POST'])
 def check_user():
-    """Quick check if user exists before login"""
+    """Ultra-fast user existence check"""
     try:
-        data = request.json
+        data = request.get_json()  # Use get_json for better performance
         mobile = data.get('mobile')
         
-        if not mobile:
-            return jsonify({'error': 'Mobile number is required'}), 400
+        if not mobile or len(mobile) != 10 or not mobile.isdigit():
+            return jsonify({'error': 'Valid 10-digit mobile number is required'}), 400
         
-        user = mongo.db.users.find_one({'mobile': mobile})
+        # Fast existence check with projection
+        user = mongo.db.users.find_one(
+            {'mobile': mobile}, 
+            {'_id': 1}  # Only get ID for faster response
+        )
         
         return jsonify({
             'userExists': bool(user),
@@ -82,6 +89,57 @@ def check_user():
         print(f"User check error: {e}")
         return jsonify({'error': 'User check failed'}), 500
 
+@app.route('/api/auth/mobile', methods=['POST'])
+def auth_mobile():
+    """Single optimized endpoint for login/registration"""
+    try:
+        data = request.get_json()
+        mobile = data.get('mobile')
+        
+        if not mobile or len(mobile) != 10 or not mobile.isdigit():
+            return jsonify({'error': 'Valid 10-digit mobile number is required'}), 400
+        
+        # Find or create user in single operation
+        current_time = datetime.utcnow()
+        user = mongo.db.users.find_one_and_update(
+            {'mobile': mobile},
+            {
+                '$setOnInsert': {
+                    'createdAt': current_time,
+                    'lastLogin': current_time
+                },
+                '$set': {
+                    'lastLogin': current_time
+                }
+            },
+            upsert=True,
+            return_document=True,
+            projection={  # Only return essential fields
+                'mobile': 1, 
+                'createdAt': 1, 
+                'lastLogin': 1
+            }
+        )
+        
+        # Set session data
+        session['user_id'] = str(user['_id'])
+        session['user_mobile'] = user['mobile']
+        session.permanent = True  # Long session
+        
+        is_new_user = user['lastLogin'] == user['createdAt']
+        
+        return jsonify({
+            'success': True,
+            'user': serialize_doc(user),
+            'message': 'Account created successfully' if is_new_user else 'Welcome back!',
+            'isNewUser': is_new_user
+        })
+        
+    except Exception as e:
+        print(f"Auth error: {e}")
+        return jsonify({'error': 'Authentication failed'}), 500
+
+# KEEP ALL EXISTING ENDPOINTS EXACTLY AS THEY ARE
 @app.route('/api/login', methods=['POST'])
 def login():
     """Improved login with session persistence"""
