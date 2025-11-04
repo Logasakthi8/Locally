@@ -4738,3 +4738,160 @@ body {
     width: 100%;
   }
 }
+/* Horizontal Category Filter Styles */
+.category-filter-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: 20px 0;
+  background: white;
+  border-radius: 12px;
+  padding: 5px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.scroll-btn {
+  background: #f8f9fa;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: bold;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 2;
+  flex-shrink: 0;
+}
+
+.scroll-btn:hover {
+  background: #e9ecef;
+  color: #333;
+}
+
+.scroll-left {
+  margin-right: 8px;
+}
+
+.scroll-right {
+  margin-left: 8px;
+}
+
+.category-scroll-wrapper {
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  flex: 1;
+}
+
+.category-scroll-wrapper::-webkit-scrollbar {
+  display: none;
+}
+
+.category-filter-horizontal {
+  display: flex;
+  gap: 8px;
+  padding: 5px 0;
+  min-width: min-content;
+}
+
+.category-btn-horizontal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
+  padding: 12px 8px;
+  border: 2px solid #e9ecef;
+  border-radius: 10px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.category-btn-horizontal:hover {
+  border-color: #007bff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,123,255,0.15);
+}
+
+.category-btn-horizontal.active {
+  border-color: #007bff;
+  background: #007bff;
+  color: white;
+  box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+}
+
+.category-icon {
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+
+.category-text {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 2px;
+  white-space: nowrap;
+}
+
+.category-count {
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+/* Hide scroll buttons on mobile */
+@media (max-width: 768px) {
+  .scroll-btn {
+    display: none;
+  }
+  
+  .category-filter-container {
+    padding: 5px 0;
+  }
+  
+  .category-scroll-wrapper {
+    padding: 0 10px;
+  }
+}
+
+/* Existing styles remain the same */
+.search-container {
+  position: relative;
+  margin: 20px 0;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e9ecef;
+  border-radius: 25px;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.3s ease;
+}
+
+.search-input:focus {
+  border-color: #007bff;
+}
+
+.clear-search {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #666;
+  cursor: pointer;
+  padding: 4px;
+}
+
+/* Rest of your existing CSS remains unchanged */
