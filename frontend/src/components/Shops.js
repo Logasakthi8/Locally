@@ -14,7 +14,7 @@ function Shops() {
 
   useEffect(() => {
     fetchShops();
-  }, []);
+  }, []); 
 
   // Your specific categories with icons and display names
   const categoryConfig = {
