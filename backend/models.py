@@ -2,20 +2,17 @@ from flask_pymongo import PyMongo
 from bson import ObjectId
 from datetime import datetime
 
-
 class User:
     def __init__(self, mobile):
         self.mobile = mobile
-        self.createdAt = datetime.utcnow()
-        self.lastLogin = datetime.utcnow()
-    
+        self.created_at = datetime.utcnow()
+
     def to_dict(self):
         return {
-            'mobile': self.mobile,
-            'createdAt': self.createdAt,
-            'lastLogin': self.lastLogin,
-            'delivery_count': 0  # Add this field if missing
+            "mobile": self.mobile,
+            "created_at": self.created_at 
         }
+
 class Shop:
     def __init__(self, name, owner_mobile, category, opening_time, closing_time, image_url, address):
         self.name = name
@@ -25,7 +22,7 @@ class Shop:
         self.closing_time = closing_time
         self.image_url = image_url
         self.address = address
-    
+
     def to_dict(self):
         return {
             "name": self.name,
@@ -45,7 +42,7 @@ class Product:
         self.price = price
         self.quantity = quantity
         self.image_url = image_url
-    
+
     def to_dict(self):
         return {
             "shop_id": self.shop_id,
@@ -63,7 +60,7 @@ class Wishlist:
         self.shop_id = shop_id
         self.quantity = quantity
         self.created_at = datetime.utcnow()
-    
+
     def to_dict(self):
         return {
             'user_id': self.user_id,
@@ -80,7 +77,7 @@ class Order:
         self.total_amount = total_amount
         self.status = status
         self.created_at = datetime.utcnow()
-    
+
     def to_dict(self):
         return {
             'user_id': self.user_id,
@@ -122,7 +119,7 @@ class Feedback:
         self.user_mobile = user_mobile  # This should NOT be None
         self.created_at = datetime.utcnow()
         print(f"🔍 Feedback object created - user_mobile: {self.user_mobile}")  # Debug log
-    
+
     def to_dict(self):
         return {
             'shop_type': self.shop_type,
