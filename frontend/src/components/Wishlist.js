@@ -1,4 +1,6 @@
+import React, { useState, useEffect } from 'react'; // Add this import
 import config from '../config'; 
+import WishlistItem from './WishlistItem'; // Import the WishlistItem component
 
 function Wishlist() {
   const [wishlist, setWishlist] = useState([]);
@@ -8,12 +10,10 @@ function Wishlist() {
   const [selectedProducts, setSelectedProducts] = useState({});
   const [deliveryCharge] = useState(30);
   const [userDeliveryCount, setUserDeliveryCount] = useState(() => {
-
     const saved = localStorage.getItem('userDeliveryCount');
     return saved ? parseInt(saved) : 0;
   });
   const [expandedShops, setExpandedShops] = useState({}); // Track which shops are expanded
-
 
   const YOUR_PHONE_NUMBER = '9361437687';
 
@@ -52,16 +52,13 @@ function Wishlist() {
     const now = new Date();
     const currentTime = now.getHours() * 60 + now.getMinutes();
 
-
     const convertTimeToMinutes = (timeStr) => {
-
       const match = timeStr.match(/(\d{1,2}):(\d{2})\s?(AM|PM)/i);
       if (!match) return 0;
 
       let [, hours, minutes, period] = match;
       hours = parseInt(hours);
       minutes = parseInt(minutes);
-
 
       if (period.toUpperCase() === 'PM' && hours !== 12) {
         hours += 12;
@@ -73,7 +70,6 @@ function Wishlist() {
 
     const openingTime = convertTimeToMinutes(shop.opening_time);
     const closingTime = convertTimeToMinutes(shop.closing_time);
-
 
     return currentTime >= openingTime && currentTime <= closingTime;
   };
@@ -413,42 +409,6 @@ function Wishlist() {
                   {/* Expand/Collapse Icon */}
                   <div className="shop-expand-icon">
                     {isExpanded ? '▼' : '►'}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                   </div>
                 </div>
 
@@ -509,19 +469,6 @@ function Wishlist() {
                               <span>Add ₹{(100 - subtotal).toFixed(2)} more to reach minimum order of ₹100</span>
                             </div>
                           )}
-
-
-
-
-
-
-
-
-
-
-
-
-
                         </div>
                         
                         {/* Action Buttons */}
