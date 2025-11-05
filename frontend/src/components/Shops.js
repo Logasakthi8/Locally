@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ShopCard from './ShopCard';
 import config from '../config';
-
+  
 
 function Shops() {
   const [shops, setShops] = useState([]);
