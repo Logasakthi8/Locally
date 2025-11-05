@@ -10,13 +10,18 @@ function Wishlist() {
   const [selectedProducts, setSelectedProducts] = useState({});
   const [deliveryCharge] = useState(30);
   const [userDeliveryCount, setUserDeliveryCount] = useState(() => {
-    // Initialize from localStorage or default to 0
     const saved = localStorage.getItem('userDeliveryCount');
     return saved ? parseInt(saved) : 0;
   });
+  const [error, setError] = useState(null);
+  const [connectionStatus, setConnectionStatus] = useState('checking');
 
-  // Your hardcoded phone number
   const YOUR_PHONE_NUMBER = '9361437687';
+
+  // Test backend connection first
+  useEffect(() => {
+    testBackendConnection();
+  }, []);
 
   useEffect(() => {
     fetchWishlist();
@@ -29,63 +34,89 @@ function Wishlist() {
     }
   }, [wishlist]);
 
-  // Update localStorage whenever userDeliveryCount changes
   useEffect(() => {
     localStorage.setItem('userDeliveryCount', userDeliveryCount.toString());
   }, [userDeliveryCount]);
 
-  const isShopOpen = (shop) => {
-    if (!shop.opening_time || !shop.closing_time) return true;
-
-    const now = new Date();
-    const currentTime = now.getHours() * 60 + now.getMinutes(); // Current time in minutes
-
-    // Function to convert "HH:MM AM/PM" to minutes since midnight
-    const convertTimeToMinutes = (timeStr) => {
-      // Match the time parts and AM/PM indicator
-      const match = timeStr.match(/(\d{1,2}):(\d{2})\s?(AM|PM)/i);
-      if (!match) return 0; // Return 0 if format is invalid
-
-      let [, hours, minutes, period] = match;
-      hours = parseInt(hours);
-      minutes = parseInt(minutes);
-
-      // Convert to 24-hour format
-      if (period.toUpperCase() === 'PM' && hours !== 12) {
-        hours += 12;
-      } else if (period.toUpperCase() === 'AM' && hours === 12) {
-        hours = 0;
-      }
-      return hours * 60 + minutes;
-    };
-
-    const openingTime = convertTimeToMinutes(shop.opening_time); // "09:30 AM" -> 570 minutes
-    const closingTime = convertTimeToMinutes(shop.closing_time); // "09:30 PM" -> 1290 minutes
-
-    // Simple comparison if shop closes on the same day
-    return currentTime >= openingTime && currentTime <= closingTime;
-  };
-
-  const fetchWishlist = async () => {
+  const testBackendConnection = async () => {
     try {
-      setLoading(true);
-      const response = await fetch(`${config.apiUrl}/wishlist`, {
+      console.log('🔍 Testing backend connection to:', config.apiUrl);
+      setConnectionStatus('testing');
+      
+      const response = await fetch(`${config.apiUrl}/health`, {
+        method: 'GET',
         credentials: 'include'
       });
 
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ Backend connection successful:', data);
+        setConnectionStatus('connected');
+        setError(null);
+      } else {
+        console.error('❌ Backend responded with error:', response.status);
+        setConnectionStatus('error');
+        setError(`Backend error: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('❌ Backend connection failed:', error);
+      setConnectionStatus('error');
+      setError(`Cannot connect to server: ${error.message}`);
+    }
+  };
+
+  const fetchWishlist = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log('🔍 Fetching wishlist from:', `${config.apiUrl}/wishlist`);
+      
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+      const response = await fetch(`${config.apiUrl}/wishlist`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      console.log('📡 Wishlist response status:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Wishlist data received, items:', data.length);
         setWishlist(data);
 
         if (data.length > 0) {
           await fetchShopDetails(data);
         }
+      } else if (response.status === 401) {
+        const errorMsg = 'Please login to view your wishlist';
+        console.error('❌ Authentication failed:', errorMsg);
+        setError(errorMsg);
       } else {
-        console.error('Failed to fetch wishlist');
+        const errorMsg = `Server error: ${response.status}`;
+        console.error('❌ Failed to fetch wishlist:', errorMsg);
+        setError(errorMsg);
       }
-      setLoading(false);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('❌ Network error fetching wishlist:', error);
+      
+      let errorMessage = 'Network error: ';
+      if (error.name === 'AbortError') {
+        errorMessage += 'Request timed out. ';
+      }
+      errorMessage += 'Please check your internet connection and try again.';
+      
+      setError(errorMessage);
+    } finally {
       setLoading(false);
     }
   };
@@ -93,6 +124,7 @@ function Wishlist() {
   const fetchShopDetails = async (products) => {
     try {
       const shopIds = [...new Set(products.map(product => product.shop_id))];
+      console.log('🔍 Fetching details for shops:', shopIds);
 
       if (shopIds.length === 0) return;
 
@@ -107,14 +139,17 @@ function Wishlist() {
 
       if (response.ok) {
         const shopsData = await response.json();
+        console.log('✅ Shop details received:', shopsData.length, 'shops');
         const shopsMap = {};
         shopsData.forEach(shop => {
           shopsMap[shop._id] = shop;
         });
         setShops(shopsMap);
+      } else {
+        console.error('❌ Failed to fetch shop details:', response.status);
       }
     } catch (error) {
-      console.error('Error fetching shop details:', error);
+      console.error('❌ Error fetching shop details:', error);
     }
   };
 
@@ -149,27 +184,32 @@ function Wishlist() {
 
   const removeFromWishlist = async (productId) => {
     try {
+      console.log('🗑️ Removing product from wishlist:', productId);
+      
       const response = await fetch(`${config.apiUrl}/wishlist/${productId}`, {
         method: 'DELETE',
         credentials: 'include'
       });
 
       if (response.ok) {
+        console.log('✅ Product removed from wishlist');
         setWishlist(wishlist.filter(item => item._id !== productId));
 
         const newSelected = {...selectedProducts};
         delete newSelected[productId];
         setSelectedProducts(newSelected);
       } else {
-        console.error('Failed to remove from wishlist');
+        console.error('❌ Failed to remove from wishlist:', response.status);
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('❌ Error removing from wishlist:', error);
     }
   };
 
   const updateQuantity = async (productId, newQuantity) => {
     try {
+      console.log('📦 Updating quantity for product:', productId, 'to', newQuantity);
+      
       const response = await fetch(`${config.apiUrl}/wishlist/${productId}/quantity`, {
         method: 'PUT',
         headers: {
@@ -180,6 +220,7 @@ function Wishlist() {
       });
 
       if (response.ok) {
+        console.log('✅ Quantity updated successfully');
         setWishlist(prevWishlist => 
           prevWishlist.map(item => 
             item._id === productId 
@@ -188,10 +229,10 @@ function Wishlist() {
           )
         );
       } else {
-        console.error('Failed to update quantity');
+        console.error('❌ Failed to update quantity:', response.status);
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('❌ Error updating quantity:', error);
     }
   };
 
@@ -207,7 +248,10 @@ function Wishlist() {
 
   const checkoutViaWhatsApp = (shopId) => {
     const shop = shops[shopId];
-    if (!shop) return;
+    if (!shop) {
+      console.error('❌ Shop not found for ID:', shopId);
+      return;
+    }
 
     // Check if shop is open
     const shopOpen = isShopOpen(shop);
@@ -274,19 +318,52 @@ function Wishlist() {
 
   const clearCart = async () => {
     try {
+      console.log('🗑️ Clearing entire wishlist');
+      
       const response = await fetch(`${config.apiUrl}/clear-cart`, {
         method: 'POST',
         credentials: 'include'
       });
 
       if (response.ok) {
+        console.log('✅ Wishlist cleared successfully');
         setWishlist([]);
         setGroupedWishlist({});
         setSelectedProducts({});
+      } else {
+        console.error('❌ Failed to clear cart:', response.status);
       }
     } catch (error) {
-      console.error('Error clearing cart:', error);
+      console.error('❌ Error clearing cart:', error);
     }
+  };
+
+  const isShopOpen = (shop) => {
+    if (!shop.opening_time || !shop.closing_time) return true;
+
+    const now = new Date();
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+
+    const convertTimeToMinutes = (timeStr) => {
+      const match = timeStr.match(/(\d{1,2}):(\d{2})\s?(AM|PM)/i);
+      if (!match) return 0;
+
+      let [, hours, minutes, period] = match;
+      hours = parseInt(hours);
+      minutes = parseInt(minutes);
+
+      if (period.toUpperCase() === 'PM' && hours !== 12) {
+        hours += 12;
+      } else if (period.toUpperCase() === 'AM' && hours === 12) {
+        hours = 0;
+      }
+      return hours * 60 + minutes;
+    };
+
+    const openingTime = convertTimeToMinutes(shop.opening_time);
+    const closingTime = convertTimeToMinutes(shop.closing_time);
+
+    return currentTime >= openingTime && currentTime <= closingTime;
   };
 
   const calculateShopSubtotal = (products) => {
@@ -300,7 +377,6 @@ function Wishlist() {
     const subtotal = calculateShopSubtotal(selectedProductsList);
 
     if (subtotal >= 100) {
-      // Apply delivery charge based on user's delivery count
       const delivery = calculateDeliveryCharge();
       return subtotal + delivery;
     }
@@ -320,10 +396,49 @@ function Wishlist() {
     return wishlist.reduce((sum, item) => sum + (item.quantity || 1), 0);
   };
 
+  const retryConnection = () => {
+    setError(null);
+    setConnectionStatus('checking');
+    testBackendConnection();
+    fetchWishlist();
+  };
+
   if (loading) {
     return (
       <div className="container">
-        <div className="loading">Loading your wishlist...</div>
+        <div className="loading">
+          <p>Loading your wishlist...</p>
+          <p className="connection-status">Status: {connectionStatus}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container">
+        <div className="error-state">
+          <div className="error-icon">⚠️</div>
+          <h2>Connection Error</h2>
+          <p>{error}</p>
+          <div className="error-actions">
+            <button onClick={retryConnection} className="btn btn-primary">
+              Try Again
+            </button>
+            <button onClick={() => window.location.reload()} className="btn btn-secondary">
+              Reload Page
+            </button>
+          </div>
+          <div className="troubleshooting-tips">
+            <h4>Troubleshooting Tips:</h4>
+            <ul>
+              <li>Check your internet connection</li>
+              <li>Verify the backend server is running</li>
+              <li>Check browser console for detailed errors</li>
+              <li>Try refreshing the page</li>
+            </ul>
+          </div>
+        </div>
       </div>
     );
   }
@@ -361,7 +476,6 @@ function Wishlist() {
             const selectedCount = getSelectedProductsCount(shopId);
             const meetsMinimum = subtotal >= 100;
             const shopOpen = isShopOpen(shop);
-            // Calculate delivery charge based on user's delivery count
             const delivery = calculateDeliveryCharge();
 
             return (
@@ -400,7 +514,7 @@ function Wishlist() {
 
                 {!shopOpen && (
                   <div className="shop-closed-message">
-                    <p>Sorry! The shop is closed. Please place the order after ${shop.opening_time}.</p>
+                    <p>Sorry! The shop is closed. Please place the order after {shop.opening_time}.</p>
                   </div>
                 )}
 
