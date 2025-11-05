@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './AuthContext'; // Import AuthContext
+import { AuthProvider, useAuth } from './components/AuthContext'; // Import AuthContext
 import Navbar from './components/Navbar';
 import Login from './components/Login';
 import Shops from './components/Shops';
