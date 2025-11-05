@@ -19,8 +19,7 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="None",
     SESSION_COOKIE_SECURE=True,
     SESSION_COOKIE_HTTPONLY=True,
-    PERMANENT_SESSION_LIFETIME=timedelta(days=365),  # 1 YEAR session
-    SESSION_REFRESH_EACH_REQUEST=True, 
+    PERMANENT_SESSION_LIFETIME=timedelta(days=30)  # 30-day session
 )
 
 CORS(app, supports_credentials=True, origins=[
@@ -39,20 +38,18 @@ def serialize_doc(doc):
 # ======================
 # IMPROVED AUTH ENDPOINTS
 # ======================
+
 @app.route('/api/check-session', methods=['GET'])
 def check_session():
-    """Enhanced session check with auto-refresh"""
+    """Check if user has an active session"""
     try:
         if 'user_id' in session:
             # Verify user still exists in database
             user = mongo.db.users.find_one({'_id': ObjectId(session['user_id'])})
             if user:
-                # AUTO-REFRESH SESSION on every check
-                session.modified = True
                 return jsonify({
                     'user': serialize_doc(user),
-                    'message': 'Session active',
-                    'session_refreshed': True
+                    'message': 'Session active'
                 })
 
         # Clear invalid session
@@ -63,13 +60,7 @@ def check_session():
         print(f"Session check error: {e}")
         session.clear()
         return jsonify({'user': None, 'error': 'Session check failed'}), 500
-        
-@app.before_request
-def refresh_session():
-    """Automatically refresh session on every request to keep it alive"""
-    if 'user_id' in session:
-        session.modified = True
-        
+
 @app.route('/api/check-user', methods=['POST'])
 def check_user():
     """Quick check if user exists before login"""
