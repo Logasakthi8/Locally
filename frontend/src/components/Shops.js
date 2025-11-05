@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ShopCard from './ShopCard';
-import config from '../config';
+import config from '../config'; // Make sure this path is correct
 
 function Shops() {
   const [shops, setShops] = useState([]);
@@ -74,26 +74,36 @@ function Shops() {
 
   const fetchShops = async () => {
     try {
+      console.log('Fetching shops from:', `${config.apiUrl}/shops`);
       const response = await fetch(`${config.apiUrl}/shops`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch shops: ${response.status}`);
+      }
+      
       const data = await response.json();
+      console.log('Shops data received:', data);
 
       const shopsWithRatings = await Promise.all(
         data.map(async (shop) => {
           try {
             const ratingRes = await fetch(`${config.apiUrl}/reviews/${shop._id}/average`);
-            const ratingData = await ratingRes.json();
-            return { 
-              ...shop, 
-              avgRating: ratingData.average_rating || null,
-              isOpen: isShopOpen(shop)
-            };
-          } catch {
-            return { 
-              ...shop, 
-              avgRating: null,
-              isOpen: isShopOpen(shop)
-            };
+            if (ratingRes.ok) {
+              const ratingData = await ratingRes.json();
+              return { 
+                ...shop, 
+                avgRating: ratingData.average_rating || null,
+                isOpen: isShopOpen(shop)
+              };
+            }
+          } catch (error) {
+            console.error('Error fetching rating for shop:', shop._id, error);
           }
+          return { 
+            ...shop, 
+            avgRating: null,
+            isOpen: isShopOpen(shop)
+          };
         })
       );
 
