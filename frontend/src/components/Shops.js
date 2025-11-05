@@ -1,8 +1,8 @@
-// Shops.js - Enhanced with horizontal scrollable categories
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ShopCard from './ShopCard';
-import config from '../config'; // Make sure this path is correct
+import config from '../config';
+
 
 function Shops() {
   const [shops, setShops] = useState([]);
@@ -14,7 +14,7 @@ function Shops() {
 
   useEffect(() => {
     fetchShops();
-  }, []); 
+  }, []);
 
   // Your specific categories with icons and display names
   const categoryConfig = {
@@ -53,18 +53,18 @@ function Shops() {
     try {
       const openingTimes = shop.opening_time.split(/\s+and\s+|\s*,\s*/);
       const closingTimes = shop.closing_time.split(/\s+and\s+|\s*,\s*/);
-      
+
       if (openingTimes.length === closingTimes.length) {
         for (let i = 0; i < openingTimes.length; i++) {
           const openingTime = convertTimeToMinutes(openingTimes[i].trim());
           const closingTime = convertTimeToMinutes(closingTimes[i].trim());
-          
+
           if (currentTime >= openingTime && currentTime <= closingTime) {
             return true;
           }
         }
       }
-      
+
       return false;
     } catch (error) {
       console.error('Error parsing shop times:', error);
@@ -74,36 +74,26 @@ function Shops() {
 
   const fetchShops = async () => {
     try {
-      console.log('Fetching shops from:', `${config.apiUrl}/shops`);
       const response = await fetch(`${config.apiUrl}/shops`);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch shops: ${response.status}`);
-      }
-      
       const data = await response.json();
-      console.log('Shops data received:', data);
 
       const shopsWithRatings = await Promise.all(
         data.map(async (shop) => {
           try {
             const ratingRes = await fetch(`${config.apiUrl}/reviews/${shop._id}/average`);
-            if (ratingRes.ok) {
-              const ratingData = await ratingRes.json();
-              return { 
-                ...shop, 
-                avgRating: ratingData.average_rating || null,
-                isOpen: isShopOpen(shop)
-              };
-            }
-          } catch (error) {
-            console.error('Error fetching rating for shop:', shop._id, error);
+            const ratingData = await ratingRes.json();
+            return { 
+              ...shop, 
+              avgRating: ratingData.average_rating || null,
+              isOpen: isShopOpen(shop)
+            };
+          } catch {
+            return { 
+              ...shop, 
+              avgRating: null,
+              isOpen: isShopOpen(shop)
+            };
           }
-          return { 
-            ...shop, 
-            avgRating: null,
-            isOpen: isShopOpen(shop)
-          };
         })
       );
 
@@ -167,7 +157,7 @@ function Shops() {
   return (
     <div className="container">
       <h2 className="page-title">Browse Shops</h2>
-      
+
       {/* Search Bar */}
       <div className="search-container">
         <input
@@ -186,7 +176,7 @@ function Shops() {
           </button>
         )}
       </div>
-      
+
       {/* Horizontal Scrollable Category Filter */}
       <div className="category-filter-container">
         {/* Scroll left button */}
@@ -196,7 +186,7 @@ function Shops() {
         >
           ‹
         </button>
-        
+
         <div className="category-scroll-wrapper" ref={categoryScrollRef}>
           <div className="category-filter-horizontal">
             <button 
@@ -271,7 +261,7 @@ function Shops() {
               </div>
             </div>
           ))}
-          
+
           {/* Other categories section */}
           {otherCategories.length > 0 && (
             <div className="category-section">
