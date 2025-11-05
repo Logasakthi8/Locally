@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'; // Add this import
+import React, { useState, useEffect } from 'react';
+import WishlistItem from './WishlistItem';
 import config from '../config'; 
-import WishlistItem from './WishlistItem'; // Import the WishlistItem component
 
 function Wishlist() {
   const [wishlist, setWishlist] = useState([]);
@@ -10,11 +10,12 @@ function Wishlist() {
   const [selectedProducts, setSelectedProducts] = useState({});
   const [deliveryCharge] = useState(30);
   const [userDeliveryCount, setUserDeliveryCount] = useState(() => {
+    // Initialize from localStorage or default to 0
     const saved = localStorage.getItem('userDeliveryCount');
     return saved ? parseInt(saved) : 0;
   });
-  const [expandedShops, setExpandedShops] = useState({}); // Track which shops are expanded
 
+  // Your hardcoded phone number
   const YOUR_PHONE_NUMBER = '9361437687';
 
   useEffect(() => {
@@ -25,12 +26,6 @@ function Wishlist() {
     if (wishlist.length > 0) {
       groupProductsByShop();
       initializeSelectedProducts();
-      // Initially expand all shops
-      const initialExpanded = {};
-      Object.keys(groupedWishlist).forEach(shopId => {
-        initialExpanded[shopId] = true;
-      });
-      setExpandedShops(initialExpanded);
     }
   }, [wishlist]);
 
@@ -39,27 +34,23 @@ function Wishlist() {
     localStorage.setItem('userDeliveryCount', userDeliveryCount.toString());
   }, [userDeliveryCount]);
 
-  const toggleShopExpansion = (shopId) => {
-    setExpandedShops(prev => ({
-      ...prev,
-      [shopId]: !prev[shopId]
-    }));
-  };
-
   const isShopOpen = (shop) => {
     if (!shop.opening_time || !shop.closing_time) return true;
 
     const now = new Date();
-    const currentTime = now.getHours() * 60 + now.getMinutes();
+    const currentTime = now.getHours() * 60 + now.getMinutes(); // Current time in minutes
 
+    // Function to convert "HH:MM AM/PM" to minutes since midnight
     const convertTimeToMinutes = (timeStr) => {
+      // Match the time parts and AM/PM indicator
       const match = timeStr.match(/(\d{1,2}):(\d{2})\s?(AM|PM)/i);
-      if (!match) return 0;
+      if (!match) return 0; // Return 0 if format is invalid
 
       let [, hours, minutes, period] = match;
       hours = parseInt(hours);
       minutes = parseInt(minutes);
 
+      // Convert to 24-hour format
       if (period.toUpperCase() === 'PM' && hours !== 12) {
         hours += 12;
       } else if (period.toUpperCase() === 'AM' && hours === 12) {
@@ -68,9 +59,10 @@ function Wishlist() {
       return hours * 60 + minutes;
     };
 
-    const openingTime = convertTimeToMinutes(shop.opening_time);
-    const closingTime = convertTimeToMinutes(shop.closing_time);
+    const openingTime = convertTimeToMinutes(shop.opening_time); // "09:30 AM" -> 570 minutes
+    const closingTime = convertTimeToMinutes(shop.closing_time); // "09:30 PM" -> 1290 minutes
 
+    // Simple comparison if shop closes on the same day
     return currentTime >= openingTime && currentTime <= closingTime;
   };
 
@@ -291,7 +283,6 @@ function Wishlist() {
         setWishlist([]);
         setGroupedWishlist({});
         setSelectedProducts({});
-        setExpandedShops({});
       }
     } catch (error) {
       console.error('Error clearing cart:', error);
@@ -370,137 +361,98 @@ function Wishlist() {
             const selectedCount = getSelectedProductsCount(shopId);
             const meetsMinimum = subtotal >= 100;
             const shopOpen = isShopOpen(shop);
-            const isExpanded = expandedShops[shopId];
             // Calculate delivery charge based on user's delivery count
             const delivery = calculateDeliveryCharge();
 
             return (
               <div key={shopId} className="shop-group">
-                <div 
-                  className="shop-header"
-                  onClick={() => toggleShopExpansion(shopId)}
-                  style={{ cursor: 'pointer' }}
-                >
+                <div className="shop-header">
                   <div className="shop-info">
-                    {/* Shop Image and Name */}
-                    <div className="shop-main-info">
-                      {shop.image_url && (
-                        <img 
-                          src={shop.image_url} 
-                          alt={shop.name}
-                          className="shop-thumbnail"
-                        />
-                      )}
-                      <div className="shop-details">
-                        <h3 className="shop-name">{shop.name || `Shop`}</h3>
-                        <div className="shop-meta">
-                          {shop.category && <span className="shop-category">{shop.category}</span>}
-                          <span className={`shop-status ${shopOpen ? 'open' : 'closed'}`}>
-                            {shopOpen ? '🟢 Open' : '🔴 Closed'}
-                          </span>
-                          <span className="products-count">
-                            <span>📦</span> {shopItemsCount} product{shopItemsCount !== 1 ? 's' : ''}
-                          </span>
-                        </div>
-                      </div>
+                    <h3 className="shop-name">{shop.name || `Shop`}</h3>
+                    <div className="shop-meta">
+                      {shop.category && <span className="shop-category">{shop.category}</span>}
+                      <span className="products-count">
+                        <span>📦</span> {shopItemsCount} product{shopItemsCount !== 1 ? 's' : ''}
+                      </span>
                     </div>
                   </div>
-                  
-                  {/* Expand/Collapse Icon */}
-                  <div className="shop-expand-icon">
-                    {isExpanded ? '▼' : '►'}
+                  <div className="shop-actions">
+                    <button 
+                      onClick={() => checkoutViaWhatsApp(shopId)} 
+                      className={`btn ${meetsMinimum && shopOpen ? 'btn-whatsapp' : 'btn-disabled'}`}
+                      disabled={selectedCount === 0 || !meetsMinimum || !shopOpen}
+                      title={!shopOpen ? `Sorry! The shop is closed. Please place the order after ${shop.opening_time}.` : !meetsMinimum ? `Add ₹${100 - subtotal} more to checkout` : ''}
+                    >
+                      <span>💬</span>
+                      WhatsApp ({selectedCount})
+                    </button>
+                    <button 
+                      onClick={() => meetsMinimum && shopOpen && callToOrder(YOUR_PHONE_NUMBER, shopId)} 
+                      className={`btn ${meetsMinimum && shopOpen ? 'btn-call' : 'btn-disabled'}`}
+                      disabled={!meetsMinimum || !shopOpen}
+                      title={!shopOpen ? `Sorry! The shop is closed. Please place the order after ${shop.opening_time}.` : !meetsMinimum ? `Add ₹${100 - subtotal} more to call` : ''}
+                    >
+                      <span>📞</span>
+                      Call to Order
+                    </button>
                   </div>
                 </div>
 
-                {/* Shop Products - Collapsible */}
-                {isExpanded && (
-                  <>
-                    {!shopOpen && (
-                      <div className="shop-closed-message">
-                        <p>Sorry! The shop is closed. Please place the order after {shop.opening_time}.</p>
+                {!shopOpen && (
+                  <div className="shop-closed-message">
+                    <p>Sorry! The shop is closed. Please place the order after ${shop.opening_time}.</p>
+                  </div>
+                )}
+
+                <div className="shop-products">
+                  <div className="products-grid">
+                    {shopProducts.map(product => (
+                      <WishlistItem 
+                        key={product._id} 
+                        product={product} 
+                        onRemove={removeFromWishlist}
+                        onQuantityChange={handleQuantityChange}
+                        isSelected={selectedProducts[product._id] || false}
+                        onToggleSelection={toggleProductSelection}
+                      />
+                    ))}
+                  </div>
+                </div>
+                {selectedCount > 0 && (
+                  <div className="shop-footer">
+                    <div className="order-summary">
+                      <div className="summary-row">
+                        <span>Subtotal:</span>
+                        <span>₹{subtotal.toFixed(2)}</span>
                       </div>
-                    )}
-                    
-                    <div className="shop-products">
-                      <div className="products-grid">
-                        {shopProducts.map(product => (
-                          <WishlistItem 
-                            key={product._id} 
-                            product={product} 
-                            onRemove={removeFromWishlist}
-                            onQuantityChange={handleQuantityChange}
-                            isSelected={selectedProducts[product._id] || false}
-                            onToggleSelection={toggleProductSelection}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {selectedCount > 0 && (
-                      <div className="shop-footer">
-                        <div className="order-summary">
+                      {meetsMinimum ? (
+                        <>
                           <div className="summary-row">
-                            <span>Subtotal:</span>
-                            <span>₹{subtotal.toFixed(2)}</span>
+                            <span>Delivery Charge:</span>
+                            <span>{delivery === 0 ? 'FREE' : `₹${delivery}`}</span>
                           </div>
-                          {meetsMinimum ? (
-                            <>
-                              <div className="summary-row">
-                                <span>Delivery Charge:</span>
-                                <span>{delivery === 0 ? 'FREE' : `₹${delivery}`}</span>
-                              </div>
-                              {delivery === 0 && (
-                                <div className="free-delivery-badge">
-                                  🎉 Free delivery! ({2 - userDeliveryCount} free delivery{2 - userDeliveryCount === 1 ? '' : 's'} left)
-                                </div>
-                              )}
-                              {subtotal >= 500 && delivery > 0 && (
-                                <div className="free-delivery-badge">
-                                  🎉 You've earned free delivery on orders above ₹500!
-                                </div>
-                              )}
-                              <div className="summary-row total">
-                                <span>Total:</span>
-                                <span>₹{total.toFixed(2)}</span>
-                              </div>
-                            </>
-                          ) : (
-                            <div className="minimum-alert">
-                              <span>Add ₹{(100 - subtotal).toFixed(2)} more to reach minimum order of ₹100</span>
+                          {delivery === 0 && (
+                            <div className="free-delivery-badge">
+                              🎉 Free delivery! ({2 - userDeliveryCount} free delivery{2 - userDeliveryCount === 1 ? '' : 's'} left)
                             </div>
                           )}
+                          {subtotal >= 500 && delivery > 0 && (
+                            <div className="free-delivery-badge">
+                              🎉 You've earned free delivery on orders above ₹500!
+                            </div>
+                          )}
+                          <div className="summary-row total">
+                            <span>Total:</span>
+                            <span>₹{total.toFixed(2)}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="minimum-alert">
+                          <span>Add ₹{(100 - subtotal).toFixed(2)} more to reach minimum order of ₹100</span>
                         </div>
-                        
-                        {/* Action Buttons */}
-                        <div className="shop-actions">
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              checkoutViaWhatsApp(shopId);
-                            }} 
-                            className={`btn ${meetsMinimum && shopOpen ? 'btn-whatsapp' : 'btn-disabled'}`}
-                            disabled={selectedCount === 0 || !meetsMinimum || !shopOpen}
-                            title={!shopOpen ? `Sorry! The shop is closed. Please place the order after ${shop.opening_time}.` : !meetsMinimum ? `Add ₹${100 - subtotal} more to checkout` : ''}
-                          >
-                            <span>💬</span>
-                            WhatsApp ({selectedCount})
-                          </button>
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              meetsMinimum && shopOpen && callToOrder(YOUR_PHONE_NUMBER, shopId);
-                            }} 
-                            className={`btn ${meetsMinimum && shopOpen ? 'btn-call' : 'btn-disabled'}`}
-                            disabled={!meetsMinimum || !shopOpen}
-                            title={!shopOpen ? `Sorry! The shop is closed. Please place the order after ${shop.opening_time}.` : !meetsMinimum ? `Add ₹${100 - subtotal} more to call` : ''}
-                          >
-                            <span>📞</span>
-                            Call to Order
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
             );
