@@ -75,28 +75,56 @@ function Wishlist() {
   };
 
   const fetchWishlist = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`${config.apiUrl}/wishlist`, {
-        credentials: 'include'
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setWishlist(data);
-        
-        if (data.length > 0) {
-          await fetchShopDetails(data);
-        }
-      } else {
-        console.error('Failed to fetch wishlist');
-      }
+  try {
+    setLoading(true);
+    
+    // First, check if user is authenticated
+    const sessionCheck = await fetch(`${config.apiUrl}/check-session`, {
+      credentials: 'include'
+    });
+    
+    if (!sessionCheck.ok) {
+      console.error('User not authenticated');
+      setWishlist([]);
       setLoading(false);
-    } catch (error) {
-      console.error('Error:', error);
-      setLoading(false);
+      return;
     }
-  };
+    
+    const sessionData = await sessionCheck.json();
+    
+    if (!sessionData.user) {
+      console.error('No user in session');
+      setWishlist([]);
+      setLoading(false);
+      return;
+    }
+    
+    console.log('User authenticated:', sessionData.user.mobile);
+    
+    // Now fetch wishlist
+    const response = await fetch(`${config.apiUrl}/wishlist`, {
+      credentials: 'include'
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      setWishlist(data);
+      
+      if (data.length > 0) {
+        await fetchShopDetails(data);
+      }
+    } else if (response.status === 401) {
+      console.error('Unauthorized access to wishlist');
+      setWishlist([]);
+    } else {
+      console.error('Failed to fetch wishlist');
+    }
+    setLoading(false);
+  } catch (error) {
+    console.error('Error:', error);
+    setLoading(false);
+  }
+};
 
   const fetchShopDetails = async (products) => {
     try {
