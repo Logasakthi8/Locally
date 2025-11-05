@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
+// Login.js
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from './AuthContext';
 import config from '../config';
 
-// Session timeout - 7 days
-const SESSION_TIMEOUT = 7 * 24 * 60 * 60 * 1000;
-
-function Login({ onLogin }) {
+function Login() {
   const [mobile, setMobile] = useState('');
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const navigate = useNavigate();
+  const { user, login, loading: authLoading } = useAuth();
 
   const startupMessages = [
     "🏪 Buy from shops you already trust — now just a click away!",
@@ -20,61 +20,12 @@ function Login({ onLogin }) {
     "❤️ Your trusted neighborhood, your trusted marketplace."
   ];
 
-  // Enhanced session check with caching
-  const checkExistingSession = useCallback(async () => {
-    try {
-      // Check localStorage first for faster access
-      const cachedSession = localStorage.getItem('userSession');
-      if (cachedSession) {
-        const sessionData = JSON.parse(cachedSession);
-        const isSessionValid = Date.now() - sessionData.timestamp < SESSION_TIMEOUT;
-        
-        if (isSessionValid) {
-          onLogin(sessionData.user);
-          navigate('/shops');
-          return;
-        } else {
-          // Clear expired session
-          localStorage.removeItem('userSession');
-        }
-      }
-
-      // If no cached session or expired, check server
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
-
-      const response = await fetch(`${config.apiUrl}/check-session`, {
-        method: 'GET',
-        credentials: 'include',
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.user) {
-          // Cache the session
-          localStorage.setItem('userSession', JSON.stringify({
-            user: data.user,
-            timestamp: Date.now()
-          }));
-          onLogin(data.user);
-          navigate('/shops');
-        }
-      }
-    } catch (error) {
-      if (error.name !== 'AbortError') {
-        console.error('Session check failed:', error);
-      }
-      // Continue to login page if session check fails
-    }
-  }, [onLogin, navigate]);
-
-  // Check for existing session on component mount
+  // Redirect if already logged in
   useEffect(() => {
-    checkExistingSession();
-  }, [checkExistingSession]);
+    if (user && !authLoading) {
+      navigate('/shops');
+    }
+  }, [user, authLoading, navigate]);
 
   // Rotating messages
   useEffect(() => {
@@ -87,7 +38,6 @@ function Login({ onLogin }) {
     return () => clearInterval(interval);
   }, [startupMessages.length]);
 
-  // Optimized login handler with request queuing prevention
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -97,11 +47,10 @@ function Login({ onLogin }) {
     setStatusMessage('Checking account...');
 
     try {
-      // Single API call for login/registration
       setStatusMessage('Processing...');
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
 
       const response = await fetch(`${config.apiUrl}/auth/mobile`, {
         method: 'POST',
@@ -121,19 +70,8 @@ function Login({ onLogin }) {
 
       const data = await response.json();
       
-      // Store session with timestamp
-      const sessionData = {
-        user: data.user,
-        timestamp: Date.now(),
-        mobile: mobile // Store mobile for quick access
-      };
-      
-      localStorage.setItem('userSession', JSON.stringify(sessionData));
-      
       setStatusMessage('Success! Redirecting...');
-      onLogin(data.user);
-      
-      // Immediate navigation without delay for better UX
+      login(data.user); // Use context login
       navigate('/shops');
       
     } catch (error) {
@@ -145,20 +83,26 @@ function Login({ onLogin }) {
         setStatusMessage('Something went wrong. Please try again.');
       }
       
-      // Auto-clear message after 3 seconds
       setTimeout(() => setStatusMessage(''), 3000);
     } finally {
       setLoading(false);
     }
   };
 
-  // Mobile input validation
   const handleMobileChange = (e) => {
-    const value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+    const value = e.target.value.replace(/\D/g, '');
     if (value.length <= 10) {
       setMobile(value);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="login-container">
+        <div className="loading">Checking authentication...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="login-container">
@@ -171,7 +115,7 @@ function Login({ onLogin }) {
             <div className="logo-circle">
               {/* Your logo here */}
             </div>
-            <h1 className="app-title" style={{ color: '#2196F3', fontWeight: '700' }}>Locally</h1>
+            <h1 className="app-title" style={{ color: '#2196F3', fontWeight: '700' }}>Locallys</h1>
             <p className="app-tagline" style={{ color: '#444' }}>Your Local Shopping Companion</p>
           </div>
         </div>
@@ -229,7 +173,7 @@ function Login({ onLogin }) {
         {/* Features Section */}
         <div className="features-section">
           <div className="features-header">
-            <h3>Why Choose Locally?</h3>
+            <h3>Why Choose Locallys?</h3>
           </div>
           
           <div className="startup-messages">
