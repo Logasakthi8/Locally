@@ -9,7 +9,7 @@ import FeedbackSystem from './components/Feedback'; // Add this import
 import ReturnPolicy from './components/ReturnPolicy'; // Add this import
 import './App.css';
 import config from './config';
-
+ 
 function App() {
   const [user, setUser] = useState(null);
 
