@@ -1,47 +1,41 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './components/AuthContext'; // Import AuthContext
 import Navbar from './components/Navbar';
 import Login from './components/Login';
 import Shops from './components/Shops';
 import Products from './components/Products';
 import Wishlist from './components/Wishlist';
-import FeedbackSystem from './components/Feedback';
-import ReturnPolicy from './components/ReturnPolicy';
+import FeedbackSystem from './components/Feedback'; // Add this import
+import ReturnPolicy from './components/ReturnPolicy'; // Add this import
 import './App.css';
+import config from './config';
 
-// Main App component wrapped with AuthProvider
-function AppContent() {
-  const { user, logout, loading } = useAuth();
+function App() {
+  const [user, setUser] = useState(null);
 
-  // Protected Route component that uses AuthContext
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const response = await fetch(`${config.apiUrl}/user`, {
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData);
+        }
+      } catch (error) {
+        console.error('Error checking session:', error);
+      }
+    };
+
+    checkSession();
+  }, []);
+
+  // Small wrapper for protected routes
   const ProtectedRoute = ({ children }) => {
-    if (loading) {
-      return (
-        <div className="loading-container">
-          <div className="loading">Loading...</div>
-        </div>
-      );
-    }
-    
     if (!user) {
       return <Navigate to="/" replace />;
-    }
-    return children;
-  };
-
-  // Public Route component - redirect to shops if already logged in
-  const PublicRoute = ({ children }) => {
-    if (loading) {
-      return (
-        <div className="loading-container">
-          <div className="loading">Loading...</div>
-        </div>
-      );
-    }
-    
-    if (user) {
-      return <Navigate to="/shops" replace />;
     }
     return children;
   };
@@ -49,19 +43,17 @@ function AppContent() {
   return (
     <Router>
       <div className="App">
-        <Navbar user={user} onLogout={logout} />
+        <Navbar user={user} onLogout={() => setUser(null)} />
         <Routes>
-          {/* Public route - shows login only if not authenticated */}
+          {/* ✅ If user already logged in, redirect from "/" to "/shops" */}
           <Route
             path="/"
             element={
-              <PublicRoute>
-                <Login />
-              </PublicRoute>
+              user ? <Navigate to="/shops" /> : <Login onLogin={setUser} />
             }
           />
-          
-          {/* Protected routes */}
+
+          {/* ✅ Protect shops, products, wishlist */}
           <Route
             path="/shops"
             element={
@@ -87,7 +79,7 @@ function AppContent() {
             }
           />
           
-          {/* Return Policy Route - Protected */}
+          {/* ✅ Add Return Policy Route - Protected since it's in navbar */}
           <Route
             path="/return-policy"
             element={
@@ -96,24 +88,13 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-
-          {/* Catch all route - redirect to shops */}
-          <Route path="*" element={<Navigate to="/shops" replace />} />
         </Routes>
-        
-        {/* Feedback System - Only show when user is logged in */}
-        {user && <FeedbackSystem user={user} />}
+
+        {/* ✅ ADD FEEDBACK SYSTEM HERE - Outside Routes but inside Router */}
+        {/* PASS THE USER PROP TO FEEDBACKSYSTEM */}
+        <FeedbackSystem user={user} />
       </div>
     </Router>
-  );
-}
-
-// Main App component that provides AuthContext
-function App() {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
   );
 }
 
