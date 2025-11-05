@@ -457,39 +457,75 @@ def get_shops():
     shops = list(mongo.db.shops.find())
     return jsonify([serialize_doc(shop) for shop in shops])
 
-@app.route('/api/shops/<shop_id>/products', methods=['GET'])
+@app.route('/api/shops/<shop_id>/products', methods=['GET', 'OPTIONS'])
 def get_shop_products(shop_id):
     try:
-        products = []
+        print(f"🔄 Fetching products for shop ID: {shop_id}")
+        print(f"📋 Session data: {dict(session)}")
+        print(f"👤 User in session: {'user_id' in session}")
         
+        # Handle OPTIONS preflight request
+        if request.method == 'OPTIONS':
+            return '', 200
+            
+        products = []
         shop = None
+        
+        print(f"🔍 Looking for shop with ID: {shop_id}")
+        
+        # Try to find shop with ObjectId
         try:
             shop = mongo.db.shops.find_one({'_id': ObjectId(shop_id)})
-        except:
-            shop = mongo.db.shops.find_one({'_id': shop_id})
+            print(f"✅ Found shop with ObjectId: {shop is not None}")
+        except Exception as e:
+            print(f"❌ ObjectId search failed: {e}")
+            shop = None
+        
+        # If not found with ObjectId, try string search
+        if not shop:
+            try:
+                shop = mongo.db.shops.find_one({'_id': shop_id})
+                print(f"✅ Found shop with string ID: {shop is not None}")
+            except Exception as e:
+                print(f"❌ String ID search failed: {e}")
         
         if not shop:
+            print(f"❌ Shop not found with ID: {shop_id}")
             return jsonify({'error': 'Shop not found'}), 404
         
+        print(f"🏪 Found shop: {shop['name']} (ID: {shop['_id']})")
+        
+        # Try different ways to find products
         try:
             products = list(mongo.db.products.find({'shop_id': ObjectId(shop_id)}))
+            print(f"✅ Found {len(products)} products with ObjectId shop_id")
         except:
             pass
         
         if not products:
-            products = list(mongo.db.products.find({'shop_id': shop_id}))
+            try:
+                products = list(mongo.db.products.find({'shop_id': shop_id}))
+                print(f"✅ Found {len(products)} products with string shop_id")
+            except:
+                pass
         
         if not products:
-            products = list(mongo.db.products.find({'shop_id': str(shop['_id'])}))
+            try:
+                products = list(mongo.db.products.find({'shop_id': str(shop['_id'])}))
+                print(f"✅ Found {len(products)} products with string representation")
+            except:
+                pass
         
-        if not products and '_id' in shop:
-            products = list(mongo.db.products.find({'shop_id': str(shop['_id'])}))
-            
-        return jsonify([serialize_doc(product) for product in products])
+        print(f"📦 Total products found: {len(products)}")
+        
+        serialized_products = [serialize_doc(product) for product in products]
+        return jsonify(serialized_products)
+        
     except Exception as e:
-        print(f"Error fetching products: {e}")
+        print(f"❌ Error fetching products: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': 'Internal server error'}), 500
-
 # ... ALL YOUR OTHER EXISTING ENDPOINTS REMAIN EXACTLY THE SAME ...
 
 if __name__ == '__main__':
