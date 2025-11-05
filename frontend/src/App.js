@@ -5,34 +5,52 @@ import Login from './components/Login';
 import Shops from './components/Shops';
 import Products from './components/Products';
 import Wishlist from './components/Wishlist';
-import FeedbackSystem from './components/Feedback'; // Add this import
-import ReturnPolicy from './components/ReturnPolicy'; // Add this import
+import FeedbackSystem from './components/Feedback';
+import ReturnPolicy from './components/ReturnPolicy';
 import './App.css';
 import config from './config';
 
 function App() {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const response = await fetch(`${config.apiUrl}/user`, {
-          credentials: 'include'
+        setLoading(true);
+        setError(null);
+        
+        console.log('Checking session at:', `${config.apiUrl}/check-session`);
+        
+        const response = await fetch(`${config.apiUrl}/check-session`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
         });
 
         if (response.ok) {
-          const userData = await response.json();
-          setUser(userData);
+          const data = await response.json();
+          console.log('Session check response:', data);
+          if (data.user) {
+            setUser(data.user);
+          }
+        } else {
+          console.log('No active session found');
         }
       } catch (error) {
         console.error('Error checking session:', error);
+        setError(`Cannot connect to server: ${error.message}. Please make sure the backend is running on ${config.apiUrl}`);
+      } finally {
+        setLoading(false);
       }
     };
 
     checkSession();
   }, []);
 
-  // Small wrapper for protected routes
   const ProtectedRoute = ({ children }) => {
     if (!user) {
       return <Navigate to="/" replace />;
@@ -40,20 +58,41 @@ function App() {
     return children;
   };
 
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="App">
+        <div style={{ padding: '20px', textAlign: 'center' }}>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show connection error
+  if (error && !user) {
+    return (
+      <div className="App">
+        <div style={{ padding: '20px', textAlign: 'center', color: 'red' }}>
+          <h3>Connection Error</h3>
+          <p>{error}</p>
+          <button onClick={() => window.location.reload()}>Retry Connection</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Router>
       <div className="App">
         <Navbar user={user} onLogout={() => setUser(null)} />
         <Routes>
-          {/* ✅ If user already logged in, redirect from "/" to "/shops" */}
           <Route
             path="/"
             element={
               user ? <Navigate to="/shops" /> : <Login onLogin={setUser} />
             }
           />
-
-          {/* ✅ Protect shops, products, wishlist */}
           <Route
             path="/shops"
             element={
@@ -78,8 +117,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-          
-          {/* ✅ Add Return Policy Route - Protected since it's in navbar */}
           <Route
             path="/return-policy"
             element={
@@ -90,8 +127,6 @@ function App() {
           />
         </Routes>
 
-        {/* ✅ ADD FEEDBACK SYSTEM HERE - Outside Routes but inside Router */}
-        {/* PASS THE USER PROP TO FEEDBACKSYSTEM */}
         <FeedbackSystem user={user} />
       </div>
     </Router>
