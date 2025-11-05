@@ -1,8 +1,3 @@
-// Wishlist.js
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from './AuthContext';
-import WishlistItem from './WishlistItem';
 import config from '../config'; 
 
 function Wishlist() {
@@ -13,34 +8,24 @@ function Wishlist() {
   const [selectedProducts, setSelectedProducts] = useState({});
   const [deliveryCharge] = useState(30);
   const [userDeliveryCount, setUserDeliveryCount] = useState(() => {
+
     const saved = localStorage.getItem('userDeliveryCount');
     return saved ? parseInt(saved) : 0;
   });
-  const [expandedShops, setExpandedShops] = useState({});
+  const [expandedShops, setExpandedShops] = useState({}); // Track which shops are expanded
 
-  const { user, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
+
   const YOUR_PHONE_NUMBER = '9361437687';
 
-  // Redirect if not authenticated
   useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/login');
-    }
-  }, [user, authLoading, navigate]);
-
-  // Fetch wishlist when user is available
-  useEffect(() => {
-    if (user) {
-      console.log('👤 User authenticated, fetching wishlist:', user.mobile);
-      fetchWishlist();
-    }
-  }, [user]);
+    fetchWishlist();
+  }, []);
 
   useEffect(() => {
     if (wishlist.length > 0) {
       groupProductsByShop();
       initializeSelectedProducts();
+      // Initially expand all shops
       const initialExpanded = {};
       Object.keys(groupedWishlist).forEach(shopId => {
         initialExpanded[shopId] = true;
@@ -67,13 +52,16 @@ function Wishlist() {
     const now = new Date();
     const currentTime = now.getHours() * 60 + now.getMinutes();
 
+
     const convertTimeToMinutes = (timeStr) => {
+
       const match = timeStr.match(/(\d{1,2}):(\d{2})\s?(AM|PM)/i);
       if (!match) return 0;
 
       let [, hours, minutes, period] = match;
       hours = parseInt(hours);
       minutes = parseInt(minutes);
+
 
       if (period.toUpperCase() === 'PM' && hours !== 12) {
         hours += 12;
@@ -86,59 +74,40 @@ function Wishlist() {
     const openingTime = convertTimeToMinutes(shop.opening_time);
     const closingTime = convertTimeToMinutes(shop.closing_time);
 
+
     return currentTime >= openingTime && currentTime <= closingTime;
   };
 
-  // In Wishlist.js - Update fetchWishlist function
-const fetchWishlist = async () => {
-  if (!user) {
-    console.error('❌ No user found, cannot fetch wishlist');
-    return;
-  }
+  const fetchWishlist = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${config.apiUrl}/wishlist`, {
+        credentials: 'include'
+      });
 
-  try {
-    setLoading(true);
-    console.log('🔄 Fetching wishlist for user:', user.mobile);
-    
-    const response = await fetch(`${config.apiUrl}/wishlist`, {
-      method: 'GET',
-      credentials: 'include',  // 🔥 IMPORTANT: This must be included
-      headers: {
-        'Content-Type': 'application/json',
+      if (response.ok) {
+        const data = await response.json();
+        setWishlist(data);
+
+        if (data.length > 0) {
+          await fetchShopDetails(data);
+        }
+      } else {
+        console.error('Failed to fetch wishlist');
       }
-    });
-    
-    console.log('📊 Wishlist response status:', response.status);
-    console.log('📋 Wishlist response headers:', response.headers);
-    
-    if (response.ok) {
-      const data = await response.json();
-      console.log('🎉 Wishlist items received:', data.length);
-      setWishlist(data);
-      
-      if (data.length > 0) {
-        await fetchShopDetails(data);
-      }
-    } else if (response.status === 401) {
-      console.error('❌ Unauthorized access to wishlist');
-      // Force re-authentication
-      localStorage.removeItem('userSession');
-      window.location.href = '/'; // Redirect to login
-    } else {
-      console.error('❌ Failed to fetch wishlist');
+      setLoading(false);
+    } catch (error) {
+      console.error('Error:', error);
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('💥 Error fetching wishlist:', error);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
+
   const fetchShopDetails = async (products) => {
     try {
       const shopIds = [...new Set(products.map(product => product.shop_id))];
-      
+
       if (shopIds.length === 0) return;
-      
+
       const response = await fetch(`${config.apiUrl}/shops/batch`, {
         method: 'POST',
         headers: {
@@ -147,7 +116,7 @@ const fetchWishlist = async () => {
         body: JSON.stringify({ shop_ids: shopIds }),
         credentials: 'include'
       });
-      
+
       if (response.ok) {
         const shopsData = await response.json();
         const shopsMap = {};
@@ -163,7 +132,7 @@ const fetchWishlist = async () => {
 
   const groupProductsByShop = () => {
     const grouped = {};
-    
+
     wishlist.forEach(product => {
       const shopId = product.shop_id;
       if (!grouped[shopId]) {
@@ -171,7 +140,7 @@ const fetchWishlist = async () => {
       }
       grouped[shopId].push(product);
     });
-    
+
     setGroupedWishlist(grouped);
   };
 
@@ -191,25 +160,18 @@ const fetchWishlist = async () => {
   };
 
   const removeFromWishlist = async (productId) => {
-    if (!user) {
-      console.error('User not authenticated');
-      return;
-    }
-
     try {
       const response = await fetch(`${config.apiUrl}/wishlist/${productId}`, {
         method: 'DELETE',
         credentials: 'include'
       });
-      
+
       if (response.ok) {
         setWishlist(wishlist.filter(item => item._id !== productId));
-        
+
         const newSelected = {...selectedProducts};
         delete newSelected[productId];
         setSelectedProducts(newSelected);
-      } else if (response.status === 401) {
-        console.error('Authentication failed during remove operation');
       } else {
         console.error('Failed to remove from wishlist');
       }
@@ -219,11 +181,6 @@ const fetchWishlist = async () => {
   };
 
   const updateQuantity = async (productId, newQuantity) => {
-    if (!user) {
-      console.error('User not authenticated');
-      return;
-    }
-
     try {
       const response = await fetch(`${config.apiUrl}/wishlist/${productId}/quantity`, {
         method: 'PUT',
@@ -233,7 +190,7 @@ const fetchWishlist = async () => {
         body: JSON.stringify({ quantity: newQuantity }),
         credentials: 'include'
       });
-      
+
       if (response.ok) {
         setWishlist(prevWishlist => 
           prevWishlist.map(item => 
@@ -242,8 +199,6 @@ const fetchWishlist = async () => {
               : item
           )
         );
-      } else if (response.status === 401) {
-        console.error('Authentication failed during quantity update');
       } else {
         console.error('Failed to update quantity');
       }
@@ -265,39 +220,39 @@ const fetchWishlist = async () => {
   const checkoutViaWhatsApp = (shopId) => {
     const shop = shops[shopId];
     if (!shop) return;
-    
+
     // Check if shop is open
     const shopOpen = isShopOpen(shop);
     if (!shopOpen) {
       alert(`Sorry! The shop is closed. Please place the order after ${shop.opening_time}.`);
       return;
     }
-    
+
     const selectedShopProducts = groupedWishlist[shopId].filter(
       product => selectedProducts[product._id]
     );
-    
+
     if (selectedShopProducts.length === 0) {
       alert('Please select at least one product to checkout');
       return;
     }
-    
+
     const subtotal = calculateShopSubtotal(selectedShopProducts);
     if (subtotal < 100) {
       alert(`Minimum order amount is ₹100. Please add more products to proceed with checkout.`);
       return;
     }
-    
+
     // Calculate delivery charge based on user's delivery count
     const delivery = calculateDeliveryCharge();
     const total = subtotal + delivery;
-    
+
     let message = `Hello, I would like to order the following products from ${shop.name}:%0A%0A`;
-    
+
     selectedShopProducts.forEach((product, index) => {
       message += `${index + 1}. ${product.name} - ₹${product.price} x ${product.quantity || 1}%0A`;
     });
-    
+
     message += `%0ASubtotal: ₹${subtotal}%0A`;
     message += `Delivery Charge: ${delivery === 0 ? 'FREE' : `₹${delivery}`}%0A`;
     if (userDeliveryCount < 2) {
@@ -305,10 +260,10 @@ const fetchWishlist = async () => {
     }
     message += `Total: ₹${total}%0A%0A`;
     message += `Please confirm availability and proceed with the order.`;
-    
+
     // Use your hardcoded phone number instead of shop.owner_mobile
     window.open(`https://wa.me/${YOUR_PHONE_NUMBER}?text=${message}`, '_blank');
-    
+
     // Increment delivery count after successful order
     const newCount = userDeliveryCount + 1;
     setUserDeliveryCount(newCount);
@@ -317,37 +272,30 @@ const fetchWishlist = async () => {
   const callToOrder = (shopMobile, shopId) => {
     const shop = shops[shopId];
     if (!shop) return;
-    
+
     // Check if shop is open
     const shopOpen = isShopOpen(shop);
     if (!shopOpen) {
       alert(`Sorry! The shop is closed. Please place the order after ${shop.opening_time}.`);
       return;
     }
-    
+
     // Use your hardcoded phone number instead of shop.owner_mobile
     window.location.href = `tel:${YOUR_PHONE_NUMBER}`;
   };
 
   const clearCart = async () => {
-    if (!user) {
-      console.error('User not authenticated');
-      return;
-    }
-
     try {
       const response = await fetch(`${config.apiUrl}/clear-cart`, {
         method: 'POST',
         credentials: 'include'
       });
-      
+
       if (response.ok) {
         setWishlist([]);
         setGroupedWishlist({});
         setSelectedProducts({});
         setExpandedShops({});
-      } else if (response.status === 401) {
-        console.error('Authentication failed during clear cart');
       }
     } catch (error) {
       console.error('Error clearing cart:', error);
@@ -363,19 +311,19 @@ const fetchWishlist = async () => {
   const calculateShopTotal = (products) => {
     const selectedProductsList = products.filter(product => selectedProducts[product._id]);
     const subtotal = calculateShopSubtotal(selectedProductsList);
-    
+
     if (subtotal >= 100) {
       // Apply delivery charge based on user's delivery count
       const delivery = calculateDeliveryCharge();
       return subtotal + delivery;
     }
-    
+
     return subtotal;
   };
 
   const getSelectedProductsCount = (shopId) => {
     if (!groupedWishlist[shopId]) return 0;
-    
+
     return groupedWishlist[shopId].filter(
       product => selectedProducts[product._id]
     ).length;
@@ -384,32 +332,6 @@ const fetchWishlist = async () => {
   const getTotalItemsCount = () => {
     return wishlist.reduce((sum, item) => sum + (item.quantity || 1), 0);
   };
-
-  if (authLoading) {
-    return (
-      <div className="container">
-        <div className="loading">Checking authentication...</div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="container">
-        <div className="empty-state">
-          <div className="empty-icon">🔒</div>
-          <h2 className="empty-title">Authentication Required</h2>
-          <p className="empty-description">Please log in to view your wishlist</p>
-          <button 
-            onClick={() => navigate('/login')} 
-            className="btn btn-primary"
-          >
-            Go to Login
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   if (loading) {
     return (
@@ -433,7 +355,7 @@ const fetchWishlist = async () => {
           </div>
         )}
       </div>
-      
+
       {totalItems === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">🛒</div>
@@ -455,7 +377,7 @@ const fetchWishlist = async () => {
             const isExpanded = expandedShops[shopId];
             // Calculate delivery charge based on user's delivery count
             const delivery = calculateDeliveryCharge();
-            
+
             return (
               <div key={shopId} className="shop-group">
                 <div 
@@ -491,6 +413,42 @@ const fetchWishlist = async () => {
                   {/* Expand/Collapse Icon */}
                   <div className="shop-expand-icon">
                     {isExpanded ? '▼' : '►'}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                   </div>
                 </div>
 
@@ -551,6 +509,19 @@ const fetchWishlist = async () => {
                               <span>Add ₹{(100 - subtotal).toFixed(2)} more to reach minimum order of ₹100</span>
                             </div>
                           )}
+
+
+
+
+
+
+
+
+
+
+
+
+
                         </div>
                         
                         {/* Action Buttons */}
@@ -587,7 +558,7 @@ const fetchWishlist = async () => {
               </div>
             );
           })}
-          
+
           <div className="cart-summary">
             <h3 className="summary-title">Cart Summary</h3>
             <div className="summary-grid">
