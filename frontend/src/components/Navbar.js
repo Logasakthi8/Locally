@@ -1,89 +1,52 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import config from '../config'; 
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from './AuthContext';
+import './Navbar.css';
 
-function Navbar({ user, onLogout }) {
+function Navbar() {
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
- const handleLogout = async () => {
-  try {
-    console.log('🔄 Starting logout...');
-    
-    const response = await fetch(`${config.apiUrl}/logout`, {
-      method: 'POST',
-      credentials: 'include', // This is crucial for sending cookies
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    const data = await response.json();
-    console.log('📋 Logout response:', data);
-    
-    if (data.success) {
-      // Clear all local storage
-      localStorage.removeItem('userSession');
-      sessionStorage.clear();
-      
-      // Clear any app state
-      onLogout();
-      
-      // Force reload to clear any cached state
-      window.location.href = '/';
-      
-      console.log('✅ Logout successful');
-    } else {
-      console.error('❌ Logout failed:', data.error);
-    }
-  } catch (error) {
-    console.error('❌ Logout error:', error);
-    // Even if API call fails, clear local state
-    localStorage.removeItem('userSession');
-    onLogout();
-    window.location.href = '/';
-  }
-};
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
-
-  const handleNavClick = (path) => {
-    navigate(path);
-    setIsMenuOpen(false);
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
   };
 
   return (
     <nav className="navbar">
       <div className="nav-container">
-        <img 
-          src="/myLogo2.png" 
-          alt="Locally" 
-          onClick={() => handleNavClick(user ? '/shops' : '/')} 
-          className="logo" 
-        />
-        
-        {/* Mobile Menu Button */}
-        <button className="mobile-menu-btn" onClick={toggleMenu}>
-          ☰
-        </button>
+        {/* Logo/Brand */}
+        <Link to="/shops" className="nav-logo">
+          🛍️ Locally
+        </Link>
 
-        <div className={`nav-links ${isMenuOpen ? 'active' : ''}`}>
+        {/* Navigation Links */}
+        <div className="nav-links">
+          <Link to="/shops" className="nav-link">
+            Shops
+          </Link>
+          <Link to="/wishlist" className="nav-link">
+            Wishlist
+          </Link>
+          <Link to="/return-policy" className="nav-link">
+            Return Policy
+          </Link>
+        </div>
+
+        {/* User Section */}
+        <div className="nav-user">
           {user ? (
-            <>
-              <button onClick={() => handleNavClick('/shops')}>Shops</button>
-              <button onClick={() => handleNavClick('/wishlist')} className="cart-button">
-                Cart
+            <div className="user-section">
+              <span className="user-mobile">📱 {user.mobile}</span>
+              <button onClick={handleLogout} className="logout-btn">
+                Logout
               </button>
-              <button onClick={() => handleNavClick('/return-policy')}>Return Products</button>
-              <div className="user-info">
-                <span>👤 {user.mobile}</span>
-                <button onClick={handleLogout}>Logout</button>
-              </div>
-            </>
+            </div>
           ) : (
-            <button onClick={() => handleNavClick('/')}>Login</button>
-          )}  
+            <Link to="/" className="login-link">
+              Login
+            </Link>
+          )}
         </div>
       </div>
     </nav>
