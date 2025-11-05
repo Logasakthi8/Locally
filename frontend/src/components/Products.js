@@ -1,217 +1,144 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import ProductCard from './ProductCard';
-import config from '../config';
+import { useAuth } from './AuthContext';
+import config from './config';
+import './Products.css';
 
 function Products() {
   const [products, setProducts] = useState([]);
-  const [filteredProducts, setFilteredProducts] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [shop, setShop] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [addingToWishlist, setAddingToWishlist] = useState({});
+  
   const { shopId } = useParams();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
-  const whatsappNumber = '9361437687';
-
+  // Redirect if not authenticated
   useEffect(() => {
-    fetchProducts();
-  }, [shopId]);
-
-  useEffect(() => {
-    // Filter products based on search term
-    if (searchTerm.trim() === '') {
-      setFilteredProducts(products);
-    } else {
-      const filtered = products.filter(product =>
-        product.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredProducts(filtered);
+    if (!user) {
+      navigate('/');
     }
-  }, [searchTerm, products]);
+  }, [user, navigate]);
+
+  useEffect(() => {
+    if (user && shopId) {
+      fetchProducts();
+    }
+  }, [user, shopId]);
 
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      setError(null);
-      const response = await fetch(`${config.apiUrl}/shops/${shopId}/products`);
+      const response = await fetch(`${config.apiUrl}/shops/${shopId}/products`, {
+        credentials: 'include'
+      });
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (response.ok) {
+        const data = await response.json();
+        setProducts(data);
+        
+        // Fetch shop details
+        const shopResponse = await fetch(`${config.apiUrl}/shops/${shopId}`, {
+          credentials: 'include'
+        });
+        if (shopResponse.ok) {
+          const shopData = await shopResponse.json();
+          setShop(shopData);
+        }
       }
-      
-      const data = await response.json();
-      console.log('Products data:', data);
-      setProducts(data);
-      setFilteredProducts(data);
     } catch (error) {
       console.error('Error fetching products:', error);
-      setError('Failed to load products. Please try again later.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleWhatsAppRequest = () => {
-    const message = "Hi, I can't find the Product. Please check if it's available: _____";
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
-    window.open(whatsappUrl, '_blank');
-  };
+  const addToWishlist = async (productId) => {
+    if (!user) {
+      navigate('/');
+      return;
+    }
 
-  // Callback function when wishlist is updated
-  const handleWishlistUpdate = () => {
-    console.log('Wishlist updated, you can refresh products if needed');
+    try {
+      setAddingToWishlist(prev => ({ ...prev, [productId]: true }));
+      
+      const response = await fetch(`${config.apiUrl}/wishlist`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ product_id: productId }),
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        alert('Product added to wishlist!');
+      } else if (response.status === 401) {
+        console.error('Authentication failed');
+        navigate('/');
+      } else {
+        alert('Failed to add product to wishlist');
+      }
+    } catch (error) {
+      console.error('Error adding to wishlist:', error);
+    } finally {
+      setAddingToWishlist(prev => ({ ...prev, [productId]: false }));
+    }
   };
 
   if (loading) {
     return (
-      <div className="products-container">
-        <div className="products-header">
-          <button onClick={() => navigate('/shops')} className="back-btn">
-            ← Back to Shops
-          </button>
-        </div>
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Discovering amazing products...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="products-container">
-        <div className="products-header">
-          <button onClick={() => navigate('/shops')} className="back-btn">
-            ← Back to Shops
-          </button>
-        </div>
-        <div className="error-container">
-          <div className="error-icon">😔</div>
-          <h3>Oops! Something went wrong</h3>
-          <p>{error}</p>
-          <button onClick={fetchProducts} className="retry-btn">
-            🔄 Try Again
-          </button>
-        </div>
+      <div className="container">
+        <div className="loading">Loading products...</div>
       </div>
     );
   }
 
   return (
-    <div className="products-container">
-      {/* Header Section */}
-      <div className="products-header">
-        <button onClick={() => navigate('/shops')} className="back-btn">
-          ← Back to Shops
-        </button>
-        <h1 className="page-title">Products Menu</h1>
-      </div>
-
-      {/* Search Section */}
-      <div className="search-section">
-        <div className="search-container">
-          <div className="search-icon">🔍</div>
-          <input
-            type="text"
-            placeholder="Search for products, items..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
-          />
-          {searchTerm && (
-            <button 
-              className="clear-search"
-              onClick={() => setSearchTerm('')}
-            >
-              ✕
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="quick-actions">
-        <div className="products-count">
-          <span className="count-badge">{filteredProducts.length}</span>
-          <span>Products Available</span>
-        </div>
-        
-        <button 
-          onClick={handleWhatsAppRequest}
-          className="whatsapp-request-btn"
-        >
-          <span className="whatsapp-icon">💬</span>
-          Request Product
-        </button>
-      </div>
-
-      {/* Request Help Section */}
-      <div className="request-help-section">
-        <div className="help-content">
-          <div className="help-icon">❓</div>
-          <div className="help-text">
-            <h4>Can't find what you're looking for?</h4>
-            <p>We'll help you get it! Request any product via WhatsApp</p>
+    <div className="container">
+      <div className="page-header">
+        <h1 className="page-title">
+          {shop ? `Products from ${shop.name}` : 'Products'}
+        </h1>
+        {shop && (
+          <div className="shop-info-banner">
+            <p>{shop.description}</p>
+            <p>📍 {shop.address}</p>
           </div>
-        </div>
-        <button 
-          onClick={handleWhatsAppRequest}
-          className="help-action-btn"
-        >
-          Request Now
-        </button>
+        )}
       </div>
 
-      {/* Products Grid */}
-      {filteredProducts.length === 0 ? (
-        <div className="empty-products">
-          <div className="empty-icon">📦</div>
-          <h3>
-            {searchTerm ? `No results for "${searchTerm}"` : 'No products available'}
-          </h3>
-          <p>
-            {searchTerm 
-              ? "Try searching with different keywords or request the product via WhatsApp"
-              : "This shop hasn't added any products yet. Check back later!"
-            }
-          </p>
-          {searchTerm && (
-            <button 
-              className="clear-search-btn"
-              onClick={() => setSearchTerm('')}
-            >
-              Clear Search
-            </button>
-          )}
-        </div>
-      ) : (
-        <div className="products-content">
-          {/* Results Info */}
-          <div className="results-info">
-            <h2>
-              {searchTerm 
-                ? `Search Results for "${searchTerm}"`
-                : 'All Products'
-              }
-            </h2>
-            <span className="results-count">
-              {filteredProducts.length} item{filteredProducts.length !== 1 ? 's' : ''}
-            </span>
-          </div>
-
-          {/* Products Grid */}
-          <div className="products-grid">
-            {filteredProducts.map(product => (
-              <ProductCard 
-                key={product._id} 
-                product={product} 
-                onWishlistUpdate={handleWishlistUpdate}
+      <div className="products-grid">
+        {products.map(product => (
+          <div key={product._id} className="product-card">
+            {product.image_url && (
+              <img 
+                src={product.image_url} 
+                alt={product.name}
+                className="product-image"
               />
-            ))}
+            )}
+            <div className="product-info">
+              <h3 className="product-name">{product.name}</h3>
+              <p className="product-description">{product.description}</p>
+              <div className="product-price">₹{product.price}</div>
+              
+              <button
+                onClick={() => addToWishlist(product._id)}
+                disabled={addingToWishlist[product._id]}
+                className="add-to-wishlist-btn"
+              >
+                {addingToWishlist[product._id] ? 'Adding...' : 'Add to Wishlist'}
+              </button>
+            </div>
           </div>
+        ))}
+      </div>
+
+      {products.length === 0 && (
+        <div className="empty-state">
+          <p>No products available in this shop.</p>
         </div>
       )}
     </div>
