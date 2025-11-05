@@ -16,7 +16,7 @@ function App() {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const response = await fetch(`${config.apiUrl}/user`, {
+        const response = await fetch(`${config.apiUrl}/check-session`, {
           credentials: 'include'
         });
 
