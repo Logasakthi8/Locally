@@ -12,92 +12,45 @@ export const useAuth = () => {
   return context;
 };
 
+// AuthContext.js - Add session refresh
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Session timeout - 7 days
-  const SESSION_TIMEOUT = 7 * 24 * 60 * 60 * 1000;
-
-  // Check session on app startup
-  useEffect(() => {
-    checkSession();
-  }, []);
-
-  const checkSession = async () => {
+  const refreshSession = async () => {
     try {
-      setLoading(true);
-      
-      // Check localStorage first for faster access
-      const cachedSession = localStorage.getItem('userSession');
-      if (cachedSession) {
-        const sessionData = JSON.parse(cachedSession);
-        const isSessionValid = Date.now() - sessionData.timestamp < SESSION_TIMEOUT;
-        
-        if (isSessionValid) {
-          setUser(sessionData.user);
-          setLoading(false);
-          return;
-        } else {
-          // Clear expired session
-          localStorage.removeItem('userSession');
-        }
-      }
-
-      // If no cached session or expired, check server
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-
       const response = await fetch(`${config.apiUrl}/check-session`, {
-        method: 'GET',
-        credentials: 'include',
-        signal: controller.signal
+        credentials: 'include'
       });
-
-      clearTimeout(timeoutId);
-
+      
       if (response.ok) {
         const data = await response.json();
         if (data.user) {
-          // Cache the session
-          localStorage.setItem('userSession', JSON.stringify({
+          const sessionData = {
             user: data.user,
             timestamp: Date.now()
-          }));
+          };
+          localStorage.setItem('userSession', JSON.stringify(sessionData));
           setUser(data.user);
+          return true;
         }
       }
+      return false;
     } catch (error) {
-      if (error.name !== 'AbortError') {
-        console.error('Session check failed:', error);
-      }
-    } finally {
-      setLoading(false);
+      console.error('Session refresh failed:', error);
+      return false;
     }
   };
 
-  const login = (userData) => {
-    const sessionData = {
-      user: userData,
-      timestamp: Date.now(),
-      mobile: userData.mobile
-    };
-    localStorage.setItem('userSession', JSON.stringify(sessionData));
-    setUser(userData);
-  };
-
-  const logout = async () => {
-    try {
-      await fetch(`${config.apiUrl}/logout`, {
-        method: 'POST',
-        credentials: 'include'
-      });
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      localStorage.removeItem('userSession');
-      setUser(null);
+  // Use this in your components when you get 401 errors
+  const handleAuthError = async () => {
+    console.log('🔄 Attempting to refresh session...');
+    const refreshed = await refreshSession();
+    if (!refreshed) {
+      // If refresh fails, logout completely
+      logout();
     }
+    return refreshed;
   };
 
   const value = {
@@ -105,7 +58,8 @@ export const AuthProvider = ({ children }) => {
     loading,
     login,
     logout,
-    checkSession
+    checkSession,
+    refreshSession: handleAuthError
   };
 
   return (
