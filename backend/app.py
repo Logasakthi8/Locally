@@ -16,17 +16,25 @@ mongo = PyMongo(app)
 
 # Configure session for longer duration
 app.config.update(
-    SESSION_COOKIE_SAMESITE="None",
+    SESSION_COOKIE_SAMESITE='Lax',
     SESSION_COOKIE_SECURE=True,
     SESSION_COOKIE_HTTPONLY=True,
-    PERMANENT_SESSION_LIFETIME=timedelta(days=30)  # 30-day session
+    SESSION_COOKIE_DOMAIN='.locallys.in',  # Important for subdomains
+    PERMANENT_SESSION_LIFETIME=timedelta(days=30)
 )
 
-CORS(app, supports_credentials=True, origins=[
-    "https://locallys.in",
-    "https://www.locallys.in", 
-])
 
+CORS(app, 
+     supports_credentials=True,
+     origins=[
+         "https://locallys.in",
+         "https://www.locallys.in",
+         "http://localhost:3000"  # For development
+     ],
+     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+     expose_headers=["Set-Cookie"]  # Important for cookies
+)
 # Helper function to serialize ObjectId
 def serialize_doc(doc):
     if doc is None:
@@ -39,28 +47,39 @@ def serialize_doc(doc):
 # FIXED AUTH ENDPOINTS
 # ======================
 
+@app.before_request
+def make_session_permanent():
+    session.permanent = True
+
+# Add CORS preflight handler
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
+
+# Your existing routes continue below...
 @app.route('/api/check-session', methods=['GET'])
 def check_session():
-    """Enhanced session check with better debugging"""
+    """Enhanced session check"""
     try:
         print(f"🔍 Checking session: {dict(session)}")
         
         if 'user_id' in session:
-            # Only fetch essential user data for faster response
             user = mongo.db.users.find_one(
                 {'_id': ObjectId(session['user_id'])},
-                {'mobile': 1, 'lastLogin': 1}  # Only get needed fields
+                {'mobile': 1, 'lastLogin': 1}
             )
             if user:
-                print(f"✅ Active session found for user: {user['mobile']}")
+                print(f"✅ Active session for: {user['mobile']}")
                 return jsonify({
                     'user': serialize_doc(user),
                     'message': 'Session active'
                 })
         
-        # Clear invalid session
         session.clear()
-        print("❌ No active session found")
+        print("❌ No active session")
         return jsonify({'user': None, 'message': 'No active session'})
         
     except Exception as e:
