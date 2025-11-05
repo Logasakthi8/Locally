@@ -1,4 +1,7 @@
+// Wishlist.js
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from './AuthContext';
 import WishlistItem from './WishlistItem';
 import config from '../config'; 
 
@@ -13,19 +16,31 @@ function Wishlist() {
     const saved = localStorage.getItem('userDeliveryCount');
     return saved ? parseInt(saved) : 0;
   });
-  const [expandedShops, setExpandedShops] = useState({}); // Track which shops are expanded
+  const [expandedShops, setExpandedShops] = useState({});
 
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const YOUR_PHONE_NUMBER = '9361437687';
 
+  // Redirect if not authenticated
   useEffect(() => {
-    fetchWishlist();
-  }, []);
+    if (!authLoading && !user) {
+      navigate('/login');
+    }
+  }, [user, authLoading, navigate]);
+
+  // Fetch wishlist when user is available
+  useEffect(() => {
+    if (user) {
+      console.log('👤 User authenticated, fetching wishlist:', user.mobile);
+      fetchWishlist();
+    }
+  }, [user]);
 
   useEffect(() => {
     if (wishlist.length > 0) {
       groupProductsByShop();
       initializeSelectedProducts();
-      // Initially expand all shops
       const initialExpanded = {};
       Object.keys(groupedWishlist).forEach(shopId => {
         initialExpanded[shopId] = true;
@@ -75,56 +90,41 @@ function Wishlist() {
   };
 
   const fetchWishlist = async () => {
-  try {
-    setLoading(true);
-    
-    // First, check if user is authenticated
-    const sessionCheck = await fetch(`${config.apiUrl}/check-session`, {
-      credentials: 'include'
-    });
-    
-    if (!sessionCheck.ok) {
-      console.error('User not authenticated');
-      setWishlist([]);
-      setLoading(false);
+    if (!user) {
+      console.error('❌ No user found, cannot fetch wishlist');
       return;
     }
-    
-    const sessionData = await sessionCheck.json();
-    
-    if (!sessionData.user) {
-      console.error('No user in session');
-      setWishlist([]);
-      setLoading(false);
-      return;
-    }
-    
-    console.log('User authenticated:', sessionData.user.mobile);
-    
-    // Now fetch wishlist
-    const response = await fetch(`${config.apiUrl}/wishlist`, {
-      credentials: 'include'
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      setWishlist(data);
+
+    try {
+      setLoading(true);
+      console.log('🔄 Fetching wishlist...');
       
-      if (data.length > 0) {
-        await fetchShopDetails(data);
+      const response = await fetch(`${config.apiUrl}/wishlist`, {
+        credentials: 'include'
+      });
+      
+      console.log('📊 Wishlist response status:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('🎉 Wishlist items received:', data.length);
+        setWishlist(data);
+        
+        if (data.length > 0) {
+          await fetchShopDetails(data);
+        }
+      } else if (response.status === 401) {
+        console.error('❌ Unauthorized access to wishlist');
+        setWishlist([]);
+      } else {
+        console.error('❌ Failed to fetch wishlist');
       }
-    } else if (response.status === 401) {
-      console.error('Unauthorized access to wishlist');
-      setWishlist([]);
-    } else {
-      console.error('Failed to fetch wishlist');
+    } catch (error) {
+      console.error('💥 Error fetching wishlist:', error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  } catch (error) {
-    console.error('Error:', error);
-    setLoading(false);
-  }
-};
+  };
 
   const fetchShopDetails = async (products) => {
     try {
@@ -184,6 +184,11 @@ function Wishlist() {
   };
 
   const removeFromWishlist = async (productId) => {
+    if (!user) {
+      console.error('User not authenticated');
+      return;
+    }
+
     try {
       const response = await fetch(`${config.apiUrl}/wishlist/${productId}`, {
         method: 'DELETE',
@@ -196,6 +201,8 @@ function Wishlist() {
         const newSelected = {...selectedProducts};
         delete newSelected[productId];
         setSelectedProducts(newSelected);
+      } else if (response.status === 401) {
+        console.error('Authentication failed during remove operation');
       } else {
         console.error('Failed to remove from wishlist');
       }
@@ -205,6 +212,11 @@ function Wishlist() {
   };
 
   const updateQuantity = async (productId, newQuantity) => {
+    if (!user) {
+      console.error('User not authenticated');
+      return;
+    }
+
     try {
       const response = await fetch(`${config.apiUrl}/wishlist/${productId}/quantity`, {
         method: 'PUT',
@@ -223,6 +235,8 @@ function Wishlist() {
               : item
           )
         );
+      } else if (response.status === 401) {
+        console.error('Authentication failed during quantity update');
       } else {
         console.error('Failed to update quantity');
       }
@@ -309,6 +323,11 @@ function Wishlist() {
   };
 
   const clearCart = async () => {
+    if (!user) {
+      console.error('User not authenticated');
+      return;
+    }
+
     try {
       const response = await fetch(`${config.apiUrl}/clear-cart`, {
         method: 'POST',
@@ -320,6 +339,8 @@ function Wishlist() {
         setGroupedWishlist({});
         setSelectedProducts({});
         setExpandedShops({});
+      } else if (response.status === 401) {
+        console.error('Authentication failed during clear cart');
       }
     } catch (error) {
       console.error('Error clearing cart:', error);
@@ -356,6 +377,32 @@ function Wishlist() {
   const getTotalItemsCount = () => {
     return wishlist.reduce((sum, item) => sum + (item.quantity || 1), 0);
   };
+
+  if (authLoading) {
+    return (
+      <div className="container">
+        <div className="loading">Checking authentication...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="container">
+        <div className="empty-state">
+          <div className="empty-icon">🔒</div>
+          <h2 className="empty-title">Authentication Required</h2>
+          <p className="empty-description">Please log in to view your wishlist</p>
+          <button 
+            onClick={() => navigate('/login')} 
+            className="btn btn-primary"
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
