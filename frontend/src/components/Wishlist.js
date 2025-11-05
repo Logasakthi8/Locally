@@ -89,43 +89,50 @@ function Wishlist() {
     return currentTime >= openingTime && currentTime <= closingTime;
   };
 
-  const fetchWishlist = async () => {
-    if (!user) {
-      console.error('❌ No user found, cannot fetch wishlist');
-      return;
-    }
+  // In Wishlist.js - Update fetchWishlist function
+const fetchWishlist = async () => {
+  if (!user) {
+    console.error('❌ No user found, cannot fetch wishlist');
+    return;
+  }
 
-    try {
-      setLoading(true);
-      console.log('🔄 Fetching wishlist...');
-      
-      const response = await fetch(`${config.apiUrl}/wishlist`, {
-        credentials: 'include'
-      });
-      
-      console.log('📊 Wishlist response status:', response.status);
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('🎉 Wishlist items received:', data.length);
-        setWishlist(data);
-        
-        if (data.length > 0) {
-          await fetchShopDetails(data);
-        }
-      } else if (response.status === 401) {
-        console.error('❌ Unauthorized access to wishlist');
-        setWishlist([]);
-      } else {
-        console.error('❌ Failed to fetch wishlist');
+  try {
+    setLoading(true);
+    console.log('🔄 Fetching wishlist for user:', user.mobile);
+    
+    const response = await fetch(`${config.apiUrl}/wishlist`, {
+      method: 'GET',
+      credentials: 'include',  // 🔥 IMPORTANT: This must be included
+      headers: {
+        'Content-Type': 'application/json',
       }
-    } catch (error) {
-      console.error('💥 Error fetching wishlist:', error);
-    } finally {
-      setLoading(false);
+    });
+    
+    console.log('📊 Wishlist response status:', response.status);
+    console.log('📋 Wishlist response headers:', response.headers);
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('🎉 Wishlist items received:', data.length);
+      setWishlist(data);
+      
+      if (data.length > 0) {
+        await fetchShopDetails(data);
+      }
+    } else if (response.status === 401) {
+      console.error('❌ Unauthorized access to wishlist');
+      // Force re-authentication
+      localStorage.removeItem('userSession');
+      window.location.href = '/'; // Redirect to login
+    } else {
+      console.error('❌ Failed to fetch wishlist');
     }
-  };
-
+  } catch (error) {
+    console.error('💥 Error fetching wishlist:', error);
+  } finally {
+    setLoading(false);
+  }
+};
   const fetchShopDetails = async (products) => {
     try {
       const shopIds = [...new Set(products.map(product => product.shop_id))];
