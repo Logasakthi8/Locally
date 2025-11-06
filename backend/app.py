@@ -48,7 +48,14 @@ def serialize_doc(doc):
 # ======================
 # IMPROVED AUTH ENDPOINTS
 # ======================
-
+@app.route('api/health')
+def health_check():
+    return jsonify({
+        'status': 'healthy', 
+        'message': 'API is running',
+        'timestamp': datetime.utcnow().isoformat(),
+        'routes': [str(rule) for rule in app.url_map.iter_rules()]
+    })
 @app.route('/api/check-session', methods=['GET'])
 def check_session():
     """Check if user has an active session with cookie conflict handling"""
