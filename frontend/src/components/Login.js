@@ -22,135 +22,130 @@ function Login({ onLogin }) {
 
   // Enhanced session check with caching
   const checkExistingSession = useCallback(async () => {
-    try {
-      // Check localStorage first for faster access
-      const cachedSession = localStorage.getItem('userSession');
-      if (cachedSession) {
-        const sessionData = JSON.parse(cachedSession);
-        const isSessionValid = Date.now() - sessionData.timestamp < SESSION_TIMEOUT;
-        
-        if (isSessionValid) {
-          onLogin(sessionData.user);
-          navigate('/shops');
-          return;
-        } else {
-          // Clear expired session
-          localStorage.removeItem('userSession');
-        }
-      }
-
-      // If no cached session or expired, check server
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
-
-      const response = await fetch(`${config.apiUrl}/check-session`, {
-        method: 'GET',
-        credentials: 'include',
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.user) {
-          // Cache the session
-          localStorage.setItem('userSession', JSON.stringify({
-            user: data.user,
-            timestamp: Date.now()
-          }));
-          onLogin(data.user);
-          navigate('/shops');
-        }
-      }
-    } catch (error) {
-      if (error.name !== 'AbortError') {
-        console.error('Session check failed:', error);
-      }
-      // Continue to login page if session check fails
-    }
-  }, [onLogin, navigate]);
-
-  // Check for existing session on component mount
-  useEffect(() => {
-    checkExistingSession();
-  }, [checkExistingSession]);
-
-  // Rotating messages
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTextIndex((prevIndex) => 
-        prevIndex === startupMessages.length - 1 ? 0 : prevIndex + 1
-      );
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [startupMessages.length]);
-
-  // Optimized login handler with request queuing prevention
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (loading || mobile.length !== 10) return;
-    
-    setLoading(true);
-    setStatusMessage('Checking account...');
-
-    try {
-      // Single API call for login/registration
-      setStatusMessage('Processing...');
+  try {
+    // Check localStorage first for faster access
+    const cachedSession = localStorage.getItem('userSession');
+    if (cachedSession) {
+      const sessionData = JSON.parse(cachedSession);
+      const isSessionValid = Date.now() - sessionData.timestamp < SESSION_TIMEOUT;
       
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
-
-      const response = await fetch(`${config.apiUrl}/auth/mobile`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ mobile }),
-        credentials: 'include',
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`Auth failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      // Store session with timestamp
-      const sessionData = {
-        user: data.user,
-        timestamp: Date.now(),
-        mobile: mobile // Store mobile for quick access
-      };
-      
-      localStorage.setItem('userSession', JSON.stringify(sessionData));
-      
-      setStatusMessage('Success! Redirecting...');
-      onLogin(data.user);
-      
-      // Immediate navigation without delay for better UX
-      navigate('/shops');
-      
-    } catch (error) {
-      console.error('Authentication error:', error);
-      
-      if (error.name === 'AbortError') {
-        setStatusMessage('Request timeout. Please check your connection.');
+      if (isSessionValid) {
+        onLogin(sessionData.user);
+        navigate('/shops');
+        return;
       } else {
-        setStatusMessage('Something went wrong. Please try again.');
+        // Clear expired session
+        localStorage.removeItem('userSession');
       }
-      
-      // Auto-clear message after 3 seconds
-      setTimeout(() => setStatusMessage(''), 3000);
-    } finally {
-      setLoading(false);
     }
-  };
+
+    // If no cached session or expired, check server
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const response = await fetch(`${config.apiUrl}/check-session`, {
+      method: 'GET',
+      credentials: 'include',
+      signal: controller.signal
+    });
+
+    const data = await response.json(); // ← Read first
+    
+    clearTimeout(timeoutId);
+
+    if (response.ok && data.user) {
+      // Cache the session
+      localStorage.setItem('userSession', JSON.stringify({
+        user: data.user,
+        timestamp: Date.now()
+      }));
+      onLogin(data.user);
+      navigate('/shops');
+    }
+  } catch (error) {
+    if (error.name !== 'AbortError') {
+      console.error('Session check failed:', error);
+    }
+    // Continue to login page if session check fails
+  }
+}, [onLogin, navigate]);
+  // Optimized login handler with request queuing prevention
+  // Optimized login handler with request queuing prevention
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  if (loading || mobile.length !== 10) return;
+  
+  setLoading(true);
+  setStatusMessage('Checking account...');
+
+  try {
+    // Single API call for login/registration
+    setStatusMessage('Processing...');
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+    const response = await fetch(`${config.apiUrl}/auth/mobile`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ mobile }),
+      credentials: 'include',
+      signal: controller.signal
+    });
+
+    // FIRST read the response data
+    const data = await response.json();
+    
+    clearTimeout(timeoutId);
+
+    // THEN check if response is ok
+    if (!response.ok) {
+      // Use the actual error message from the server
+      const errorMessage = data.error || data.message || `Auth failed: ${response.status}`;
+      throw new Error(errorMessage);
+    }
+    
+    // Store session with timestamp
+    const sessionData = {
+      user: data.user,
+      timestamp: Date.now(),
+      mobile: mobile // Store mobile for quick access
+    };
+    
+    localStorage.setItem('userSession', JSON.stringify(sessionData));
+    
+    setStatusMessage('Success! Redirecting...');
+    onLogin(data.user);
+    
+    // Immediate navigation without delay for better UX
+    navigate('/shops');
+    
+  } catch (error) {
+    console.error('Authentication error:', error);
+    
+    let userMessage = 'Something went wrong. Please try again.';
+    
+    if (error.name === 'AbortError') {
+      userMessage = 'Request timeout. Please check your connection.';
+    } else if (error.message.includes('Invalid mobile number')) {
+      userMessage = 'Please enter a valid 10-digit mobile number.';
+    } else if (error.message.includes('Mobile number is required')) {
+      userMessage = 'Mobile number is required.';
+    } else if (error.message.includes('Authentication failed')) {
+      userMessage = 'Login failed. Please try again.';
+    }
+    
+    setStatusMessage(userMessage);
+    
+    // Auto-clear message after 3 seconds
+    setTimeout(() => setStatusMessage(''), 3000);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Mobile input validation
   const handleMobileChange = (e) => {
