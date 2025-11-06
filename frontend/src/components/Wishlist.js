@@ -531,7 +531,7 @@ function Wishlist() {
                       title={!shopOpen ? `Sorry! The shop is closed. Please place the order after ${shop.opening_time}.` : !meetsMinimum ? `Add ₹${100 - subtotal} more to checkout` : ''}
                     >
                       <span>💬</span>
-                      WhatsApp ({selectedCount})
+                      WhatsApp To Order ({selectedCount})
                     </button>
                     <button 
                       onClick={() => meetsMinimum && shopOpen && callToOrder(YOUR_PHONE_NUMBER, shopId)} 
