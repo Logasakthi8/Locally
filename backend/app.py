@@ -112,11 +112,14 @@ def check_user():
 
 @app.route('/api/login', methods=['POST'])
 def login():
-    """Improved login with session persistence"""
+    """Improved login with consistent cookie handling"""
     try:
+        # Clear any existing session to start fresh
+        session.clear()
+        
         data = request.json
         mobile = data.get('mobile')
-        remember_me = data.get('rememberMe', True)  # Default to True for long sessions
+        remember_me = data.get('rememberMe', True)
 
         if not mobile:
             return jsonify({'error': 'Mobile number is required'}), 400
@@ -136,23 +139,21 @@ def login():
         # Set session data
         session['user_id'] = str(user['_id'])
         session['user_mobile'] = user['mobile']
+        session.permanent = remember_me
 
-        # Set longer session if remember_me is True
-        if remember_me:
-            session.permanent = True
-        else:
-            session.permanent = False
-
-        return jsonify({
+        response = jsonify({
             'message': 'Login successful',
             'user': serialize_doc(user),
             'userMessage': user_message
         })
+        
+        return response
 
     except Exception as e:
         print(f"Login error: {e}")
+        session.clear()
         return jsonify({'error': 'Login failed'}), 500
-
+        
 @app.route('/api/register', methods=['POST'])
 def register():
     """Separate registration endpoint for new users"""
