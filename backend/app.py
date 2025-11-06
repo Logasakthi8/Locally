@@ -15,17 +15,24 @@ app.config["MONGO_URI"] = os.getenv('MONGO_URI')
 mongo = PyMongo(app)
 
 # Configure session for longer duration
+
+# Update session configuration
 app.config.update(
-    SESSION_COOKIE_SAMESITE="None",
+    SESSION_COOKIE_SAMESITE="Lax",  # Try "Lax" instead of "None"
     SESSION_COOKIE_SECURE=True,
     SESSION_COOKIE_HTTPONLY=True,
-    PERMANENT_SESSION_LIFETIME=timedelta(days=30)  # 30-day session
+    SESSION_COOKIE_DOMAIN=".locallys.in",  # Add this for subdomain support
+    PERMANENT_SESSION_LIFETIME=timedelta(days=30)
 )
 
-CORS(app, supports_credentials=True, origins=[
-    "https://locallys.in",
-    "https://www.locallys.in", 
-])
+CORS(app, 
+     supports_credentials=True, 
+     origins=[
+         "https://locallys.in",
+         "https://www.locallys.in", 
+     ],
+     allow_headers=["Content-Type", "Authorization"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 
 # Helper function to serialize ObjectId
 def serialize_doc(doc):
@@ -240,8 +247,16 @@ def get_shop_products(shop_id):
 # Update the wishlist endpoint to include quantity
 @app.route('/api/wishlist', methods=['POST'])
 def add_to_wishlist():
+    print(f"🔍 Session check - user_id in session: {'user_id' in session}")
+    print(f"🔍 Session contents: {dict(session)}")
+    
     if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
+        return jsonify({
+            'error': 'Not authenticated', 
+            'session_data': dict(session),
+            'has_user_id': False
+        }), 401
+
 
     try:
         data = request.json
@@ -896,7 +911,10 @@ def submit_feedback():
     except Exception as e:
         print(f"Error saving feedback: {e}")
         return jsonify({'error': 'Internal server error'}), 500
-
+        
+@app.before_request
+def make_session_permanent():
+    session.permanent = True
 
 if __name__ == '__main__':
     app.run(debug=True)
