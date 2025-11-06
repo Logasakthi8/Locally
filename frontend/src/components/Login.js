@@ -166,7 +166,7 @@ const handleSubmit = async (e) => {
             <div className="logo-circle">
               {/* Your logo here */}
             </div>
-            <h1 className="app-title" style={{ color: '#2196F3', fontWeight: '700' }}>Locally</h1>
+            <h1 className="app-title" style={{ color: '#2196F3', fontWeight: '700' }}>Locallys</h1>
             <p className="app-tagline" style={{ color: '#444' }}>Your Local Shopping Companion</p>
           </div>
         </div>
@@ -224,7 +224,7 @@ const handleSubmit = async (e) => {
         {/* Features Section */}
         <div className="features-section">
           <div className="features-header">
-            <h3>Why Choose Locally?</h3>
+            <h3>Why Choose Locallys?</h3>
           </div>
           
           <div className="startup-messages">
