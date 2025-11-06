@@ -17,11 +17,14 @@ mongo = PyMongo(app)
 # Configure session for longer duration
 
 # Update session configuration
+# Replace your current session config with this:
 app.config.update(
-    SESSION_COOKIE_SAMESITE="Lax",  # Try "Lax" instead of "None"
-    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_NAME='locally_session',  # Use consistent name
+    SESSION_COOKIE_DOMAIN='.locallys.in',   # Include subdomains
+    SESSION_COOKIE_PATH='/',
     SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_DOMAIN=".locallys.in",  # Add this for subdomain support
+    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_SAMESITE='Lax',
     PERMANENT_SESSION_LIFETIME=timedelta(days=30)
 )
 
@@ -48,26 +51,44 @@ def serialize_doc(doc):
 
 @app.route('/api/check-session', methods=['GET'])
 def check_session():
-    """Check if user has an active session"""
+    """Check if user has an active session with cookie conflict handling"""
     try:
+        # Log cookie information for debugging
+        cookies = request.headers.get('Cookie', '')
+        session_count = cookies.count('session=')
+        locally_session_count = cookies.count('locally_session=')
+        
+        print(f"🔍 Cookie debug - Sessions: {session_count}, Locally_Sessions: {locally_session_count}")
+        
         if 'user_id' in session:
             # Verify user still exists in database
             user = mongo.db.users.find_one({'_id': ObjectId(session['user_id'])})
             if user:
                 return jsonify({
                     'user': serialize_doc(user),
-                    'message': 'Session active'
+                    'message': 'Session active',
+                    'cookie_debug': {
+                        'session_count': session_count,
+                        'locally_session_count': locally_session_count
+                    }
                 })
 
         # Clear invalid session
         session.clear()
-        return jsonify({'user': None, 'message': 'No active session'})
+        return jsonify({
+            'user': None, 
+            'message': 'No active session',
+            'cookie_debug': {
+                'session_count': session_count,
+                'locally_session_count': locally_session_count
+            }
+        })
 
     except Exception as e:
         print(f"Session check error: {e}")
         session.clear()
         return jsonify({'user': None, 'error': 'Session check failed'}), 500
-
+        
 @app.route('/api/check-user', methods=['POST'])
 def check_user():
     """Quick check if user exists before login"""
@@ -915,6 +936,44 @@ def submit_feedback():
 @app.before_request
 def make_session_permanent():
     session.permanent = True
+
+@app.before_request
+def fix_session_cookies():
+    """Fix duplicate session cookies issue"""
+    # Debug cookie information
+    cookie_count = request.headers.get('Cookie', '').count('session=')
+    if cookie_count > 1:
+        print(f"⚠️ Multiple session cookies detected: {cookie_count}")
+        
+    # Ensure session consistency
+    if 'user_id' in session:
+        # Verify the user_id is valid
+        try:
+            user = mongo.db.users.find_one({'_id': ObjectId(session['user_id'])})
+            if not user:
+                session.clear()
+        except:
+            session.clear()
+
+@app.route('/api/cleanup-cookies', methods=['POST'])
+def cleanup_cookies():
+    """Clear duplicate cookies and establish clean session"""
+    try:
+        # Clear all sessions
+        session.clear()
+        
+        response = jsonify({'message': 'Cookies cleaned up'})
+        
+        # Explicitly clear duplicate cookies
+        response.set_cookie('session', '', expires=0, domain='.locallys.in')
+        response.set_cookie('locally_session', '', expires=0, domain='.locallys.in')
+        response.set_cookie('session', '', expires=0, domain='api.locallys.in')
+        response.set_cookie('locally_session', '', expires=0, domain='api.locallys.in')
+        
+        return response
+    except Exception as e:
+        print(f"Cookie cleanup error: {e}")
+        return jsonify({'error': 'Cleanup failed'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
