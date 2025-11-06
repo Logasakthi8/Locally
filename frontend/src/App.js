@@ -5,27 +5,38 @@ import Login from './components/Login';
 import Shops from './components/Shops';
 import Products from './components/Products';
 import Wishlist from './components/Wishlist';
-import FeedbackSystem from './components/Feedback'; // Add this import
-import ReturnPolicy from './components/ReturnPolicy'; // Add this import
+import FeedbackSystem from './components/Feedback';
+import ReturnPolicy from './components/ReturnPolicy';
 import './App.css';
 import config from './config';
- 
+
 function App() {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const response = await fetch(`${config.apiUrl}/user`, {
+        console.log('🔍 Checking user session...');
+        const response = await fetch(`${config.apiUrl}/check-session`, { // ✅ Fixed endpoint
           credentials: 'include'
         });
 
+        console.log('📡 Session check response status:', response.status);
+        
         if (response.ok) {
-          const userData = await response.json();
-          setUser(userData);
+          const data = await response.json();
+          console.log('✅ Session active:', data.user ? 'User found' : 'No user');
+          setUser(data.user);
+        } else {
+          console.log('❌ Session check failed');
+          setUser(null);
         }
       } catch (error) {
         console.error('Error checking session:', error);
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -39,6 +50,15 @@ function App() {
     }
     return children;
   };
+
+  // Show loading spinner while checking session
+  if (loading) {
+    return (
+      <div className="loading-spinner">
+        <div>Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <Router>
@@ -91,7 +111,6 @@ function App() {
         </Routes>
 
         {/* ✅ ADD FEEDBACK SYSTEM HERE - Outside Routes but inside Router */}
-        {/* PASS THE USER PROP TO FEEDBACKSYSTEM */}
         <FeedbackSystem user={user} />
       </div>
     </Router>
