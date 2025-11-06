@@ -57,22 +57,41 @@ def health_check():
     })
 @app.route('/api/auth/mobile', methods=['POST'])
 def mobile_auth():
-    """Optimized mobile authentication endpoint"""
+    """Mobile authentication endpoint - fixed version"""
     try:
-        data = request.json
+        print("🔍 [AUTH] Starting mobile authentication...")
+        
+        # Check if request has JSON data
+        if not request.is_json:
+            return jsonify({'error': 'Missing JSON in request'}), 400
+            
+        data = request.get_json()
+        print(f"🔍 [AUTH] Received data: {data}")
+        
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+            
         mobile = data.get('mobile')
+        print(f"🔍 [AUTH] Mobile received: {mobile}")
         
         # Input validation
-        if not mobile or not re.match(r'^\d{10}$', mobile):
-            return jsonify({'error': 'Invalid mobile number'}), 400
+        if not mobile:
+            return jsonify({'error': 'Mobile number is required'}), 400
+        
+        # Clean and validate mobile number
+        mobile_clean = ''.join(filter(str.isdigit, str(mobile)))
+        
+        if len(mobile_clean) != 10:
+            return jsonify({'error': 'Invalid mobile number. Must be 10 digits.'}), 400
 
-        # Find or create user in single operation
-        user = mongo.db.users.find_one({'mobile': mobile})
+        # Find or create user WITHOUT using the User class
+        user = mongo.db.users.find_one({'mobile': mobile_clean})
         
         if not user:
-            # Create new user
+            print(f"🆕 [AUTH] Creating new user for mobile: {mobile_clean}")
+            # Create new user directly without User class
             user_data = {
-                'mobile': mobile,
+                'mobile': mobile_clean,
                 'createdAt': datetime.utcnow(),
                 'lastLogin': datetime.utcnow()
             }
@@ -80,7 +99,9 @@ def mobile_auth():
             user_id = result.inserted_id
             user = mongo.db.users.find_one({'_id': user_id})
             is_new = True
+            print(f"✅ [AUTH] New user created with ID: {user_id}")
         else:
+            print(f"✅ [AUTH] Existing user found: {user['_id']}")
             # Update last login for existing user
             mongo.db.users.update_one(
                 {'_id': user['_id']},
@@ -89,12 +110,13 @@ def mobile_auth():
             is_new = False
 
         # Create session
+        session.clear()  # Clear any existing session first
         session['user_id'] = str(user['_id'])
         session['mobile'] = user['mobile']
         session.permanent = True
         
-        print(f"✅ User authenticated: {user['mobile']}, Session ID: {session.sid}")
-
+        print(f"✅ [AUTH] Authentication successful for: {user['mobile']}")
+        
         return jsonify({
             'success': True,
             'user': {
@@ -105,9 +127,10 @@ def mobile_auth():
         })
 
     except Exception as error:
-        print(f'Auth error: {error}')
+        print(f'❌ [AUTH] Unexpected error: {error}')
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': 'Authentication failed'}), 500
-
 @app.route('/api/check-session', methods=['GET'])
 def check_session():
     """Fast session check endpoint"""
@@ -165,7 +188,7 @@ def check_user():
 
 @app.route('/api/login', methods=['POST'])
 def login():
-    """Improved login with consistent cookie handling"""
+    """Improved login without User class"""
     try:
         # Clear any existing session to start fresh
         session.clear()
@@ -177,13 +200,20 @@ def login():
         if not mobile:
             return jsonify({'error': 'Mobile number is required'}), 400
 
+        # Clean mobile number
+        mobile_clean = ''.join(filter(str.isdigit, str(mobile)))
+        
         # Find existing user
-        user = mongo.db.users.find_one({'mobile': mobile})
+        user = mongo.db.users.find_one({'mobile': mobile_clean})
 
         if not user:
-            # Create new user
-            user_obj = User(mobile)
-            result = mongo.db.users.insert_one(user_obj.to_dict())
+            # Create new user directly without User class
+            user_data = {
+                'mobile': mobile_clean,
+                'createdAt': datetime.utcnow(),
+                'lastLogin': datetime.utcnow()
+            }
+            result = mongo.db.users.insert_one(user_data)
             user = mongo.db.users.find_one({'_id': result.inserted_id})
             user_message = 'New account created'
         else:
@@ -206,41 +236,7 @@ def login():
         print(f"Login error: {e}")
         session.clear()
         return jsonify({'error': 'Login failed'}), 500
-        
-@app.route('/api/register', methods=['POST'])
-def register():
-    """Separate registration endpoint for new users"""
-    try:
-        data = request.json
-        mobile = data.get('mobile')
-
-        if not mobile:
-            return jsonify({'error': 'Mobile number is required'}), 400
-
-        # Check if user already exists
-        existing_user = mongo.db.users.find_one({'mobile': mobile})
-        if existing_user:
-            return jsonify({'error': 'User already exists'}), 400
-
-        # Create new user
-        user_obj = User(mobile)
-        result = mongo.db.users.insert_one(user_obj.to_dict())
-        user = mongo.db.users.find_one({'_id': result.inserted_id})
-
-        # Set session
-        session['user_id'] = str(user['_id'])
-        session['user_mobile'] = user['mobile']
-        session.permanent = True  # Long session for new users
-
-        return jsonify({
-            'message': 'Registration successful',
-            'user': serialize_doc(user)
-        }), 201
-
-    except Exception as e:
-        print(f"Registration error: {e}")
-        return jsonify({'error': 'Registration failed'}), 500
-
+     
 @app.route('/api/logout', methods=['POST'])
 def logout():
     """Clear session on logout with COMPLETE cookie cleanup"""
