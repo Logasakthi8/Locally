@@ -2,6 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import config from '../config';
 
+// Session timeout - 7 days
+const SESSION_TIMEOUT = 7 * 24 * 60 * 60 * 1000;
+
 function Login({ onLogin }) {
   const [mobile, setMobile] = useState('');
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
@@ -9,7 +12,6 @@ function Login({ onLogin }) {
   const [statusMessage, setStatusMessage] = useState('');
   const navigate = useNavigate();
 
-  // Array of startup messages to rotate through
   const startupMessages = [
     "🏪 Buy from shops you already trust — now just a click away!",
     "🤝 Support local businesses and help Whitefield grow together.",
@@ -18,70 +20,61 @@ function Login({ onLogin }) {
     "❤️ Your trusted neighborhood, your trusted marketplace."
   ];
 
-  // Enhanced session check with better error handling
+  // Enhanced session check with caching
   const checkExistingSession = useCallback(async () => {
     try {
-      console.log('🔍 Checking for existing session...');
-      
-      const response = await fetch(`${config.apiUrl}/check-session`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Cache-Control': 'no-cache'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('📋 Session check response:', data);
+      // Check localStorage first for faster access
+      const cachedSession = localStorage.getItem('userSession');
+      if (cachedSession) {
+        const sessionData = JSON.parse(cachedSession);
+        const isSessionValid = Date.now() - sessionData.timestamp < SESSION_TIMEOUT;
         
-        if (data.user) {
-          console.log('✅ Valid session found, user:', data.user.mobile);
-          
-          // Store session info
-          localStorage.setItem('userSession', JSON.stringify({
-            user: data.user,
-            timestamp: Date.now(),
-            sessionActive: true
-          }));
-
-          onLogin(data.user);
+        if (isSessionValid) {
+          onLogin(sessionData.user);
           navigate('/shops');
+          return;
         } else {
-          console.log('❌ No active session');
-          // Clear any stale localStorage data
+          // Clear expired session
           localStorage.removeItem('userSession');
         }
       }
+
+      // If no cached session or expired, check server
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
+      const response = await fetch(`${config.apiUrl}/check-session`, {
+        method: 'GET',
+        credentials: 'include',
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.user) {
+          // Cache the session
+          localStorage.setItem('userSession', JSON.stringify({
+            user: data.user,
+            timestamp: Date.now()
+          }));
+          onLogin(data.user);
+          navigate('/shops');
+        }
+      }
     } catch (error) {
-      console.error('Session check failed:', error);
-      // Clear localStorage on error
-      localStorage.removeItem('userSession');
+      if (error.name !== 'AbortError') {
+        console.error('Session check failed:', error);
+      }
+      // Continue to login page if session check fails
     }
   }, [onLogin, navigate]);
 
   // Check for existing session on component mount
   useEffect(() => {
-    // First check localStorage for quick UX
-    const storedSession = localStorage.getItem('userSession');
-    if (storedSession) {
-      try {
-        const sessionData = JSON.parse(storedSession);
-        // If session is less than 1 hour old, use it temporarily
-        const sessionAge = Date.now() - sessionData.timestamp;
-        if (sessionAge < 60 * 60 * 1000) { // 1 hour
-          console.log('⚡ Using cached session data');
-          onLogin(sessionData.user);
-        }
-      } catch (e) {
-        console.error('Error parsing stored session:', e);
-        localStorage.removeItem('userSession');
-      }
-    }
-
-    // Always verify with server
     checkExistingSession();
-  }, [checkExistingSession, onLogin]);
+  }, [checkExistingSession]);
 
   // Rotating messages
   useEffect(() => {
@@ -94,127 +87,83 @@ function Login({ onLogin }) {
     return () => clearInterval(interval);
   }, [startupMessages.length]);
 
-  // Enhanced mobile number validation
-  const validateMobile = (number) => {
-    const cleaned = number.replace(/\D/g, '');
-    return cleaned.length === 10 && /^[6-9]/.test(cleaned);
-  };
-
-  const handleMobileChange = (e) => {
-    const value = e.target.value.replace(/\D/g, '').slice(0, 10);
-    setMobile(value);
-  };
-
+  // Optimized login handler with request queuing prevention
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (loading) return;
-
-    // Validate mobile number
-    if (!validateMobile(mobile)) {
-      setStatusMessage('Please enter a valid 10-digit mobile number');
-      setTimeout(() => setStatusMessage(''), 3000);
-      return;
-    }
-
+    
+    if (loading || mobile.length !== 10) return;
+    
     setLoading(true);
-    setStatusMessage('Checking existing account...');
+    setStatusMessage('Checking account...');
 
     try {
-      // Step 1: Quick check if user exists
-      setStatusMessage('Verifying customer account...');
+      // Single API call for login/registration
+      setStatusMessage('Processing...');
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
-      const checkResponse = await fetch(`${config.apiUrl}/check-user`, {
+      const response = await fetch(`${config.apiUrl}/auth/mobile`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ mobile }),
-        credentials: 'include'
+        credentials: 'include',
+        signal: controller.signal
       });
 
-      if (!checkResponse.ok) {
-        throw new Error('User check failed');
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Auth failed: ${response.status}`);
       }
 
-      const checkData = await checkResponse.json();
-      console.log('👤 User check result:', checkData);
-
-      // Step 2: Proceed with login/registration
-      let authResponse;
+      const data = await response.json();
       
-      if (checkData.userExists) {
-        setStatusMessage('Logging you in...');
-        authResponse = await fetch(`${config.apiUrl}/login`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            mobile,
-            rememberMe: true // Enable long-term session
-          }),
-          credentials: 'include'
-        });
-      } else {
-        setStatusMessage('Creating your account...');
-        authResponse = await fetch(`${config.apiUrl}/register`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ mobile }),
-          credentials: 'include'
-        });
-      }
-
-      if (authResponse.ok) {
-        const authData = await authResponse.json();
-        console.log('✅ Authentication successful:', authData);
-
-        // Store session info in localStorage for faster future access
-        localStorage.setItem('userSession', JSON.stringify({
-          user: authData.user,
-          timestamp: Date.now(),
-          sessionActive: true
-        }));
-
-        setStatusMessage(checkData.userExists ? 'Welcome back!' : 'Account created!');
-
-        // Call the onLogin callback
-        onLogin(authData.user);
-
-        // Navigate after a brief delay to show success message
-        setTimeout(() => {
-          navigate('/shops');
-        }, 800);
-
-      } else {
-        const errorData = await authResponse.json();
-        throw new Error(errorData.error || 'Authentication failed');
-      }
-
+      // Store session with timestamp
+      const sessionData = {
+        user: data.user,
+        timestamp: Date.now(),
+        mobile: mobile // Store mobile for quick access
+      };
+      
+      localStorage.setItem('userSession', JSON.stringify(sessionData));
+      
+      setStatusMessage('Success! Redirecting...');
+      onLogin(data.user);
+      
+      // Immediate navigation without delay for better UX
+      navigate('/shops');
+      
     } catch (error) {
       console.error('Authentication error:', error);
-      setStatusMessage(error.message || 'Something went wrong. Please try again.');
       
-      // Clear any potentially corrupted session data
-      localStorage.removeItem('userSession');
+      if (error.name === 'AbortError') {
+        setStatusMessage('Request timeout. Please check your connection.');
+      } else {
+        setStatusMessage('Something went wrong. Please try again.');
+      }
+      
+      // Auto-clear message after 3 seconds
+      setTimeout(() => setStatusMessage(''), 3000);
     } finally {
       setLoading(false);
-      // Clear status message after 5 seconds
-      setTimeout(() => setStatusMessage(''), 5000);
     }
   };
 
-  // Check if mobile is valid for enabling the button
-  const isMobileValid = validateMobile(mobile);
+  // Mobile input validation
+  const handleMobileChange = (e) => {
+    const value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+    if (value.length <= 10) {
+      setMobile(value);
+    }
+  };
 
   return (
     <div className="login-container">
-      {/* Background gradient */}
       <div className="login-background"></div>
-
+      
       <div className="login-form">
         {/* Header Section */}
         <div className="login-header">
@@ -231,7 +180,7 @@ function Login({ onLogin }) {
         <div className="form-section">
           <h2 className="form-title">Welcome!</h2>
           <p className="form-subtitle">Enter your mobile number to get started</p>
-
+          
           <form onSubmit={handleSubmit} className="mobile-form">
             <div className="input-container">
               <div className="input-prefix">+91</div>
@@ -241,19 +190,19 @@ function Login({ onLogin }) {
                 value={mobile}
                 onChange={handleMobileChange}
                 required
-                pattern="[6-9][0-9]{9}"
-                title="Please enter a valid 10-digit Indian mobile number"
+                pattern="[0-9]{10}"
+                title="Please enter a 10-digit mobile number"
                 disabled={loading}
                 className="mobile-input"
                 maxLength="10"
                 inputMode="numeric"
               />
             </div>
-
+            
             <button 
               type="submit" 
-              disabled={loading || !isMobileValid}
-              className={`submit-btn ${loading ? 'loading' : ''} ${!isMobileValid ? 'disabled' : ''}`}
+              disabled={loading || mobile.length !== 10}
+              className={`submit-btn ${loading ? 'loading' : ''}`}
             >
               {loading ? (
                 <div className="button-loading">
@@ -266,21 +215,13 @@ function Login({ onLogin }) {
             </button>
           </form>
 
-          {/* Enhanced Status message display */}
+          {/* Status message */}
           {statusMessage && (
-            <div className={`status-message ${loading ? 'status-loading' : statusMessage.includes('Welcome') || statusMessage.includes('created') ? 'status-success' : 'status-error'}`}>
+            <div className={`status-message ${loading ? 'status-loading' : ''}`}>
               <div className="status-icon">
-                {loading ? '⏳' : 
-                 statusMessage.includes('Welcome') || statusMessage.includes('created') ? '✅' : '❌'}
+                {loading ? '⏳' : statusMessage.includes('Success') ? '✅' : '❌'}
               </div>
-              <span>{statusMessage}</span>
-            </div>
-          )}
-
-          {/* Session info for debugging */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="debug-info">
-              <small>Session Debug: Check console for details</small>
+              {statusMessage}
             </div>
           )}
         </div>
@@ -290,8 +231,7 @@ function Login({ onLogin }) {
           <div className="features-header">
             <h3>Why Choose Locally?</h3>
           </div>
-
-          {/* Rotating startup messages section */}
+          
           <div className="startup-messages">
             <div className="message-container">
               <div className="message-icon">✨</div>
@@ -301,7 +241,6 @@ function Login({ onLogin }) {
             </div>
           </div>
 
-          {/* Static Features */}
           <div className="static-features">
             <div className="feature-item">
               <span className="feature-icon">🚚</span>
