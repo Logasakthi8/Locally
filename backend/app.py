@@ -4,6 +4,7 @@ from flask_cors import CORS
 from bson import ObjectId
 from datetime import datetime, timedelta
 import os
+import re  # Add this import for regex validation
 from dotenv import load_dotenv
 from models import User, Shop, Product, Wishlist, Order, Feedback
 
