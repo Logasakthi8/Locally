@@ -56,46 +56,84 @@ def health_check():
         'timestamp': datetime.utcnow().isoformat(),
         'routes': [str(rule) for rule in app.url_map.iter_rules()]
     })
-@app.route('/api/check-session', methods=['GET'])
-def check_session():
-    """Check if user has an active session with cookie conflict handling"""
-    try:
-        # Log cookie information for debugging
-        cookies = request.headers.get('Cookie', '')
-        session_count = cookies.count('session=')
-        locally_session_count = cookies.count('locally_session=')
-        
-        print(f"🔍 Cookie debug - Sessions: {session_count}, Locally_Sessions: {locally_session_count}")
-        
-        if 'user_id' in session:
-            # Verify user still exists in database
-            user = mongo.db.users.find_one({'_id': ObjectId(session['user_id'])})
-            if user:
-                return jsonify({
-                    'user': serialize_doc(user),
-                    'message': 'Session active',
-                    'cookie_debug': {
-                        'session_count': session_count,
-                        'locally_session_count': locally_session_count
-                    }
-                })
+// Optimized auth endpoint
+app.post('/api/auth/mobile', async (req, res) => {
+  try {
+    const { mobile } = req.body;
+    
+    // Input validation
+    if (!mobile || !/^\d{10}$/.test(mobile)) {
+      return res.status(400).json({ error: 'Invalid mobile number' });
+    }
 
-        # Clear invalid session
-        session.clear()
-        return jsonify({
-            'user': None, 
-            'message': 'No active session',
-            'cookie_debug': {
-                'session_count': session_count,
-                'locally_session_count': locally_session_count
-            }
-        })
+    // Find or create user in single operation
+    let user = await User.findOne({ mobile });
+    
+    if (!user) {
+      // Create new user
+      user = new User({
+        mobile,
+        createdAt: new Date(),
+        lastLogin: new Date()
+      });
+      await user.save();
+    } else {
+      // Update last login for existing user
+      user.lastLogin = new Date();
+      await user.save();
+    }
 
-    except Exception as e:
-        print(f"Session check error: {e}")
-        session.clear()
-        return jsonify({'user': None, 'error': 'Session check failed'}), 500
-        
+    // Create session
+    req.session.userId = user._id;
+    req.session.mobile = user.mobile;
+    
+    // Set longer session expiry
+    req.session.cookie.maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        mobile: user.mobile,
+        isNew: !user.lastLogin // Flag for new users if needed
+      }
+    });
+
+  } catch (error) {
+    console.error('Auth error:', error);
+    res.status(500).json({ error: 'Authentication failed' });
+  }
+});
+
+// Fast session check endpoint
+app.get('/api/check-session', async (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.json({ user: null });
+    }
+
+    // Only fetch essential user data
+    const user = await User.findById(req.session.userId)
+      .select('mobile lastLogin')
+      .lean();
+
+    if (!user) {
+      req.session.destroy();
+      return res.json({ user: null });
+    }
+
+    res.json({
+      user: {
+        id: user._id,
+        mobile: user.mobile
+      }
+    });
+
+  } catch (error) {
+    console.error('Session check error:', error);
+    res.json({ user: null });
+  }
+});
 @app.route('/api/check-user', methods=['POST'])
 def check_user():
     """Quick check if user exists before login"""
