@@ -19,11 +19,9 @@ mongo = PyMongo(app)
 # Update session configuration
 # Replace your current session config with this:
 app.config.update(
-    SESSION_COOKIE_NAME='locally_session',  # Use consistent name
-    SESSION_COOKIE_DOMAIN='.locallys.in',   # Include subdomains
-    SESSION_COOKIE_PATH='/',
+    SESSION_COOKIE_NAME='locally_session',
     SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_SECURE=True,  # Set to False for local development if needed
     SESSION_COOKIE_SAMESITE='Lax',
     PERMANENT_SESSION_LIFETIME=timedelta(days=30)
 )
@@ -92,8 +90,9 @@ def mobile_auth():
         # Create session
         session['user_id'] = str(user['_id'])
         session['mobile'] = user['mobile']
+        session.permanent = True
         
-        # Session is already configured for longer duration via app config
+        print(f"✅ User authenticated: {user['mobile']}, Session ID: {session.sid}")
 
         return jsonify({
             'success': True,
@@ -112,7 +111,11 @@ def mobile_auth():
 def check_session():
     """Fast session check endpoint"""
     try:
+        print(f"🔍 Checking session - user_id in session: {'user_id' in session}")
+        print(f"🔍 Session contents: {dict(session)}")
+        
         if 'user_id' not in session:
+            print("❌ No user_id in session")
             return jsonify({'user': None})
 
         # Only fetch essential user data
@@ -122,9 +125,11 @@ def check_session():
         )
 
         if not user:
+            print("❌ User not found in database")
             session.clear()
             return jsonify({'user': None})
 
+        print(f"✅ Session valid for user: {user['mobile']}")
         return jsonify({
             'user': {
                 'id': str(user['_id']),
@@ -237,8 +242,12 @@ def register():
 
 @app.route('/api/logout', methods=['POST'])
 def logout():
-    """Clear session on logout with cookie cleanup"""
+    """Clear session on logout with COMPLETE cookie cleanup"""
     try:
+        user_id = session.get('user_id')
+        print(f"🔄 Logging out user: {user_id}")
+        
+        # COMPLETELY clear the session
         session.clear()
         
         response = jsonify({
@@ -246,18 +255,54 @@ def logout():
             'message': 'Logged out successfully'
         })
         
-        # Explicitly clear session cookies
-        response.set_cookie('session', '', expires=0, domain='.locallys.in')
-        response.set_cookie('locally_session', '', expires=0, domain='.locallys.in')
+        # COMPREHENSIVE cookie cleanup - clear all possible session cookies
+        domains = ['.locallys.in', 'locallys.in', 'www.locallys.in', 'api.locallys.in', None]
+        cookie_names = ['session', 'locally_session']
         
+        for domain in domains:
+            for cookie_name in cookie_names:
+                response.set_cookie(
+                    cookie_name, 
+                    '', 
+                    expires=0,
+                    domain=domain,
+                    path='/',
+                    secure=True,
+                    httponly=True,
+                    samesite='Lax'
+                )
+        
+        print(f"✅ Session completely cleared for user: {user_id}")
         return response
         
     except Exception as e:
-        print(f"Logout error: {e}")
+        print(f"❌ Logout error: {e}")
         return jsonify({
             'success': False,
             'error': 'Logout failed'
         }), 500
+@app.route('/api/force-logout', methods=['POST'])
+def force_logout():
+    """Force logout by clearing everything"""
+    try:
+        # Clear session
+        session.clear()
+        
+        response = jsonify({
+            'success': True,
+            'message': 'Forced logout successful'
+        })
+        
+        # Clear all possible cookies
+        domains = ['.locallys.in', 'locallys.in', 'www.locallys.in', 'api.locallys.in', None]
+        for domain in domains:
+            response.set_cookie('session', '', expires=0, domain=domain, path='/')
+            response.set_cookie('locally_session', '', expires=0, domain=domain, path='/')
+        
+        return response
+    except Exception as e:
+        print(f"Force logout error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ALL YOUR EXISTING ROUTES BELOW (UNCHANGED)
 @app.route('/')
