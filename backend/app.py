@@ -48,7 +48,7 @@ def serialize_doc(doc):
 # ======================
 # IMPROVED AUTH ENDPOINTS
 # ======================
-@app.route('api/health')
+@app.route('/api/health')
 def health_check():
     return jsonify({
         'status': 'healthy', 
