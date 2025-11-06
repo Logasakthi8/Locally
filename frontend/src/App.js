@@ -18,7 +18,7 @@ function App() {
     const checkSession = async () => {
       try {
         console.log('🔍 Checking user session...');
-        const response = await fetch(`${config.apiUrl}/user`, { // ✅ Fixed endpoint
+        const response = await fetch(`${config.apiUrl}/check-session`, { // ✅ Fixed endpoint
           credentials: 'include'
         });
 
