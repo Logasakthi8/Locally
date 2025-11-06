@@ -56,7 +56,7 @@ def health_check():
         'timestamp': datetime.utcnow().isoformat(),
         'routes': [str(rule) for rule in app.url_map.iter_rules()]
     })
-// Optimized auth endpoint
+
 app.post('/api/auth/mobile', async (req, res) => {
   try {
     const { mobile } = req.body;
