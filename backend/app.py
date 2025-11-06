@@ -56,84 +56,86 @@ def health_check():
         'timestamp': datetime.utcnow().isoformat(),
         'routes': [str(rule) for rule in app.url_map.iter_rules()]
     })
+@app.route('/api/auth/mobile', methods=['POST'])
+def mobile_auth():
+    """Optimized mobile authentication endpoint"""
+    try:
+        data = request.json
+        mobile = data.get('mobile')
+        
+        # Input validation
+        if not mobile or not re.match(r'^\d{10}$', mobile):
+            return jsonify({'error': 'Invalid mobile number'}), 400
 
-app.post('/api/auth/mobile', async (req, res) => {
-  try {
-    const { mobile } = req.body;
-    
-    // Input validation
-    if (!mobile || !/^\d{10}$/.test(mobile)) {
-      return res.status(400).json({ error: 'Invalid mobile number' });
-    }
+        # Find or create user in single operation
+        user = mongo.db.users.find_one({'mobile': mobile})
+        
+        if not user:
+            # Create new user
+            user_data = {
+                'mobile': mobile,
+                'createdAt': datetime.utcnow(),
+                'lastLogin': datetime.utcnow()
+            }
+            result = mongo.db.users.insert_one(user_data)
+            user_id = result.inserted_id
+            user = mongo.db.users.find_one({'_id': user_id})
+            is_new = True
+        else:
+            # Update last login for existing user
+            mongo.db.users.update_one(
+                {'_id': user['_id']},
+                {'$set': {'lastLogin': datetime.utcnow()}}
+            )
+            is_new = False
 
-    // Find or create user in single operation
-    let user = await User.findOne({ mobile });
-    
-    if (!user) {
-      // Create new user
-      user = new User({
-        mobile,
-        createdAt: new Date(),
-        lastLogin: new Date()
-      });
-      await user.save();
-    } else {
-      // Update last login for existing user
-      user.lastLogin = new Date();
-      await user.save();
-    }
+        # Create session
+        session['user_id'] = str(user['_id'])
+        session['mobile'] = user['mobile']
+        
+        # Session is already configured for longer duration via app config
 
-    // Create session
-    req.session.userId = user._id;
-    req.session.mobile = user.mobile;
-    
-    // Set longer session expiry
-    req.session.cookie.maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
+        return jsonify({
+            'success': True,
+            'user': {
+                'id': str(user['_id']),
+                'mobile': user['mobile'],
+                'isNew': is_new
+            }
+        })
 
-    res.json({
-      success: true,
-      user: {
-        id: user._id,
-        mobile: user.mobile,
-        isNew: !user.lastLogin // Flag for new users if needed
-      }
-    });
+    except Exception as error:
+        print(f'Auth error: {error}')
+        return jsonify({'error': 'Authentication failed'}), 500
 
-  } catch (error) {
-    console.error('Auth error:', error);
-    res.status(500).json({ error: 'Authentication failed' });
-  }
-});
+@app.route('/api/check-session', methods=['GET'])
+def check_session():
+    """Fast session check endpoint"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'user': None})
 
-// Fast session check endpoint
-app.get('/api/check-session', async (req, res) => {
-  try {
-    if (!req.session.userId) {
-      return res.json({ user: null });
-    }
+        # Only fetch essential user data
+        user = mongo.db.users.find_one(
+            {'_id': ObjectId(session['user_id'])},
+            {'mobile': 1, 'lastLogin': 1}
+        )
 
-    // Only fetch essential user data
-    const user = await User.findById(req.session.userId)
-      .select('mobile lastLogin')
-      .lean();
+        if not user:
+            session.clear()
+            return jsonify({'user': None})
 
-    if (!user) {
-      req.session.destroy();
-      return res.json({ user: null });
-    }
+        return jsonify({
+            'user': {
+                'id': str(user['_id']),
+                'mobile': user['mobile']
+            }
+        })
 
-    res.json({
-      user: {
-        id: user._id,
-        mobile: user.mobile
-      }
-    });
+    except Exception as error:
+        print(f'Session check error: {error}')
+        return jsonify({'user': None})
 
-  } catch (error) {
-    console.error('Session check error:', error);
-    res.json({ user: null });
-  }
-});
 @app.route('/api/check-user', methods=['POST'])
 def check_user():
     """Quick check if user exists before login"""
