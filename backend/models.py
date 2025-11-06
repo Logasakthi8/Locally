@@ -36,12 +36,13 @@ class Shop:
 
 class Product:
     def __init__(self, shop_id, name, description, price, quantity, image_url):
-        self.shop_id = shop_id
+        self.shop_id = ObjectId(shop_id) if not isinstance(shop_id, ObjectId) else shop_id
         self.name = name
         self.description = description
         self.price = price
         self.quantity = quantity
         self.image_url = image_url
+
 
     def to_dict(self):
         return {
@@ -53,11 +54,12 @@ class Product:
             "image_url": self.image_url
         }
 
+
 class Wishlist:
     def __init__(self, user_id, product_id, shop_id, quantity=1):
-        self.user_id = user_id
-        self.product_id = product_id
-        self.shop_id = shop_id
+        self.user_id = ObjectId(user_id) if not isinstance(user_id, ObjectId) else user_id
+        self.product_id = ObjectId(product_id) if not isinstance(product_id, ObjectId) else product_id
+        self.shop_id = ObjectId(shop_id) if not isinstance(shop_id, ObjectId) else shop_id
         self.quantity = quantity
         self.created_at = datetime.utcnow()
 
@@ -69,6 +71,7 @@ class Wishlist:
             'quantity': self.quantity,
             'created_at': self.created_at
         }
+
 
 class Order:
     def __init__(self, user_id, items, total_amount=0, status='pending'):
