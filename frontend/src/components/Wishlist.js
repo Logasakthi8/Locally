@@ -15,6 +15,7 @@ function Wishlist() {
   });
   const [error, setError] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('checking');
+  const [expandedShops, setExpandedShops] = useState({}); // Track which shops are expanded
 
   const YOUR_PHONE_NUMBER = '9361437687';
 
@@ -31,6 +32,7 @@ function Wishlist() {
     if (wishlist.length > 0) {
       groupProductsByShop();
       initializeSelectedProducts();
+      initializeExpandedShops();
     }
   }, [wishlist]);
 
@@ -173,6 +175,21 @@ function Wishlist() {
       selected[product._id] = true;
     });
     setSelectedProducts(selected);
+  };
+
+  const initializeExpandedShops = () => {
+    const expanded = {};
+    Object.keys(groupedWishlist).forEach(shopId => {
+      expanded[shopId] = true; // Start with all shops expanded, or set to false to start collapsed
+    });
+    setExpandedShops(expanded);
+  };
+
+  const toggleShopExpansion = (shopId) => {
+    setExpandedShops(prev => ({
+      ...prev,
+      [shopId]: !prev[shopId]
+    }));
   };
 
   const toggleProductSelection = (productId) => {
@@ -330,6 +347,7 @@ function Wishlist() {
         setWishlist([]);
         setGroupedWishlist({});
         setSelectedProducts({});
+        setExpandedShops({});
       } else {
         console.error('❌ Failed to clear cart:', response.status);
       }
@@ -477,17 +495,32 @@ function Wishlist() {
             const meetsMinimum = subtotal >= 100;
             const shopOpen = isShopOpen(shop);
             const delivery = calculateDeliveryCharge();
+            const isExpanded = expandedShops[shopId];
 
             return (
               <div key={shopId} className="shop-group">
                 <div className="shop-header">
                   <div className="shop-info">
-                    <h3 className="shop-name">{shop.name || `Shop`}</h3>
-                    <div className="shop-meta">
-                      {shop.category && <span className="shop-category">{shop.category}</span>}
-                      <span className="products-count">
-                        <span>📦</span> {shopItemsCount} product{shopItemsCount !== 1 ? 's' : ''}
+                    <button 
+                      className="shop-expand-toggle"
+                      onClick={() => toggleShopExpansion(shopId)}
+                      aria-label={isExpanded ? 'Collapse shop' : 'Expand shop'}
+                    >
+                      <span className={`expand-icon ${isExpanded ? 'expanded' : ''}`}>
+                        {isExpanded ? '▼' : '▶'}
                       </span>
+                    </button>
+                    <div className="shop-details">
+                      <h3 className="shop-name">{shop.name || `Shop`}</h3>
+                      <div className="shop-meta">
+                        {shop.category && <span className="shop-category">{shop.category}</span>}
+                        <span className="products-count">
+                          <span>📦</span> {shopItemsCount} product{shopItemsCount !== 1 ? 's' : ''}
+                        </span>
+                        {!shopOpen && (
+                          <span className="shop-status closed">🔒 Closed</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="shop-actions">
@@ -518,54 +551,57 @@ function Wishlist() {
                   </div>
                 )}
 
-                <div className="shop-products">
-                  <div className="products-grid">
-                    {shopProducts.map(product => (
-                      <WishlistItem 
-                        key={product._id} 
-                        product={product} 
-                        onRemove={removeFromWishlist}
-                        onQuantityChange={handleQuantityChange}
-                        isSelected={selectedProducts[product._id] || false}
-                        onToggleSelection={toggleProductSelection}
-                      />
-                    ))}
-                  </div>
-                </div>
-                {selectedCount > 0 && (
-                  <div className="shop-footer">
-                    <div className="order-summary">
-                      <div className="summary-row">
-                        <span>Subtotal:</span>
-                        <span>₹{subtotal.toFixed(2)}</span>
-                      </div>
-                      {meetsMinimum ? (
-                        <>
-                          <div className="summary-row">
-                            <span>Delivery Charge:</span>
-                            <span>{delivery === 0 ? 'FREE' : `₹${delivery}`}</span>
-                          </div>
-                          {delivery === 0 && (
-                            <div className="free-delivery-badge">
-                              🎉 Free delivery! ({2 - userDeliveryCount} free delivery{2 - userDeliveryCount === 1 ? '' : 's'} left)
-                            </div>
-                          )}
-                          {subtotal >= 500 && delivery > 0 && (
-                            <div className="free-delivery-badge">
-                              🎉 You've earned free delivery on orders above ₹500!
-                            </div>
-                          )}
-                          <div className="summary-row total">
-                            <span>Total:</span>
-                            <span>₹{total.toFixed(2)}</span>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="minimum-alert">
-                          <span>Add ₹{(100 - subtotal).toFixed(2)} more to reach minimum order of ₹100</span>
-                        </div>
-                      )}
+                {isExpanded && (
+                  <div className="shop-products">
+                    <div className="products-grid">
+                      {shopProducts.map(product => (
+                        <WishlistItem 
+                          key={product._id} 
+                          product={product} 
+                          onRemove={removeFromWishlist}
+                          onQuantityChange={handleQuantityChange}
+                          isSelected={selectedProducts[product._id] || false}
+                          onToggleSelection={toggleProductSelection}
+                        />
+                      ))}
                     </div>
+                    
+                    {selectedCount > 0 && (
+                      <div className="shop-footer">
+                        <div className="order-summary">
+                          <div className="summary-row">
+                            <span>Subtotal:</span>
+                            <span>₹{subtotal.toFixed(2)}</span>
+                          </div>
+                          {meetsMinimum ? (
+                            <>
+                              <div className="summary-row">
+                                <span>Delivery Charge:</span>
+                                <span>{delivery === 0 ? 'FREE' : `₹${delivery}`}</span>
+                              </div>
+                              {delivery === 0 && (
+                                <div className="free-delivery-badge">
+                                  🎉 Free delivery! ({2 - userDeliveryCount} free delivery{2 - userDeliveryCount === 1 ? '' : 's'} left)
+                                </div>
+                              )}
+                              {subtotal >= 500 && delivery > 0 && (
+                                <div className="free-delivery-badge">
+                                  🎉 You've earned free delivery on orders above ₹500!
+                                </div>
+                              )}
+                              <div className="summary-row total">
+                                <span>Total:</span>
+                                <span>₹{total.toFixed(2)}</span>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="minimum-alert">
+                              <span>Add ₹{(100 - subtotal).toFixed(2)} more to reach minimum order of ₹100</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
