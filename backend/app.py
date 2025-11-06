@@ -237,13 +237,27 @@ def register():
 
 @app.route('/api/logout', methods=['POST'])
 def logout():
-    """Clear session on logout"""
+    """Clear session on logout with cookie cleanup"""
     try:
         session.clear()
-        return jsonify({'message': 'Logged out successfully'})
+        
+        response = jsonify({
+            'success': True,
+            'message': 'Logged out successfully'
+        })
+        
+        # Explicitly clear session cookies
+        response.set_cookie('session', '', expires=0, domain='.locallys.in')
+        response.set_cookie('locally_session', '', expires=0, domain='.locallys.in')
+        
+        return response
+        
     except Exception as e:
         print(f"Logout error: {e}")
-        return jsonify({'error': 'Logout failed'}), 500
+        return jsonify({
+            'success': False,
+            'error': 'Logout failed'
+        }), 500
 
 # ALL YOUR EXISTING ROUTES BELOW (UNCHANGED)
 @app.route('/')
