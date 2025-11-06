@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from models import User, Shop, Product, Wishlist, Order, Feedback
 
 load_dotenv()
-
+ 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
 app.config["MONGO_URI"] = os.getenv('MONGO_URI')
