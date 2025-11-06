@@ -868,70 +868,35 @@ def get_user_orders():
 
 @app.route('/api/feedback', methods=['POST'])
 def submit_feedback():
-    """Submit user feedback - Store in DB with user mobile, no followup"""
+    """Submit user feedback - Store in DB with user mobile, no follow-up"""
     try:
         data = request.json
-        print("📝 Received feedback:", data)
+        message = data.get('message', '').strip()
 
-        # Debug session data
-        print("🔍 Session data:", dict(session))
-        print("🔍 User mobile in session:", session.get('user_mobile'))
-        print("🔍 User ID in session:", session.get('user_id'))
+        if not message:
+            return jsonify({'error': 'Feedback message is required'}), 400
 
-        # Validate required fields
-        if not data.get('shop_type'):
-            return jsonify({'error': 'Shop type is required'}), 400
+        # Identify user if logged in
+        user_id = session.get('user_id')
+        user_mobile = session.get('user_mobile', 'Anonymous')
 
-        # Get user mobile from session if user is logged in
-        user_mobile = None
-        if 'user_mobile' in session:
-            user_mobile = session['user_mobile']
-            print("📱 User mobile from session:", user_mobile)
-        else:
-            print("❌ No user_mobile found in session")
-            # Try to get from users collection using user_id
-            if 'user_id' in session:
-                user = mongo.db.users.find_one({'_id': ObjectId(session['user_id'])})
-                if user and 'mobile' in user:
-                    user_mobile = user['mobile']
-                    print("📱 User mobile from DB:", user_mobile)
+        feedback_entry = {
+            'user_id': ObjectId(user_id) if user_id else None,
+            'user_mobile': user_mobile,
+            'message': message,
+            'created_at': datetime.utcnow()
+        }
 
-        # Create feedback object with user mobile - MAKE SURE user_mobile is passed
-        feedback = Feedback(
-            shop_type=data.get('shop_type'),
-            products=data.get('products'),
-            name=data.get('name'),
-            shop_name=data.get('shop_name'),
-            shop_address=data.get('shop_address'),
-            notify_me=data.get('notify_me', False),
-            contact=data.get('contact'),
-            preference=data.get('preference', 'no_preference'),
-            user_mobile=user_mobile  # This is crucial - pass the user_mobile
-        )
-
-        feedback_data = feedback.to_dict()
-        print("💾 Storing feedback data:", feedback_data)
-
-        # Store in database
-        result = mongo.db.feedback.insert_one(feedback_data)
-        print("✅ Stored in DB - ID:", str(result.inserted_id))
-
-
-
-
-
+        result = mongo.db.feedback.insert_one(feedback_entry)
         return jsonify({
-            'message': 'Thank you for your suggestion! Share this with your friends too! You will receive 20% off your first order when your suggested shop is added.',
-            'feedback_id': str(result.inserted_id),
-            'success': True,
-            'user_mobile_stored': user_mobile is not None
+            'message': 'Thank you for your feedback!',
+            'feedback_id': str(result.inserted_id)
         }), 201
 
     except Exception as e:
-        print(f"❌ Error submitting feedback: {e}")
-
-
+        print(f"Error saving feedback: {e}")
         return jsonify({'error': 'Internal server error'}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)
