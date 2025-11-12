@@ -19,6 +19,7 @@ function ProductCard({ product, onWishlistUpdate, onAddToCart, onRequireLogin, s
       setIsAddingToCart(true);
       setError('');
 
+      // Try to add to server cart if user is logged in
       const response = await fetch(`${config.apiUrl}/cart`, {
         method: 'POST',
         headers: {
@@ -34,30 +35,67 @@ function ProductCard({ product, onWishlistUpdate, onAddToCart, onRequireLogin, s
 
       if (response.ok) {
         setIsInCart(true);
-        onAddToCart && onAddToCart(product);
-        console.log('Added to cart:', product.name);
+        onAddToCart && onAddToCart(product, quantity);
+        console.log('Added to server cart:', product.name);
+      } else if (response.status === 401) {
+        // User not logged in - add to local cart
+        addToLocalCart();
       } else {
-        if (response.status === 401) {
-          // User not logged in - still add to local cart or show message
-          setIsInCart(true);
-          onAddToCart && onAddToCart(product);
-          console.log('Added to local cart (login required for checkout):', product.name);
-        } else if (response.status === 404) {
-          setError('Product not found');
-        } else {
-          const errorData = await response.json();
-          setError(errorData.error || 'Failed to add to cart');
-        }
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to add to cart');
       }
     } catch (error) {
       console.error('Network error:', error);
-      // Even if network fails, add to local state
-      setIsInCart(true);
-      onAddToCart && onAddToCart(product);
-      console.log('Added to local cart:', product.name);
+      // Network error - add to local cart
+      addToLocalCart();
     } finally {
       setIsAddingToCart(false);
     }
+  };
+
+  const addToLocalCart = () => {
+    // Add to localStorage for guest users
+    const cartItem = {
+      product: {
+        _id: product._id,
+        name: product.name,
+        price: product.price,
+        image_url: product.image_url,
+        description: product.description,
+        quantity: product.quantity
+      },
+      quantity: quantity,
+      shopId: shopId,
+      addedAt: new Date().toISOString()
+    };
+
+    // Get existing cart from localStorage
+    const existingCart = JSON.parse(localStorage.getItem('guest_cart') || '[]');
+    
+    // Check if product already exists in cart
+    const existingItemIndex = existingCart.findIndex(
+      item => item.product._id === product._id && item.shopId === shopId
+    );
+
+    let updatedCart;
+    if (existingItemIndex >= 0) {
+      // Update quantity if already in cart
+      updatedCart = existingCart.map((item, index) => 
+        index === existingItemIndex 
+          ? { ...item, quantity: item.quantity + quantity }
+          : item
+      );
+    } else {
+      // Add new item to cart
+      updatedCart = [...existingCart, cartItem];
+    }
+
+    // Save to localStorage
+    localStorage.setItem('guest_cart', JSON.stringify(updatedCart));
+    
+    setIsInCart(true);
+    onAddToCart && onAddToCart(product, quantity);
+    console.log('Added to local cart:', product.name);
   };
 
   const handleLike = async () => {
@@ -114,25 +152,20 @@ function ProductCard({ product, onWishlistUpdate, onAddToCart, onRequireLogin, s
     const newQty = Math.max(1, quantity + delta);
     setQuantity(newQty);
     
-    // If already in cart, update quantity on server (if logged in)
+    // If already in cart, update quantity in localStorage
     if (isInCart) {
-      updateCartQuantity(newQty);
+      updateLocalCartQuantity(newQty);
     }
   };
 
-  const updateCartQuantity = async (newQty) => {
-    try {
-      await fetch(`${config.apiUrl}/cart/${product._id}/quantity`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ quantity: newQty }),
-        credentials: 'include',
-      });
-    } catch (error) {
-      console.error('Error updating cart quantity:', error);
-    }
+  const updateLocalCartQuantity = (newQty) => {
+    const existingCart = JSON.parse(localStorage.getItem('guest_cart') || '[]');
+    const updatedCart = existingCart.map(item => 
+      item.product._id === product._id && item.shopId === shopId
+        ? { ...item, quantity: newQty }
+        : item
+    );
+    localStorage.setItem('guest_cart', JSON.stringify(updatedCart));
   };
 
   const clearError = () => {
