@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import WishlistItem from './WishlistItem';
 import config from '../config'; 
 
@@ -15,9 +16,10 @@ function Wishlist() {
   });
   const [error, setError] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('checking');
-  const [expandedShops, setExpandedShops] = useState({}); // Track which shops are expanded
+  const [expandedShops, setExpandedShops] = useState({});
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
-  const YOUR_PHONE_NUMBER = '9361437687';
+  const navigate = useNavigate();
 
   // Test backend connection first
   useEffect(() => {
@@ -74,9 +76,8 @@ function Wishlist() {
       
       console.log('🔍 Fetching wishlist from:', `${config.apiUrl}/wishlist`);
       
-      // Add timeout to prevent hanging requests
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
 
       const response = await fetch(`${config.apiUrl}/wishlist`, {
         method: 'GET',
@@ -100,7 +101,7 @@ function Wishlist() {
           await fetchShopDetails(data);
         }
       } else if (response.status === 401) {
-        const errorMsg = 'Please login to view your wishlist';
+        const errorMsg = 'Please login to view your cart';
         console.error('❌ Authentication failed:', errorMsg);
         setError(errorMsg);
       } else {
@@ -180,7 +181,7 @@ function Wishlist() {
   const initializeExpandedShops = () => {
     const expanded = {};
     Object.keys(groupedWishlist).forEach(shopId => {
-      expanded[shopId] = true; // Start with all shops expanded, or set to false to start collapsed
+      expanded[shopId] = true;
     });
     setExpandedShops(expanded);
   };
@@ -201,7 +202,7 @@ function Wishlist() {
 
   const removeFromWishlist = async (productId) => {
     try {
-      console.log('🗑️ Removing product from wishlist:', productId);
+      console.log('🗑️ Removing product from cart:', productId);
       
       const response = await fetch(`${config.apiUrl}/wishlist/${productId}`, {
         method: 'DELETE',
@@ -209,17 +210,17 @@ function Wishlist() {
       });
 
       if (response.ok) {
-        console.log('✅ Product removed from wishlist');
+        console.log('✅ Product removed from cart');
         setWishlist(wishlist.filter(item => item._id !== productId));
 
         const newSelected = {...selectedProducts};
         delete newSelected[productId];
         setSelectedProducts(newSelected);
       } else {
-        console.error('❌ Failed to remove from wishlist:', response.status);
+        console.error('❌ Failed to remove from cart:', response.status);
       }
     } catch (error) {
-      console.error('❌ Error removing from wishlist:', error);
+      console.error('❌ Error removing from cart:', error);
     }
   };
 
@@ -263,79 +264,117 @@ function Wishlist() {
     return userDeliveryCount < 2 ? 0 : deliveryCharge;
   };
 
-  const checkoutViaWhatsApp = (shopId) => {
-    const shop = shops[shopId];
-    if (!shop) {
-      console.error('❌ Shop not found for ID:', shopId);
-      return;
-    }
-
-    // Check if shop is open
-    const shopOpen = isShopOpen(shop);
-    if (!shopOpen) {
-      alert(`Sorry! The shop is closed. Please place the order after ${shop.opening_time}.`);
-      return;
-    }
-
-    const selectedShopProducts = groupedWishlist[shopId].filter(
-      product => selectedProducts[product._id]
-    );
-
-    if (selectedShopProducts.length === 0) {
+  // New checkout function
+  const handleCheckout = async () => {
+    if (getSelectedProductsCountTotal() === 0) {
       alert('Please select at least one product to checkout');
       return;
     }
 
-    const subtotal = calculateShopSubtotal(selectedShopProducts);
-    if (subtotal < 100) {
-      alert(`Minimum order amount is ₹100. Please add more products to proceed with checkout.`);
-      return;
-    }
-
-    // Calculate delivery charge based on user's delivery count
-    const delivery = calculateDeliveryCharge();
-    const total = subtotal + delivery;
-
-    let message = `Hello, I would like to order the following products from ${shop.name}:%0A%0A`;
-
-    selectedShopProducts.forEach((product, index) => {
-      message += `${index + 1}. ${product.name} - ₹${product.price} x ${product.quantity || 1}%0A`;
+    // Check if any shop has minimum order amount
+    let hasValidOrder = false;
+    Object.keys(groupedWishlist).forEach(shopId => {
+      const selectedShopProducts = groupedWishlist[shopId].filter(
+        product => selectedProducts[product._id]
+      );
+      const subtotal = calculateShopSubtotal(selectedShopProducts);
+      
+      if (selectedShopProducts.length > 0 && subtotal >= 100) {
+        hasValidOrder = true;
+      }
     });
 
-    message += `%0ASubtotal: ₹${subtotal}%0A`;
-    message += `Delivery Charge: ${delivery === 0 ? 'FREE' : `₹${delivery}`}%0A`;
-    if (userDeliveryCount < 2) {
-      message += `🎉 Free delivery (${2 - userDeliveryCount} free delivery${2 - userDeliveryCount === 1 ? '' : 's'} left!)%0A`;
-    }
-    message += `Total: ₹${total}%0A%0A`;
-    message += `Please confirm availability and proceed with the order.`;
-
-    // Use your hardcoded phone number instead of shop.owner_mobile
-    window.open(`https://wa.me/${YOUR_PHONE_NUMBER}?text=${message}`, '_blank');
-
-    // Increment delivery count after successful order
-    const newCount = userDeliveryCount + 1;
-    setUserDeliveryCount(newCount);
-  };
-
-  const callToOrder = (shopMobile, shopId) => {
-    const shop = shops[shopId];
-    if (!shop) return;
-
-    // Check if shop is open
-    const shopOpen = isShopOpen(shop);
-    if (!shopOpen) {
-      alert(`Sorry! The shop is closed. Please place the order after ${shop.opening_time}.`);
+    if (!hasValidOrder) {
+      alert('Please ensure at least one shop has minimum order amount of ₹100');
       return;
     }
 
-    // Use your hardcoded phone number instead of shop.owner_mobile
-    window.location.href = `tel:${YOUR_PHONE_NUMBER}`;
+    setIsCheckingOut(true);
+
+    try {
+      // Process each shop's order
+      const orderPromises = Object.keys(groupedWishlist).map(async (shopId) => {
+        const selectedShopProducts = groupedWishlist[shopId].filter(
+          product => selectedProducts[product._id]
+        );
+        const subtotal = calculateShopSubtotal(selectedShopProducts);
+        
+        if (selectedShopProducts.length === 0 || subtotal < 100) {
+          return null; // Skip shops that don't meet minimum
+        }
+
+        const shop = shops[shopId];
+        if (!shop) return null;
+
+        // Check if shop is open
+        const shopOpen = isShopOpen(shop);
+        if (!shopOpen) {
+          alert(`Sorry! ${shop.name} is closed. Please place the order after ${shop.opening_time}.`);
+          return null;
+        }
+
+        const delivery = calculateDeliveryCharge();
+        const total = subtotal + delivery;
+
+        // Create order object
+        const order = {
+          shopId,
+          shopName: shop.name,
+          products: selectedShopProducts,
+          subtotal,
+          deliveryCharge: delivery,
+          total,
+          orderDate: new Date().toISOString()
+        };
+
+        // Here you would typically send this to your backend
+        console.log('📦 Creating order:', order);
+        
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        return order;
+      });
+
+      const orders = (await Promise.all(orderPromises)).filter(order => order !== null);
+      
+      if (orders.length > 0) {
+        // Success - show confirmation
+        alert(`🎉 Order placed successfully! ${orders.length} shop${orders.length > 1 ? 's' : ''} processed.`);
+        
+        // Remove ordered items from cart
+        const orderedProductIds = orders.flatMap(order => 
+          order.products.map(product => product._id)
+        );
+        
+        setWishlist(prev => prev.filter(item => !orderedProductIds.includes(item._id)));
+        setSelectedProducts(prev => {
+          const newSelected = {...prev};
+          orderedProductIds.forEach(id => delete newSelected[id]);
+          return newSelected;
+        });
+
+        // Increment delivery count
+        const newCount = userDeliveryCount + 1;
+        setUserDeliveryCount(newCount);
+
+        // Navigate back to shops or show success page
+        navigate('/shops');
+      } else {
+        alert('No valid orders to process. Please check your selections.');
+      }
+
+    } catch (error) {
+      console.error('❌ Checkout error:', error);
+      alert('Checkout failed. Please try again.');
+    } finally {
+      setIsCheckingOut(false);
+    }
   };
 
   const clearCart = async () => {
     try {
-      console.log('🗑️ Clearing entire wishlist');
+      console.log('🗑️ Clearing entire cart');
       
       const response = await fetch(`${config.apiUrl}/clear-cart`, {
         method: 'POST',
@@ -343,7 +382,7 @@ function Wishlist() {
       });
 
       if (response.ok) {
-        console.log('✅ Wishlist cleared successfully');
+        console.log('✅ Cart cleared successfully');
         setWishlist([]);
         setGroupedWishlist({});
         setSelectedProducts({});
@@ -410,8 +449,28 @@ function Wishlist() {
     ).length;
   };
 
+  const getSelectedProductsCountTotal = () => {
+    return Object.keys(groupedWishlist).reduce((total, shopId) => {
+      return total + getSelectedProductsCount(shopId);
+    }, 0);
+  };
+
   const getTotalItemsCount = () => {
     return wishlist.reduce((sum, item) => sum + (item.quantity || 1), 0);
+  };
+
+  const getTotalCartValue = () => {
+    let total = 0;
+    Object.keys(groupedWishlist).forEach(shopId => {
+      const selectedShopProducts = groupedWishlist[shopId].filter(
+        product => selectedProducts[product._id]
+      );
+      const subtotal = calculateShopSubtotal(selectedShopProducts);
+      if (subtotal >= 100) {
+        total += subtotal + calculateDeliveryCharge();
+      }
+    });
+    return total;
   };
 
   const retryConnection = () => {
@@ -425,7 +484,7 @@ function Wishlist() {
     return (
       <div className="container">
         <div className="loading">
-          <p>Loading your wishlist...</p>
+          <p>Loading your cart...</p>
           <p className="connection-status">Status: {connectionStatus}</p>
         </div>
       </div>
@@ -447,15 +506,6 @@ function Wishlist() {
               Reload Page
             </button>
           </div>
-          <div className="troubleshooting-tips">
-            <h4>Troubleshooting Tips:</h4>
-            <ul>
-              <li>Check your internet connection</li>
-              <li>Verify the backend server is running</li>
-              <li>Check browser console for detailed errors</li>
-              <li>Try refreshing the page</li>
-            </ul>
-          </div>
         </div>
       </div>
     );
@@ -464,11 +514,13 @@ function Wishlist() {
   const totalItems = getTotalItemsCount();
   const totalProducts = wishlist.length;
   const totalShops = Object.keys(groupedWishlist).length;
+  const selectedItemsCount = getSelectedProductsCountTotal();
+  const totalCartValue = getTotalCartValue();
 
   return (
     <div className="container">
       <div className="page-header">
-        <h1 className="page-title">Your Wishlist</h1>
+        <h1 className="page-title">Your Cart</h1>
         {totalItems > 0 && (
           <div className="cart-summary-badge">
             {totalItems} item{totalItems !== 1 ? 's' : ''}
@@ -479,8 +531,14 @@ function Wishlist() {
       {totalItems === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">🛒</div>
-          <h2 className="empty-title">Your wishlist is empty</h2>
+          <h2 className="empty-title">Your cart is empty</h2>
           <p className="empty-description">Add some products from the shops to see them here!</p>
+          <button 
+            onClick={() => navigate('/shops')} 
+            className="btn btn-primary"
+          >
+            Continue Shopping
+          </button>
         </div>
       ) : (
         <>
@@ -520,28 +578,13 @@ function Wishlist() {
                         {!shopOpen && (
                           <span className="shop-status closed">🔒 Closed</span>
                         )}
+                        {selectedCount > 0 && !meetsMinimum && (
+                          <span className="minimum-warning">
+                            Add ₹{(100 - subtotal).toFixed(2)} more
+                          </span>
+                        )}
                       </div>
                     </div>
-                  </div>
-                  <div className="shop-actions">
-                    <button 
-                      onClick={() => checkoutViaWhatsApp(shopId)} 
-                      className={`btn ${meetsMinimum && shopOpen ? 'btn-whatsapp' : 'btn-disabled'}`}
-                      disabled={selectedCount === 0 || !meetsMinimum || !shopOpen}
-                      title={!shopOpen ? `Sorry! The shop is closed. Please place the order after ${shop.opening_time}.` : !meetsMinimum ? `Add ₹${100 - subtotal} more to checkout` : ''}
-                    >
-                      <span>💬</span>
-                      WhatsApp To Order ({selectedCount})
-                    </button>
-                    <button 
-                      onClick={() => meetsMinimum && shopOpen && callToOrder(YOUR_PHONE_NUMBER, shopId)} 
-                      className={`btn ${meetsMinimum && shopOpen ? 'btn-call' : 'btn-disabled'}`}
-                      disabled={!meetsMinimum || !shopOpen}
-                      title={!shopOpen ? `Sorry! The shop is closed. Please place the order after ${shop.opening_time}.` : !meetsMinimum ? `Add ₹${100 - subtotal} more to call` : ''}
-                    >
-                      <span>📞</span>
-                      Call to Order
-                    </button>
                   </div>
                 </div>
 
@@ -584,11 +627,6 @@ function Wishlist() {
                                   🎉 Free delivery! ({2 - userDeliveryCount} free delivery{2 - userDeliveryCount === 1 ? '' : 's'} left)
                                 </div>
                               )}
-                              {subtotal >= 500 && delivery > 0 && (
-                                <div className="free-delivery-badge">
-                                  🎉 You've earned free delivery on orders above ₹500!
-                                </div>
-                              )}
                               <div className="summary-row total">
                                 <span>Total:</span>
                                 <span>₹{total.toFixed(2)}</span>
@@ -608,31 +646,48 @@ function Wishlist() {
             );
           })}
 
-          <div className="cart-summary">
-            <h3 className="summary-title">Cart Summary</h3>
-            <div className="summary-grid">
-              <div className="summary-item">
-                <span className="summary-label">Total Shops</span>
-                <span className="summary-value">{totalShops}</span>
+          {/* Checkout Section */}
+          <div className="checkout-section">
+            <div className="checkout-summary">
+              <h3 className="summary-title">Order Summary</h3>
+              <div className="summary-grid">
+                <div className="summary-item">
+                  <span className="summary-label">Selected Items</span>
+                  <span className="summary-value">{selectedItemsCount}</span>
+                </div>
+                <div className="summary-item">
+                  <span className="summary-label">Total Shops</span>
+                  <span className="summary-value">{totalShops}</span>
+                </div>
+                <div className="summary-item">
+                  <span className="summary-label">Free Deliveries Left</span>
+                  <span className="summary-value">
+                    {userDeliveryCount < 2 ? `${2 - userDeliveryCount}` : '0'}
+                  </span>
+                </div>
+                <div className="summary-item total">
+                  <span className="summary-label">Total Amount</span>
+                  <span className="summary-value">₹{totalCartValue.toFixed(2)}</span>
+                </div>
               </div>
-              <div className="summary-item">
-                <span className="summary-label">Total Products</span>
-                <span className="summary-value">{totalProducts}</span>
-              </div>
-              <div className="summary-item">
-                <span className="summary-label">Total Items</span>
-                <span className="summary-value">{totalItems}</span>
-              </div>
-              <div className="summary-item">
-                <span className="summary-label">Free Deliveries Left</span>
-                <span className="summary-value">
-                  {userDeliveryCount < 2 ? `${2 - userDeliveryCount}` : '0'}
-                </span>
+              
+              <div className="checkout-actions">
+                <button 
+                  onClick={handleCheckout}
+                  disabled={selectedItemsCount === 0 || isCheckingOut}
+                  className={`checkout-btn ${selectedItemsCount === 0 ? 'disabled' : ''}`}
+                >
+                  {isCheckingOut ? 'Processing...' : `🛒 Proceed to Checkout - ₹${totalCartValue.toFixed(2)}`}
+                </button>
+                
+                <button 
+                  onClick={clearCart}
+                  className="btn btn-secondary"
+                >
+                  Clear Cart
+                </button>
               </div>
             </div>
-            <button onClick={clearCart} className="btn btn-danger" style={{width: '100%'}}>
-              Clear Entire Wishlist
-            </button>
           </div>
         </>
       )}
