@@ -91,11 +91,16 @@ function App() {
   return (
     <Router>
       <div className="App">
-        <Navbar 
-          user={user} 
-          onLogout={() => setUser(null)}
-          onRequireLogin={requireLogin}
-        />
+        // In your App.js, modify the Navbar usage:
+<Navbar 
+  user={user} 
+  onLogout={() => setUser(null)}
+  onRequireLogin={requireLogin}
+  onCartClick={() => {
+    // This will be handled by the current page component
+    // Each page can implement its own cart handling
+  }}
+/>
         
         <Routes>
           {/* ✅ Default route shows shops without login */}
