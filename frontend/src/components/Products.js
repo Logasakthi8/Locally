@@ -9,6 +9,7 @@ function Products({ onRequireLogin }) {
   const [error, setError] = useState(null);
   const [shopInfo, setShopInfo] = useState(null);
   const [cartItems, setCartItems] = useState([]);
+  const [isSyncing, setIsSyncing] = useState(false);
   const { shopId } = useParams();
   const navigate = useNavigate();
 
@@ -119,46 +120,26 @@ function Products({ onRequireLogin }) {
 
     if (onRequireLogin) {
       onRequireLogin(() => {
-        // After login, sync cart and navigate to wishlist page
-        syncCartWithServer();
+        // After login, navigate directly to wishlist page
+        // The wishlist page will handle loading both local and server cart items
+        navigateToWishlist();
       });
     } else {
       // User is already logged in, proceed directly
-      syncCartWithServer();
+      navigateToWishlist();
     }
   };
 
-  const syncCartWithServer = async () => {
-    try {
-      // Sync local cart with server after login
-      for (const item of cartItems) {
-        await fetch(`${config.apiUrl}/cart`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            product_id: item.product._id, 
-            quantity: item.quantity,
-            shop_id: shopId 
-          }),
-          credentials: 'include',
-        });
-      }
-      
-      // Clear local cart after successful sync
-      localStorage.removeItem('guest_cart');
-      setCartItems([]);
-      
-      console.log('Cart synced with server after login');
-      
-      // Navigate to wishlist page
-      navigate('/wishlist');
-      
-    } catch (error) {
-      console.error('Error syncing cart with server:', error);
-      alert('Failed to sync cart. Please try again.');
-    }
+  const navigateToWishlist = () => {
+    // Save current cart to a special key that wishlist can read
+    localStorage.setItem('pending_cart', JSON.stringify(cartItems));
+    
+    // Clear the guest cart
+    localStorage.removeItem('guest_cart');
+    setCartItems([]);
+    
+    // Navigate to wishlist page
+    navigate('/wishlist');
   };
 
   // Calculate total items in cart
@@ -266,8 +247,9 @@ function Products({ onRequireLogin }) {
               <button 
                 onClick={handleCheckout}
                 className="checkout-btn"
+                disabled={isSyncing}
               >
-                🛒 Proceed to Checkout
+                {isSyncing ? 'Processing...' : '🛒 Proceed to Checkout'}
               </button>
             </div>
           )}
