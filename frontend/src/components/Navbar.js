@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import config from '../config'; 
 
-function Navbar({ user, onLogout, onRequireLogin, onCartClick }) {
+function Navbar({ user, onLogout, onRequireLogin }) {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [cartCount, setCartCount] = useState(0);
@@ -47,17 +47,26 @@ function Navbar({ user, onLogout, onRequireLogin, onCartClick }) {
       console.log('📋 Logout response:', data);
 
       if (data.success) {
+        // Clear all local storage
         localStorage.removeItem('userSession');
         sessionStorage.clear();
+        
+        // Clear any app state
         onLogout();
+        
+        // Reset cart count
         setCartCount(0);
+        
+        // Navigate to shops (public page) instead of login
         navigate('/shops');
+        
         console.log('✅ Logout successful');
       } else {
         console.error('❌ Logout failed:', data.error);
       }
     } catch (error) {
       console.error('❌ Logout error:', error);
+      // Even if API call fails, clear local state
       localStorage.removeItem('userSession');
       onLogout();
       setCartCount(0);
@@ -74,20 +83,14 @@ function Navbar({ user, onLogout, onRequireLogin, onCartClick }) {
     setIsMenuOpen(false);
   };
 
-  // Handle cart click - opens cart sidebar on current page
+  // Handle cart click - navigates to wishlist page (which is now the cart page)
   const handleCartClick = () => {
-    if (onCartClick) {
-      // If onCartClick prop is provided, use it to open cart sidebar
-      onCartClick();
-    } else {
-      // Fallback: if no onCartClick handler, use require login and navigate
-      if (onRequireLogin) {
-        onRequireLogin(() => {
-          navigate('/wishlist');
-        });
-      } else {
+    if (onRequireLogin) {
+      onRequireLogin(() => {
         navigate('/wishlist');
-      }
+      });
+    } else {
+      navigate('/wishlist');
     }
     setIsMenuOpen(false);
   };
@@ -122,23 +125,28 @@ function Navbar({ user, onLogout, onRequireLogin, onCartClick }) {
 
         <div className={`nav-links ${isMenuOpen ? 'active' : ''}`}>
           {/* Always show Shops link - it's public */}
-          <button onClick={() => handleNavClick('/shops')}>🏪 Shops</button>
+          <button onClick={() => handleNavClick('/shops')}>
+            🏪 Shops
+          </button>
 
-          {/* Cart Button - Opens cart sidebar on current page */}
-          <button onClick={handleCartClick} className="cart-button">
+          {/* Cart Button - Navigates to wishlist page */}
+          <button onClick={() => handleCartClick('/wishlist')} className="cart-button">
             🛒 Cart
             {cartCount > 0 && <span className="cart-count-badge">{cartCount}</span>}
           </button>
 
+          {/* Returns - Requires login */}
           <button onClick={() => handleProtectedNavClick('/return-policy')}>
-            🔄 Returns
+            🔄 Return Products
           </button>
 
           {/* User-specific links */}
           {user ? (
             <div className="user-info">
               <span className="user-mobile">👤 {user.mobile}</span>
-              <button onClick={handleLogout} className="logout-btn">Logout</button>
+              <button onClick={handleLogout} className="logout-btn">
+                Logout
+              </button>
             </div>
           ) : (
             <button 
