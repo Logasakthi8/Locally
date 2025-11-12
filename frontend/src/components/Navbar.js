@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import config from '../config'; 
 
-function Navbar({ user, onLogout, onRequireLogin }) {
+function Navbar({ user, onLogout, onRequireLogin, onCartClick }) {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [cartCount, setCartCount] = useState(0);
@@ -47,26 +47,17 @@ function Navbar({ user, onLogout, onRequireLogin }) {
       console.log('📋 Logout response:', data);
 
       if (data.success) {
-        // Clear all local storage
         localStorage.removeItem('userSession');
         sessionStorage.clear();
-        
-        // Clear any app state
         onLogout();
-        
-        // Reset cart count
         setCartCount(0);
-        
-        // Navigate to shops (public page) instead of login
         navigate('/shops');
-        
         console.log('✅ Logout successful');
       } else {
         console.error('❌ Logout failed:', data.error);
       }
     } catch (error) {
       console.error('❌ Logout error:', error);
-      // Even if API call fails, clear local state
       localStorage.removeItem('userSession');
       onLogout();
       setCartCount(0);
@@ -83,6 +74,24 @@ function Navbar({ user, onLogout, onRequireLogin }) {
     setIsMenuOpen(false);
   };
 
+  // Handle cart click - opens cart sidebar on current page
+  const handleCartClick = () => {
+    if (onCartClick) {
+      // If onCartClick prop is provided, use it to open cart sidebar
+      onCartClick();
+    } else {
+      // Fallback: if no onCartClick handler, use require login and navigate
+      if (onRequireLogin) {
+        onRequireLogin(() => {
+          navigate('/wishlist');
+        });
+      } else {
+        navigate('/wishlist');
+      }
+    }
+    setIsMenuOpen(false);
+  };
+
   // Handle protected navigation (requires login)
   const handleProtectedNavClick = (path) => {
     if (onRequireLogin) {
@@ -91,18 +100,6 @@ function Navbar({ user, onLogout, onRequireLogin }) {
       });
     } else {
       navigate(path);
-    }
-    setIsMenuOpen(false);
-  };
-
-  // Handle cart click - if user not logged in, show login modal
-  const handleCartClick = () => {
-    if (onRequireLogin) {
-      onRequireLogin(() => {
-        navigate('/wishlist'); // or your cart page
-      });
-    } else {
-      navigate('/wishlist');
     }
     setIsMenuOpen(false);
   };
@@ -127,7 +124,7 @@ function Navbar({ user, onLogout, onRequireLogin }) {
           {/* Always show Shops link - it's public */}
           <button onClick={() => handleNavClick('/shops')}>🏪 Shops</button>
 
-          {/* Show these to all users, but handle login requirement */}
+          {/* Cart Button - Opens cart sidebar on current page */}
           <button onClick={handleCartClick} className="cart-button">
             🛒 Cart
             {cartCount > 0 && <span className="cart-count-badge">{cartCount}</span>}
