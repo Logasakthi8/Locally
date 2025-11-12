@@ -1,50 +1,78 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import config from '../config'; 
 
-function Navbar({ user, onLogout }) {
+function Navbar({ user, onLogout, onRequireLogin }) {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
 
- const handleLogout = async () => {
-
-  try {
-    console.log('🔄 Starting logout...');
-    
-    const response = await fetch(`${config.apiUrl}/logout`, {
-      method: 'POST',
-      credentials: 'include', // This is crucial for sending cookies
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    const data = await response.json();
-    console.log('📋 Logout response:', data);
-
-    if (data.success) {
-      // Clear all local storage
-      localStorage.removeItem('userSession');
-      sessionStorage.clear();
-      
-      // Clear any app state
-      onLogout();
-      
-      // Force reload to clear any cached state
-      window.location.href = '/';
-      
-      console.log('✅ Logout successful');
+  // Fetch cart count when user is logged in
+  useEffect(() => {
+    if (user) {
+      fetchCartCount();
     } else {
-      console.error('❌ Logout failed:', data.error);
+      setCartCount(0);
     }
-  } catch (error) {
-    console.error('❌ Logout error:', error);
-    // Even if API call fails, clear local state
-    localStorage.removeItem('userSession');
-    onLogout();
-    window.location.href = '/';
-  }
-};
+  }, [user]);
+
+  const fetchCartCount = async () => {
+    try {
+      const response = await fetch(`${config.apiUrl}/cart/count`, {
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setCartCount(data.count || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching cart count:', error);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      console.log('🔄 Starting logout...');
+      
+      const response = await fetch(`${config.apiUrl}/logout`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      console.log('📋 Logout response:', data);
+
+      if (data.success) {
+        // Clear all local storage
+        localStorage.removeItem('userSession');
+        sessionStorage.clear();
+        
+        // Clear any app state
+        onLogout();
+        
+        // Reset cart count
+        setCartCount(0);
+        
+        // Navigate to shops (public page) instead of login
+        navigate('/shops');
+        
+        console.log('✅ Logout successful');
+      } else {
+        console.error('❌ Logout failed:', data.error);
+      }
+    } catch (error) {
+      console.error('❌ Logout error:', error);
+      // Even if API call fails, clear local state
+      localStorage.removeItem('userSession');
+      onLogout();
+      setCartCount(0);
+      navigate('/shops');
+    }
+  };
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -55,13 +83,38 @@ function Navbar({ user, onLogout }) {
     setIsMenuOpen(false);
   };
 
+  // Handle protected navigation (requires login)
+  const handleProtectedNavClick = (path) => {
+    if (onRequireLogin) {
+      onRequireLogin(() => {
+        navigate(path);
+      });
+    } else {
+      navigate(path);
+    }
+    setIsMenuOpen(false);
+  };
+
+  // Handle cart click - if user not logged in, show login modal
+  const handleCartClick = () => {
+    if (onRequireLogin) {
+      onRequireLogin(() => {
+        navigate('/wishlist'); // or your cart page
+      });
+    } else {
+      navigate('/wishlist');
+    }
+    setIsMenuOpen(false);
+  };
+
   return (
     <nav className="navbar">
       <div className="nav-container">
+        {/* Logo - Always goes to shops (public page) */}
         <img 
           src="/myLogo2.png" 
           alt="Locally" 
-          onClick={() => handleNavClick(user ? '/shops' : '/')} 
+          onClick={() => handleNavClick('/shops')} 
           className="logo" 
         />
 
@@ -71,20 +124,32 @@ function Navbar({ user, onLogout }) {
         </button>
 
         <div className={`nav-links ${isMenuOpen ? 'active' : ''}`}>
+          {/* Always show Shops link - it's public */}
+          <button onClick={() => handleNavClick('/shops')}>🏪 Shops</button>
+
+          {/* Show these to all users, but handle login requirement */}
+          <button onClick={handleCartClick} className="cart-button">
+            🛒 Cart
+            {cartCount > 0 && <span className="cart-count-badge">{cartCount}</span>}
+          </button>
+
+          <button onClick={() => handleProtectedNavClick('/return-policy')}>
+            🔄 Returns
+          </button>
+
+          {/* User-specific links */}
           {user ? (
-            <>
-              <button onClick={() => handleNavClick('/shops')}>Shops</button>
-              <button onClick={() => handleNavClick('/wishlist')} className="cart-button">
-                Cart
-              </button>
-              <button onClick={() => handleNavClick('/return-policy')}>Return Products</button>
-              <div className="user-info">
-                <span>👤 {user.mobile}</span>
-                <button onClick={handleLogout}>Logout</button>
-              </div>
-            </>
+            <div className="user-info">
+              <span className="user-mobile">👤 {user.mobile}</span>
+              <button onClick={handleLogout} className="logout-btn">Logout</button>
+            </div>
           ) : (
-            <button onClick={() => handleNavClick('/')}>Login</button>
+            <button 
+              onClick={() => handleNavClick('/login')} 
+              className="login-btn"
+            >
+              🔑 Login
+            </button>
           )}  
         </div>
       </div>
