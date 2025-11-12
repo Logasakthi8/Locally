@@ -3,22 +3,65 @@ import config from '../config';
 
 function ProductCard({ product, onWishlistUpdate, onAddToCart, onRequireLogin, shopId }) {
   const [isLiked, setIsLiked] = useState(false);
-  const [isAdding, setIsAdding] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [isAddingToWishlist, setIsAddingToWishlist] = useState(false);
   const [error, setError] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [isInCart, setIsInCart] = useState(false);
 
-  const whatsappNumber = '9361437687';
+  const handleAddToCart = () => {
+    // Add to cart directly without login requirement
+    addToCart();
+  };
 
-  const handleWhatsAppRequest = () => {
-    const message = `Hi, I'm interested in ${product.name} (₹${product.price}). Please provide more details.`;
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
-    window.open(whatsappUrl, '_blank');
+  const addToCart = async () => {
+    try {
+      setIsAddingToCart(true);
+      setError('');
+
+      const response = await fetch(`${config.apiUrl}/cart`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          product_id: product._id, 
+          quantity: quantity,
+          shop_id: shopId 
+        }),
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        setIsInCart(true);
+        onAddToCart && onAddToCart(product);
+        console.log('Added to cart:', product.name);
+      } else {
+        if (response.status === 401) {
+          // User not logged in - still add to local cart or show message
+          setIsInCart(true);
+          onAddToCart && onAddToCart(product);
+          console.log('Added to local cart (login required for checkout):', product.name);
+        } else if (response.status === 404) {
+          setError('Product not found');
+        } else {
+          const errorData = await response.json();
+          setError(errorData.error || 'Failed to add to cart');
+        }
+      }
+    } catch (error) {
+      console.error('Network error:', error);
+      // Even if network fails, add to local state
+      setIsInCart(true);
+      onAddToCart && onAddToCart(product);
+      console.log('Added to local cart:', product.name);
+    } finally {
+      setIsAddingToCart(false);
+    }
   };
 
   const handleLike = async () => {
-    // Use onRequireLogin to handle authentication
+    // Wishlist requires login
     if (onRequireLogin) {
       onRequireLogin(async () => {
         await addToWishlist();
@@ -30,7 +73,7 @@ function ProductCard({ product, onWishlistUpdate, onAddToCart, onRequireLogin, s
 
   const addToWishlist = async () => {
     try {
-      setIsAdding(true);
+      setIsAddingToWishlist(true);
       setError('');
 
       const response = await fetch(`${config.apiUrl}/wishlist`, {
@@ -63,80 +106,32 @@ function ProductCard({ product, onWishlistUpdate, onAddToCart, onRequireLogin, s
       console.error('Network error:', error);
       setError('Network error. Please check your connection.');
     } finally {
-      setIsAdding(false);
+      setIsAddingToWishlist(false);
     }
   };
 
-  const handleAddToCart = () => {
-    // Use onRequireLogin to handle authentication for cart
-    if (onRequireLogin) {
-      onRequireLogin(async () => {
-        await addToCart();
-      });
-    } else {
-      addToCart();
+  const handleQuantityChange = (delta) => {
+    const newQty = Math.max(1, quantity + delta);
+    setQuantity(newQty);
+    
+    // If already in cart, update quantity on server (if logged in)
+    if (isInCart) {
+      updateCartQuantity(newQty);
     }
   };
 
-  const addToCart = async () => {
+  const updateCartQuantity = async (newQty) => {
     try {
-      setIsAdding(true);
-      setError('');
-
-      const response = await fetch(`${config.apiUrl}/cart`, {
-        method: 'POST',
+      await fetch(`${config.apiUrl}/cart/${product._id}/quantity`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-          product_id: product._id, 
-          quantity: quantity,
-          shop_id: shopId 
-        }),
+        body: JSON.stringify({ quantity: newQty }),
         credentials: 'include',
       });
-
-      if (response.ok) {
-        setIsInCart(true);
-        onAddToCart && onAddToCart(product);
-        // Show success message or update cart count
-        console.log('Added to cart:', product.name);
-      } else {
-        if (response.status === 401) {
-          setError('Please login to add to cart');
-        } else if (response.status === 404) {
-          setError('Product not found');
-        } else {
-          const errorData = await response.json();
-          setError(errorData.error || 'Failed to add to cart');
-        }
-      }
     } catch (error) {
-      console.error('Network error:', error);
-      setError('Network error. Please check your connection.');
-    } finally {
-      setIsAdding(false);
-    }
-  };
-
-  const handleQuantityChange = async (delta) => {
-    const newQty = Math.max(1, quantity + delta);
-    setQuantity(newQty);
-
-    // Only update on server if already in wishlist
-    if (isLiked) {
-      try {
-        await fetch(`${config.apiUrl}/wishlist/${product._id}/quantity`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ quantity: newQty }),
-          credentials: 'include',
-        });
-      } catch (error) {
-        console.error('Error updating wishlist quantity:', error);
-      }
+      console.error('Error updating cart quantity:', error);
     }
   };
 
@@ -192,46 +187,45 @@ function ProductCard({ product, onWishlistUpdate, onAddToCart, onRequireLogin, s
           )}
         </div>
 
-        {/* Action Buttons */}
-        <div className="product-actions">
-          {/* WhatsApp Inquiry Button - Always available */}
-          <button
-            className="whatsapp-inquiry-btn"
-            onClick={handleWhatsAppRequest}
-            disabled={product.quantity === 0}
+        {/* Quantity Selector - Always visible */}
+        <div className="quantity-control">
+          <span className="quantity-label">Qty:</span>
+          <button 
+            onClick={() => handleQuantityChange(-1)}
+            disabled={quantity <= 1}
           >
-            💬 WhatsApp
+            -
           </button>
-
-          {/* Add to Cart Button */}
-          <button
-            className={`cart-btn ${isInCart ? 'in-cart' : ''} ${product.quantity === 0 ? 'disabled' : ''}`}
-            onClick={handleAddToCart}
-            disabled={isAdding || product.quantity === 0}
+          <span className="quantity-value">{quantity}</span>
+          <button 
+            onClick={() => handleQuantityChange(1)}
+            disabled={product.quantity && quantity >= product.quantity}
           >
-            {isAdding ? '...' : isInCart ? '✅ Added' : '🛒 Add to Cart'}
-          </button>
-
-          {/* Wishlist Button */}
-          <button
-            className={`wishlist-btn ${isLiked ? 'liked' : ''}`}
-            onClick={handleLike}
-            disabled={isAdding}
-            title={isLiked ? 'Remove from wishlist' : 'Add to wishlist'}
-          >
-            {isLiked ? '❤️' : '🤍'}
+            +
           </button>
         </div>
 
-        {/* Quantity Controls - Show for wishlist items */}
-        {isLiked && (
-          <div className="quantity-control">
-            <span className="quantity-label">Qty:</span>
-            <button onClick={() => handleQuantityChange(-1)}>-</button>
-            <span className="quantity-value">{quantity}</span>
-            <button onClick={() => handleQuantityChange(1)}>+</button>
-          </div>
-        )}
+        {/* Action Buttons */}
+        <div className="product-actions">
+          {/* Add to Cart Button - No login required */}
+          <button
+            className={`cart-btn ${isInCart ? 'in-cart' : ''} ${product.quantity === 0 ? 'disabled' : ''}`}
+            onClick={handleAddToCart}
+            disabled={isAddingToCart || product.quantity === 0}
+          >
+            {isAddingToCart ? 'Adding...' : isInCart ? '✅ Added to Cart' : '🛒 Add to Cart'}
+          </button>
+
+          {/* Wishlist Button - Requires login */}
+          <button
+            className={`wishlist-btn ${isLiked ? 'liked' : ''}`}
+            onClick={handleLike}
+            disabled={isAddingToWishlist || product.quantity === 0}
+            title={isLiked ? 'Remove from wishlist' : 'Add to wishlist'}
+          >
+            {isAddingToWishlist ? '...' : isLiked ? '❤️' : '🤍'}
+          </button>
+        </div>
       </div>
     </div>
   );
