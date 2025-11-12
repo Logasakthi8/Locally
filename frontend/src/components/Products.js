@@ -8,13 +8,36 @@ function Products({ onRequireLogin }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [shopInfo, setShopInfo] = useState(null);
+  const [cartItems, setCartItems] = useState([]);
   const { shopId } = useParams();
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchProducts();
     fetchShopInfo();
+    loadLocalCart();
   }, [shopId]);
+
+  // Load cart from localStorage
+  const loadLocalCart = () => {
+    try {
+      const savedCart = localStorage.getItem(`cart_${shopId}`);
+      if (savedCart) {
+        setCartItems(JSON.parse(savedCart));
+      }
+    } catch (error) {
+      console.error('Error loading cart from localStorage:', error);
+    }
+  };
+
+  // Save cart to localStorage
+  const saveCartToLocal = (items) => {
+    try {
+      localStorage.setItem(`cart_${shopId}`, JSON.stringify(items));
+    } catch (error) {
+      console.error('Error saving cart to localStorage:', error);
+    }
+  };
 
   const fetchProducts = async () => {
     try {
@@ -27,7 +50,6 @@ function Products({ onRequireLogin }) {
       }
       
       const data = await response.json();
-      console.log('Products data:', data); // Debug log
       setProducts(data);
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -49,49 +71,85 @@ function Products({ onRequireLogin }) {
     }
   };
 
-  // Enhanced callback function when wishlist is updated
-  const handleWishlistUpdate = (product) => {
-    console.log('Wishlist update requested for:', product.name);
-    
-    // Use the onRequireLogin to handle authentication
-    if (onRequireLogin(() => {
-      // This will execute after successful login
-      console.log('User logged in, proceeding with wishlist update for:', product.name);
-      // Actual wishlist update logic will be handled in ProductCard after login
-    })) {
-      // User is already logged in, proceed directly
-      console.log('User already logged in, proceeding with wishlist update');
-    }
-  };
-
-  // Handle add to cart with login check
+  // Handle add to cart - no login required
   const handleAddToCart = (product) => {
-    console.log('Add to cart requested for:', product.name);
+    const existingItemIndex = cartItems.findIndex(item => item.product._id === product._id);
     
-    if (onRequireLogin(() => {
-      // This will execute after successful login
-      console.log('User logged in, proceeding with add to cart for:', product.name);
-      // Actual add to cart logic will be handled in ProductCard after login
-    })) {
+    let updatedCart;
+    if (existingItemIndex >= 0) {
+      // Update quantity if already in cart
+      updatedCart = cartItems.map((item, index) => 
+        index === existingItemIndex 
+          ? { ...item, quantity: item.quantity + 1 }
+          : item
+      );
+    } else {
+      // Add new item to cart
+      updatedCart = [...cartItems, { product, quantity: 1 }];
+    }
+    
+    setCartItems(updatedCart);
+    saveCartToLocal(updatedCart);
+    console.log('Added to cart:', product.name);
+  };
+
+  // Handle checkout - requires login
+  const handleCheckout = () => {
+    if (cartItems.length === 0) {
+      alert('Your cart is empty. Add some products first!');
+      return;
+    }
+
+    if (onRequireLogin) {
+      onRequireLogin(() => {
+        // After login, move to wishlist page (or checkout page)
+        navigate('/wishlist');
+        // Or you can process the cart here
+        processCartAfterLogin();
+      });
+    } else {
       // User is already logged in, proceed directly
-      console.log('User already logged in, proceeding with add to cart');
+      navigate('/wishlist');
+      processCartAfterLogin();
     }
   };
 
-  // Handle checkout action
-  const handleCheckout = () => {
-    console.log('Checkout requested');
-    
-    if (onRequireLogin(() => {
-      // This will execute after successful login
-      console.log('User logged in, proceeding to checkout');
-      // Navigate to checkout or open checkout modal
-      // navigate('/checkout');
-    })) {
-      // User is already logged in, proceed directly
-      console.log('User already logged in, proceeding to checkout');
-      // navigate('/checkout');
+  const processCartAfterLogin = async () => {
+    try {
+      // Sync local cart with server after login
+      for (const item of cartItems) {
+        await fetch(`${config.apiUrl}/cart`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            product_id: item.product._id, 
+            quantity: item.quantity,
+            shop_id: shopId 
+          }),
+          credentials: 'include',
+        });
+      }
+      
+      // Clear local cart after successful sync
+      localStorage.removeItem(`cart_${shopId}`);
+      setCartItems([]);
+      
+      console.log('Cart synced with server after login');
+    } catch (error) {
+      console.error('Error syncing cart with server:', error);
     }
+  };
+
+  // Calculate total items in cart
+  const getTotalCartItems = () => {
+    return cartItems.reduce((total, item) => total + item.quantity, 0);
+  };
+
+  // Calculate total cart value
+  const getTotalCartValue = () => {
+    return cartItems.reduce((total, item) => total + (item.product.price * item.quantity), 0);
   };
 
   if (loading) {
@@ -142,12 +200,19 @@ function Products({ onRequireLogin }) {
         )}
       </div>
 
-      {/* Products Count */}
-      <div className="products-count">
+      {/* Products Count and Cart Summary */}
+      <div className="products-header-row">
         <h2 className="page-title">
           Available Products 
           <span className="count-badge">({products.length})</span>
         </h2>
+        
+        {cartItems.length > 0 && (
+          <div className="cart-summary">
+            <span className="cart-items-count">🛒 {getTotalCartItems()} items</span>
+            <span className="cart-total-value">₹{getTotalCartValue()}</span>
+          </div>
+        )}
       </div>
       
       {products.length === 0 ? (
@@ -165,22 +230,28 @@ function Products({ onRequireLogin }) {
                 key={product._id} 
                 product={product}
                 shopId={shopId}
-                onWishlistUpdate={() => handleWishlistUpdate(product)}
-                onAddToCart={() => handleAddToCart(product)}
+                onWishlistUpdate={() => console.log('Wishlist updated')}
+                onAddToCart={handleAddToCart}
                 onRequireLogin={onRequireLogin}
               />
             ))}
           </div>
           
           {/* Checkout Footer Button */}
-          <div className="checkout-footer">
-            <button 
-              onClick={handleCheckout}
-              className="checkout-btn"
-            >
-              🛒 Proceed to Checkout
-            </button>
-          </div>
+          {cartItems.length > 0 && (
+            <div className="checkout-footer">
+              <div className="checkout-summary">
+                <span className="total-items">{getTotalCartItems()} items</span>
+                <span className="total-price">₹{getTotalCartValue()}</span>
+              </div>
+              <button 
+                onClick={handleCheckout}
+                className="checkout-btn"
+              >
+                🛒 Proceed to Checkout
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>
