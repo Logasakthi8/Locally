@@ -13,12 +13,14 @@ import config from './config';
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
 
   useEffect(() => {
     const checkSession = async () => {
       try {
         console.log('🔍 Checking user session...');
-        const response = await fetch(`${config.apiUrl}/check-session`, { // ✅ Fixed endpoint
+        const response = await fetch(`${config.apiUrl}/check-session`, {
           credentials: 'include'
         });
 
@@ -43,10 +45,36 @@ function App() {
     checkSession();
   }, []);
 
-  // Small wrapper for protected routes
+  // Handle actions that require login (checkout, wishlist, etc.)
+  const requireLogin = (actionCallback) => {
+    if (!user) {
+      setPendingAction(() => actionCallback);
+      setShowLoginModal(true);
+      return false;
+    }
+    return true;
+  };
+
+  const handleLoginSuccess = (userData) => {
+    setUser(userData);
+    setShowLoginModal(false);
+    
+    // Execute pending action after login
+    if (pendingAction) {
+      pendingAction();
+      setPendingAction(null);
+    }
+  };
+
+  const handleCloseLogin = () => {
+    setShowLoginModal(false);
+    setPendingAction(null);
+  };
+
+  // Protected route wrapper for features that require login
   const ProtectedRoute = ({ children }) => {
     if (!user) {
-      return <Navigate to="/" replace />;
+      return <Navigate to="/shops" replace />;
     }
     return children;
   };
@@ -63,33 +91,33 @@ function App() {
   return (
     <Router>
       <div className="App">
-        <Navbar user={user} onLogout={() => setUser(null)} />
+        <Navbar 
+          user={user} 
+          onLogout={() => setUser(null)}
+          onRequireLogin={requireLogin}
+        />
+        
         <Routes>
-          {/* ✅ If user already logged in, redirect from "/" to "/shops" */}
+          {/* ✅ Default route shows shops without login */}
+          <Route path="/" element={<Navigate to="/shops" replace />} />
+          
+          {/* ✅ Public routes - no login required */}
+          <Route path="/shops" element={<Shops onRequireLogin={requireLogin} />} />
+          <Route 
+            path="/products/:shopId" 
+            element={<Products onRequireLogin={requireLogin} />} 
+          />
+          <Route path="/return-policy" element={<ReturnPolicy />} />
+          
+          {/* ✅ Login page - redirect to shops if already logged in */}
           <Route
-            path="/"
+            path="/login"
             element={
               user ? <Navigate to="/shops" /> : <Login onLogin={setUser} />
             }
           />
 
-          {/* ✅ Protect shops, products, wishlist */}
-          <Route
-            path="/shops"
-            element={
-              <ProtectedRoute>
-                <Shops />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/products/:shopId"
-            element={
-              <ProtectedRoute>
-                <Products />
-              </ProtectedRoute>
-            }
-          />
+          {/* ✅ Protected routes - require login */}
           <Route
             path="/wishlist"
             element={
@@ -98,20 +126,28 @@ function App() {
               </ProtectedRoute>
             }
           />
-          
-          {/* ✅ Add Return Policy Route - Protected since it's in navbar */}
-          <Route
-            path="/return-policy"
-            element={
-              <ProtectedRoute>
-                <ReturnPolicy />
-              </ProtectedRoute>
-            }
-          />
         </Routes>
 
-        {/* ✅ ADD FEEDBACK SYSTEM HERE - Outside Routes but inside Router */}
+        {/* ✅ Feedback System */}
         <FeedbackSystem user={user} />
+
+        {/* ✅ Login Modal for checkout and other protected actions */}
+        {showLoginModal && (
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <button 
+                className="close-button" 
+                onClick={handleCloseLogin}
+              >
+                ×
+              </button>
+              <Login 
+                onLogin={handleLoginSuccess}
+                onClose={handleCloseLogin}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </Router>
   );
