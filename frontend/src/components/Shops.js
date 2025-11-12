@@ -3,18 +3,69 @@ import { useNavigate } from 'react-router-dom';
 import ShopCard from './ShopCard';
 import config from '../config';
 
-
-function Shops() {
+function Shops({ onRequireLogin }) {
   const [shops, setShops] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentSlide, setCurrentSlide] = useState(0);
   const navigate = useNavigate();
   const categoryScrollRef = useRef(null);
+  const slideIntervalRef = useRef(null);
 
   useEffect(() => {
     fetchShops();
+    
+    // Auto-advance slides every 5 seconds
+    slideIntervalRef.current = setInterval(() => {
+      setCurrentSlide(prev => (prev + 1) % carouselSlides.length);
+    }, 5000);
+
+    return () => {
+      if (slideIntervalRef.current) {
+        clearInterval(slideIntervalRef.current);
+      }
+    };
   }, []);
+
+  // Carousel slides data
+  const carouselSlides = [
+    {
+      id: 1,
+      theme: "The Emotional Hook",
+      visual: "🏪👨‍👩‍👧‍👦",
+      title: "The Heart of Your Street",
+      content: "Every shop has a story. Behind every small store is a dream, a family, and a familiar smile. At Locallys, we bring those trusted local faces closer to you — just a tap away! 💙"
+    },
+    {
+      id: 2,
+      theme: "The Value Promise",
+      visual: "💰📱",
+      title: "Shop at Real Store Prices",
+      content: "Why pay more elsewhere? Get products at the same price as your nearby stores — no middlemen, no hidden charges. Support your neighborhood while saving smart. 🛒"
+    },
+    {
+      id: 3,
+      theme: "The Offer",
+      visual: "🚚🎁",
+      title: "Your First 2 Deliveries — On Us!",
+      content: "Enjoy 2 free deliveries on your first orders! Fast, friendly, and straight from your favorite local shops. Try Locallys — your local market, delivered with love. 💙"
+    },
+    {
+      id: 4,
+      theme: "The Story",
+      visual: "🌍🗺️",
+      title: "From Local Streets to Your Doorstep",
+      content: "We started Locallys with one simple dream — to help every small shop go digital and reach every home nearby. Together, we're building a stronger local community. 🤝"
+    },
+    {
+      id: 5,
+      theme: "The Emotional CTA",
+      visual: "💬❤️",
+      title: "Let's Grow Together",
+      content: "When you order from Locallys, you're not just shopping — you're supporting local families, dreams, and hard work. Be part of the change. Shop local. Support local. Locallys."
+    }
+  ];
 
   // Your specific categories with icons and display names
   const categoryConfig = {
@@ -146,6 +197,18 @@ function Shops() {
     }
   };
 
+  // Manual slide navigation
+  const goToSlide = (index) => {
+    setCurrentSlide(index);
+    // Reset auto-advance timer
+    if (slideIntervalRef.current) {
+      clearInterval(slideIntervalRef.current);
+    }
+    slideIntervalRef.current = setInterval(() => {
+      setCurrentSlide(prev => (prev + 1) % carouselSlides.length);
+    }, 5000);
+  };
+
   if (loading) {
     return (
       <div className="container">
@@ -156,6 +219,55 @@ function Shops() {
 
   return (
     <div className="container">
+      {/* Promotional Carousel */}
+      <div className="carousel-container">
+        <div className="carousel">
+          <div className="carousel-slide active">
+            <div className="carousel-content">
+              <div className="carousel-visual">
+                {carouselSlides[currentSlide].visual}
+              </div>
+              <div className="carousel-text">
+                <div className="carousel-theme">
+                  {carouselSlides[currentSlide].theme}
+                </div>
+                <h2 className="carousel-title">
+                  {carouselSlides[currentSlide].title}
+                </h2>
+                <p className="carousel-description">
+                  {carouselSlides[currentSlide].content}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Carousel Indicators */}
+        <div className="carousel-indicators">
+          {carouselSlides.map((_, index) => (
+            <button
+              key={index}
+              className={`carousel-indicator ${index === currentSlide ? 'active' : ''}`}
+              onClick={() => goToSlide(index)}
+            />
+          ))}
+        </div>
+        
+        {/* Carousel Navigation Arrows */}
+        <button 
+          className="carousel-arrow carousel-arrow-left"
+          onClick={() => goToSlide((currentSlide - 1 + carouselSlides.length) % carouselSlides.length)}
+        >
+          ‹
+        </button>
+        <button 
+          className="carousel-arrow carousel-arrow-right"
+          onClick={() => goToSlide((currentSlide + 1) % carouselSlides.length)}
+        >
+          ›
+        </button>
+      </div>
+
       <h2 className="page-title">Browse Shops</h2>
 
       {/* Search Bar */}
