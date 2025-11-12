@@ -21,13 +21,12 @@ function Wishlist() {
 
   const navigate = useNavigate();
 
-  // Test backend connection first
   useEffect(() => {
     testBackendConnection();
   }, []);
 
   useEffect(() => {
-    fetchWishlist();
+    loadWishlistData();
   }, []);
 
   useEffect(() => {
@@ -41,6 +40,120 @@ function Wishlist() {
   useEffect(() => {
     localStorage.setItem('userDeliveryCount', userDeliveryCount.toString());
   }, [userDeliveryCount]);
+
+  const loadWishlistData = async () => {
+    try {
+      setLoading(true);
+      
+      // First, check if there's a pending cart from guest session
+      const pendingCart = localStorage.getItem('pending_cart');
+      const guestCart = localStorage.getItem('guest_cart');
+      
+      let combinedItems = [];
+
+      // If there's a pending cart (from checkout flow), use it
+      if (pendingCart) {
+        console.log('📦 Found pending cart items');
+        const pendingItems = JSON.parse(pendingCart);
+        combinedItems = [...pendingItems.map(item => ({
+          ...item,
+          isLocal: true
+        }))];
+        
+        // Try to sync pending items to server
+        await syncPendingItemsToServer(pendingItems);
+        localStorage.removeItem('pending_cart');
+      } 
+      // If there's a guest cart (direct navigation to wishlist), use it
+      else if (guestCart) {
+        console.log('📦 Found guest cart items');
+        const guestItems = JSON.parse(guestCart);
+        combinedItems = [...guestItems.map(item => ({
+          ...item,
+          isLocal: true
+        }))];
+      }
+
+      // Then fetch server wishlist items
+      try {
+        const serverItems = await fetchServerWishlist();
+        combinedItems = [...combinedItems, ...serverItems.map(item => ({
+          ...item,
+          isLocal: false
+        }))];
+      } catch (serverError) {
+        console.log('⚠️ Could not fetch server wishlist, using local items only');
+      }
+
+      if (combinedItems.length > 0) {
+        setWishlist(combinedItems);
+        await fetchShopDetails(combinedItems);
+      } else {
+        setWishlist([]);
+      }
+
+    } catch (error) {
+      console.error('Error loading wishlist data:', error);
+      setError('Failed to load cart items');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const syncPendingItemsToServer = async (pendingItems) => {
+    try {
+      for (const item of pendingItems) {
+        await fetch(`${config.apiUrl}/wishlist`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            product_id: item.product._id, 
+            quantity: item.quantity,
+            shop_id: item.shopId 
+          }),
+          credentials: 'include',
+        });
+      }
+      console.log('✅ Pending cart items synced to server');
+      
+      // Clear guest cart after successful sync
+      localStorage.removeItem('guest_cart');
+    } catch (error) {
+      console.error('❌ Failed to sync pending items to server:', error);
+      // Keep items in guest cart if sync fails
+    }
+  };
+
+  const fetchServerWishlist = async () => {
+    try {
+      console.log('🔍 Fetching server wishlist...');
+      
+      const response = await fetch(`${config.apiUrl}/wishlist`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Server wishlist data received, items:', data.length);
+        return data;
+      } else if (response.status === 401) {
+        console.log('⚠️ User not logged in, no server wishlist');
+        return [];
+      } else {
+        console.error('❌ Failed to fetch server wishlist:', response.status);
+        return [];
+      }
+    } catch (error) {
+      console.error('❌ Network error fetching server wishlist:', error);
+      return [];
+    }
+  };
 
   const testBackendConnection = async () => {
     try {
@@ -69,64 +182,9 @@ function Wishlist() {
     }
   };
 
-  const fetchWishlist = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      console.log('🔍 Fetching wishlist from:', `${config.apiUrl}/wishlist`);
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-      const response = await fetch(`${config.apiUrl}/wishlist`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      console.log('📡 Wishlist response status:', response.status);
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('✅ Wishlist data received, items:', data.length);
-        setWishlist(data);
-
-        if (data.length > 0) {
-          await fetchShopDetails(data);
-        }
-      } else if (response.status === 401) {
-        const errorMsg = 'Please login to view your cart';
-        console.error('❌ Authentication failed:', errorMsg);
-        setError(errorMsg);
-      } else {
-        const errorMsg = `Server error: ${response.status}`;
-        console.error('❌ Failed to fetch wishlist:', errorMsg);
-        setError(errorMsg);
-      }
-    } catch (error) {
-      console.error('❌ Network error fetching wishlist:', error);
-      
-      let errorMessage = 'Network error: ';
-      if (error.name === 'AbortError') {
-        errorMessage += 'Request timed out. ';
-      }
-      errorMessage += 'Please check your internet connection and try again.';
-      
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const fetchShopDetails = async (products) => {
     try {
-      const shopIds = [...new Set(products.map(product => product.shop_id))];
+      const shopIds = [...new Set(products.map(product => product.shop_id || product.shopId))];
       console.log('🔍 Fetching details for shops:', shopIds);
 
       if (shopIds.length === 0) return;
@@ -160,7 +218,7 @@ function Wishlist() {
     const grouped = {};
 
     wishlist.forEach(product => {
-      const shopId = product.shop_id;
+      const shopId = product.shop_id || product.shopId;
       if (!grouped[shopId]) {
         grouped[shopId] = [];
       }
@@ -173,7 +231,7 @@ function Wishlist() {
   const initializeSelectedProducts = () => {
     const selected = {};
     wishlist.forEach(product => {
-      selected[product._id] = true;
+      selected[product._id || product.product?._id] = true;
     });
     setSelectedProducts(selected);
   };
@@ -200,63 +258,98 @@ function Wishlist() {
     }));
   };
 
-  const removeFromWishlist = async (productId) => {
+  const removeFromWishlist = async (productId, isLocal = false) => {
     try {
       console.log('🗑️ Removing product from cart:', productId);
       
-      const response = await fetch(`${config.apiUrl}/wishlist/${productId}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
+      if (!isLocal) {
+        // Remove from server
+        const response = await fetch(`${config.apiUrl}/wishlist/${productId}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
 
-      if (response.ok) {
-        console.log('✅ Product removed from cart');
-        setWishlist(wishlist.filter(item => item._id !== productId));
-
-        const newSelected = {...selectedProducts};
-        delete newSelected[productId];
-        setSelectedProducts(newSelected);
-      } else {
-        console.error('❌ Failed to remove from cart:', response.status);
+        if (response.ok) {
+          console.log('✅ Product removed from server cart');
+        } else {
+          console.error('❌ Failed to remove from server cart:', response.status);
+        }
       }
+
+      // Remove from local state
+      setWishlist(wishlist.filter(item => {
+        const itemId = item._id || item.product?._id;
+        return itemId !== productId;
+      }));
+
+      const newSelected = {...selectedProducts};
+      delete newSelected[productId];
+      setSelectedProducts(newSelected);
+
+      // Also remove from localStorage if it was a local item
+      if (isLocal) {
+        const guestCart = JSON.parse(localStorage.getItem('guest_cart') || '[]');
+        const updatedCart = guestCart.filter(item => item.product._id !== productId);
+        localStorage.setItem('guest_cart', JSON.stringify(updatedCart));
+      }
+
     } catch (error) {
       console.error('❌ Error removing from cart:', error);
     }
   };
 
-  const updateQuantity = async (productId, newQuantity) => {
+  const updateQuantity = async (productId, newQuantity, isLocal = false) => {
     try {
       console.log('📦 Updating quantity for product:', productId, 'to', newQuantity);
       
-      const response = await fetch(`${config.apiUrl}/wishlist/${productId}/quantity`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ quantity: newQuantity }),
-        credentials: 'include'
-      });
+      if (!isLocal) {
+        // Update on server
+        const response = await fetch(`${config.apiUrl}/wishlist/${productId}/quantity`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ quantity: newQuantity }),
+          credentials: 'include'
+        });
 
-      if (response.ok) {
-        console.log('✅ Quantity updated successfully');
-        setWishlist(prevWishlist => 
-          prevWishlist.map(item => 
-            item._id === productId 
-              ? { ...item, quantity: newQuantity }
-              : item
-          )
-        );
-      } else {
-        console.error('❌ Failed to update quantity:', response.status);
+        if (response.ok) {
+          console.log('✅ Quantity updated on server');
+        } else {
+          console.error('❌ Failed to update quantity on server:', response.status);
+        }
       }
+
+      // Update local state
+      setWishlist(prevWishlist => 
+        prevWishlist.map(item => {
+          const itemId = item._id || item.product?._id;
+          if (itemId === productId) {
+            return { ...item, quantity: newQuantity };
+          }
+          return item;
+        })
+      );
+
+      // Update localStorage if it was a local item
+      if (isLocal) {
+        const guestCart = JSON.parse(localStorage.getItem('guest_cart') || '[]');
+        const updatedCart = guestCart.map(item => 
+          item.product._id === productId 
+            ? { ...item, quantity: newQuantity }
+            : item
+        );
+        localStorage.setItem('guest_cart', JSON.stringify(updatedCart));
+      }
+
     } catch (error) {
       console.error('❌ Error updating quantity:', error);
     }
   };
 
-  const handleQuantityChange = (productId, newQuantity) => {
+  const handleQuantityChange = (productId, newQuantity, isLocal = false) => {
     if (newQuantity < 1) return;
-    updateQuantity(productId, newQuantity);
+    updateQuantity(productId, newQuantity, isLocal);
   };
 
   // Calculate delivery charge based on user's delivery count
@@ -275,7 +368,10 @@ function Wishlist() {
     let hasValidOrder = false;
     Object.keys(groupedWishlist).forEach(shopId => {
       const selectedShopProducts = groupedWishlist[shopId].filter(
-        product => selectedProducts[product._id]
+        product => {
+          const productId = product._id || product.product?._id;
+          return selectedProducts[productId];
+        }
       );
       const subtotal = calculateShopSubtotal(selectedShopProducts);
       
@@ -295,7 +391,10 @@ function Wishlist() {
       // Process each shop's order
       const orderPromises = Object.keys(groupedWishlist).map(async (shopId) => {
         const selectedShopProducts = groupedWishlist[shopId].filter(
-          product => selectedProducts[product._id]
+          product => {
+            const productId = product._id || product.product?._id;
+            return selectedProducts[productId];
+          }
         );
         const subtotal = calculateShopSubtotal(selectedShopProducts);
         
@@ -327,7 +426,6 @@ function Wishlist() {
           orderDate: new Date().toISOString()
         };
 
-        // Here you would typically send this to your backend
         console.log('📦 Creating order:', order);
         
         // Simulate API call
@@ -344,21 +442,29 @@ function Wishlist() {
         
         // Remove ordered items from cart
         const orderedProductIds = orders.flatMap(order => 
-          order.products.map(product => product._id)
+          order.products.map(product => product._id || product.product?._id)
         );
         
-        setWishlist(prev => prev.filter(item => !orderedProductIds.includes(item._id)));
+        setWishlist(prev => prev.filter(item => {
+          const itemId = item._id || item.product?._id;
+          return !orderedProductIds.includes(itemId);
+        }));
+        
         setSelectedProducts(prev => {
           const newSelected = {...prev};
           orderedProductIds.forEach(id => delete newSelected[id]);
           return newSelected;
         });
 
+        // Clear localStorage
+        localStorage.removeItem('guest_cart');
+        localStorage.removeItem('pending_cart');
+
         // Increment delivery count
         const newCount = userDeliveryCount + 1;
         setUserDeliveryCount(newCount);
 
-        // Navigate back to shops or show success page
+        // Navigate back to shops
         navigate('/shops');
       } else {
         alert('No valid orders to process. Please check your selections.');
@@ -376,20 +482,28 @@ function Wishlist() {
     try {
       console.log('🗑️ Clearing entire cart');
       
+      // Clear server cart
       const response = await fetch(`${config.apiUrl}/clear-cart`, {
         method: 'POST',
         credentials: 'include'
       });
 
       if (response.ok) {
-        console.log('✅ Cart cleared successfully');
-        setWishlist([]);
-        setGroupedWishlist({});
-        setSelectedProducts({});
-        setExpandedShops({});
+        console.log('✅ Server cart cleared');
       } else {
-        console.error('❌ Failed to clear cart:', response.status);
+        console.error('❌ Failed to clear server cart:', response.status);
       }
+
+      // Clear local state
+      setWishlist([]);
+      setGroupedWishlist({});
+      setSelectedProducts({});
+      setExpandedShops({});
+
+      // Clear localStorage
+      localStorage.removeItem('guest_cart');
+      localStorage.removeItem('pending_cart');
+
     } catch (error) {
       console.error('❌ Error clearing cart:', error);
     }
@@ -424,13 +538,18 @@ function Wishlist() {
   };
 
   const calculateShopSubtotal = (products) => {
-    return products.reduce((sum, item) => 
-      sum + (item.price * (item.quantity || 1)), 0
-    );
+    return products.reduce((sum, item) => {
+      const price = item.price || item.product?.price;
+      const quantity = item.quantity || 1;
+      return sum + (price * quantity);
+    }, 0);
   };
 
   const calculateShopTotal = (products) => {
-    const selectedProductsList = products.filter(product => selectedProducts[product._id]);
+    const selectedProductsList = products.filter(product => {
+      const productId = product._id || product.product?._id;
+      return selectedProducts[productId];
+    });
     const subtotal = calculateShopSubtotal(selectedProductsList);
 
     if (subtotal >= 100) {
@@ -444,9 +563,10 @@ function Wishlist() {
   const getSelectedProductsCount = (shopId) => {
     if (!groupedWishlist[shopId]) return 0;
 
-    return groupedWishlist[shopId].filter(
-      product => selectedProducts[product._id]
-    ).length;
+    return groupedWishlist[shopId].filter(product => {
+      const productId = product._id || product.product?._id;
+      return selectedProducts[productId];
+    }).length;
   };
 
   const getSelectedProductsCountTotal = () => {
@@ -462,9 +582,10 @@ function Wishlist() {
   const getTotalCartValue = () => {
     let total = 0;
     Object.keys(groupedWishlist).forEach(shopId => {
-      const selectedShopProducts = groupedWishlist[shopId].filter(
-        product => selectedProducts[product._id]
-      );
+      const selectedShopProducts = groupedWishlist[shopId].filter(product => {
+        const productId = product._id || product.product?._id;
+        return selectedProducts[productId];
+      });
       const subtotal = calculateShopSubtotal(selectedShopProducts);
       if (subtotal >= 100) {
         total += subtotal + calculateDeliveryCharge();
@@ -477,7 +598,7 @@ function Wishlist() {
     setError(null);
     setConnectionStatus('checking');
     testBackendConnection();
-    fetchWishlist();
+    loadWishlistData();
   };
 
   if (loading) {
@@ -545,7 +666,10 @@ function Wishlist() {
           {Object.keys(groupedWishlist).map(shopId => {
             const shopProducts = groupedWishlist[shopId];
             const shop = shops[shopId] || {};
-            const selectedProductsList = shopProducts.filter(product => selectedProducts[product._id]);
+            const selectedProductsList = shopProducts.filter(product => {
+              const productId = product._id || product.product?._id;
+              return selectedProducts[productId];
+            });
             const subtotal = calculateShopSubtotal(selectedProductsList);
             const total = calculateShopTotal(shopProducts);
             const shopItemsCount = shopProducts.length;
@@ -599,12 +723,13 @@ function Wishlist() {
                     <div className="products-grid">
                       {shopProducts.map(product => (
                         <WishlistItem 
-                          key={product._id} 
+                          key={product._id || product.product?._id} 
                           product={product} 
                           onRemove={removeFromWishlist}
                           onQuantityChange={handleQuantityChange}
-                          isSelected={selectedProducts[product._id] || false}
+                          isSelected={selectedProducts[product._id || product.product?._id] || false}
                           onToggleSelection={toggleProductSelection}
+                          isLocal={product.isLocal}
                         />
                       ))}
                     </div>
