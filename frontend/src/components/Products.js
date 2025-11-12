@@ -21,21 +21,15 @@ function Products({ onRequireLogin }) {
   // Load cart from localStorage
   const loadLocalCart = () => {
     try {
-      const savedCart = localStorage.getItem(`cart_${shopId}`);
+      const savedCart = localStorage.getItem('guest_cart');
       if (savedCart) {
-        setCartItems(JSON.parse(savedCart));
+        const cartData = JSON.parse(savedCart);
+        // Filter cart items for current shop only
+        const shopCartItems = cartData.filter(item => item.shopId === shopId);
+        setCartItems(shopCartItems);
       }
     } catch (error) {
       console.error('Error loading cart from localStorage:', error);
-    }
-  };
-
-  // Save cart to localStorage
-  const saveCartToLocal = (items) => {
-    try {
-      localStorage.setItem(`cart_${shopId}`, JSON.stringify(items));
-    } catch (error) {
-      console.error('Error saving cart to localStorage:', error);
     }
   };
 
@@ -72,7 +66,7 @@ function Products({ onRequireLogin }) {
   };
 
   // Handle add to cart - no login required
-  const handleAddToCart = (product) => {
+  const handleAddToCart = (product, quantity = 1) => {
     const existingItemIndex = cartItems.findIndex(item => item.product._id === product._id);
     
     let updatedCart;
@@ -80,17 +74,40 @@ function Products({ onRequireLogin }) {
       // Update quantity if already in cart
       updatedCart = cartItems.map((item, index) => 
         index === existingItemIndex 
-          ? { ...item, quantity: item.quantity + 1 }
+          ? { ...item, quantity: item.quantity + quantity }
           : item
       );
     } else {
       // Add new item to cart
-      updatedCart = [...cartItems, { product, quantity: 1 }];
+      updatedCart = [...cartItems, { 
+        product, 
+        quantity: quantity,
+        shopId: shopId,
+        addedAt: new Date().toISOString()
+      }];
     }
     
     setCartItems(updatedCart);
     saveCartToLocal(updatedCart);
     console.log('Added to cart:', product.name);
+  };
+
+  // Save cart to localStorage
+  const saveCartToLocal = (items) => {
+    try {
+      // Get existing cart
+      const existingCart = JSON.parse(localStorage.getItem('guest_cart') || '[]');
+      
+      // Remove items from current shop
+      const otherShopItems = existingCart.filter(item => item.shopId !== shopId);
+      
+      // Combine with current shop items
+      const updatedCart = [...otherShopItems, ...items];
+      
+      localStorage.setItem('guest_cart', JSON.stringify(updatedCart));
+    } catch (error) {
+      console.error('Error saving cart to localStorage:', error);
+    }
   };
 
   // Handle checkout - requires login
@@ -102,19 +119,16 @@ function Products({ onRequireLogin }) {
 
     if (onRequireLogin) {
       onRequireLogin(() => {
-        // After login, move to wishlist page (or checkout page)
-        navigate('/wishlist');
-        // Or you can process the cart here
-        processCartAfterLogin();
+        // After login, sync cart and navigate to wishlist page
+        syncCartWithServer();
       });
     } else {
       // User is already logged in, proceed directly
-      navigate('/wishlist');
-      processCartAfterLogin();
+      syncCartWithServer();
     }
   };
 
-  const processCartAfterLogin = async () => {
+  const syncCartWithServer = async () => {
     try {
       // Sync local cart with server after login
       for (const item of cartItems) {
@@ -133,12 +147,17 @@ function Products({ onRequireLogin }) {
       }
       
       // Clear local cart after successful sync
-      localStorage.removeItem(`cart_${shopId}`);
+      localStorage.removeItem('guest_cart');
       setCartItems([]);
       
       console.log('Cart synced with server after login');
+      
+      // Navigate to wishlist page
+      navigate('/wishlist');
+      
     } catch (error) {
       console.error('Error syncing cart with server:', error);
+      alert('Failed to sync cart. Please try again.');
     }
   };
 
