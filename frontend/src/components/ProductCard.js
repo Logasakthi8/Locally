@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import config from '../config';
 
 function ProductCard({ product, onWishlistUpdate, onAddToCart, onRequireLogin, shopId }) {
@@ -9,93 +9,81 @@ function ProductCard({ product, onWishlistUpdate, onAddToCart, onRequireLogin, s
   const [quantity, setQuantity] = useState(1);
   const [isInCart, setIsInCart] = useState(false);
 
-  const handleAddToCart = () => {
-    // Add to cart directly without login requirement
-    addToCart();
+  // Check if product is already in cart when component mounts
+  useEffect(() => {
+    checkIfInCart();
+  }, [product._id, shopId]);
+
+  const checkIfInCart = () => {
+    try {
+      const existingCart = JSON.parse(localStorage.getItem('guest_cart') || '[]');
+      const isProductInCart = existingCart.some(
+        item => item.product._id === product._id && item.shopId === shopId
+      );
+      setIsInCart(isProductInCart);
+    } catch (error) {
+      console.error('Error checking cart:', error);
+    }
   };
 
-  const addToCart = async () => {
+  const handleAddToCart = () => {
+    addToLocalCart();
+  };
+
+  const addToLocalCart = () => {
     try {
       setIsAddingToCart(true);
       setError('');
 
-      // Try to add to server cart if user is logged in
-      const response = await fetch(`${config.apiUrl}/cart`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      // Add to localStorage for guest users
+      const cartItem = {
+        product: {
+          _id: product._id,
+          name: product.name,
+          price: product.price,
+          image_url: product.image_url,
+          description: product.description,
+          quantity: product.quantity
         },
-        body: JSON.stringify({ 
-          product_id: product._id, 
-          quantity: quantity,
-          shop_id: shopId 
-        }),
-        credentials: 'include',
-      });
+        quantity: quantity,
+        shopId: shopId,
+        addedAt: new Date().toISOString()
+      };
 
-      if (response.ok) {
-        setIsInCart(true);
-        onAddToCart && onAddToCart(product, quantity);
-        console.log('Added to server cart:', product.name);
-      } else if (response.status === 401) {
-        // User not logged in - add to local cart
-        addToLocalCart();
+      // Get existing cart from localStorage
+      const existingCart = JSON.parse(localStorage.getItem('guest_cart') || '[]');
+      
+      // Check if product already exists in cart
+      const existingItemIndex = existingCart.findIndex(
+        item => item.product._id === product._id && item.shopId === shopId
+      );
+
+      let updatedCart;
+      if (existingItemIndex >= 0) {
+        // Update quantity if already in cart
+        updatedCart = existingCart.map((item, index) => 
+          index === existingItemIndex 
+            ? { ...item, quantity: item.quantity + quantity }
+            : item
+        );
       } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Failed to add to cart');
+        // Add new item to cart
+        updatedCart = [...existingCart, cartItem];
       }
+
+      // Save to localStorage
+      localStorage.setItem('guest_cart', JSON.stringify(updatedCart));
+      
+      setIsInCart(true);
+      onAddToCart && onAddToCart(product, quantity);
+      console.log('Added to local cart:', product.name);
+      
     } catch (error) {
-      console.error('Network error:', error);
-      // Network error - add to local cart
-      addToLocalCart();
+      console.error('Error adding to local cart:', error);
+      setError('Failed to add to cart');
     } finally {
       setIsAddingToCart(false);
     }
-  };
-
-  const addToLocalCart = () => {
-    // Add to localStorage for guest users
-    const cartItem = {
-      product: {
-        _id: product._id,
-        name: product.name,
-        price: product.price,
-        image_url: product.image_url,
-        description: product.description,
-        quantity: product.quantity
-      },
-      quantity: quantity,
-      shopId: shopId,
-      addedAt: new Date().toISOString()
-    };
-
-    // Get existing cart from localStorage
-    const existingCart = JSON.parse(localStorage.getItem('guest_cart') || '[]');
-    
-    // Check if product already exists in cart
-    const existingItemIndex = existingCart.findIndex(
-      item => item.product._id === product._id && item.shopId === shopId
-    );
-
-    let updatedCart;
-    if (existingItemIndex >= 0) {
-      // Update quantity if already in cart
-      updatedCart = existingCart.map((item, index) => 
-        index === existingItemIndex 
-          ? { ...item, quantity: item.quantity + quantity }
-          : item
-      );
-    } else {
-      // Add new item to cart
-      updatedCart = [...existingCart, cartItem];
-    }
-
-    // Save to localStorage
-    localStorage.setItem('guest_cart', JSON.stringify(updatedCart));
-    
-    setIsInCart(true);
-    onAddToCart && onAddToCart(product, quantity);
-    console.log('Added to local cart:', product.name);
   };
 
   const handleLike = async () => {
@@ -159,13 +147,18 @@ function ProductCard({ product, onWishlistUpdate, onAddToCart, onRequireLogin, s
   };
 
   const updateLocalCartQuantity = (newQty) => {
-    const existingCart = JSON.parse(localStorage.getItem('guest_cart') || '[]');
-    const updatedCart = existingCart.map(item => 
-      item.product._id === product._id && item.shopId === shopId
-        ? { ...item, quantity: newQty }
-        : item
-    );
-    localStorage.setItem('guest_cart', JSON.stringify(updatedCart));
+    try {
+      const existingCart = JSON.parse(localStorage.getItem('guest_cart') || '[]');
+      const updatedCart = existingCart.map(item => 
+        item.product._id === product._id && item.shopId === shopId
+          ? { ...item, quantity: newQty }
+          : item
+      );
+      localStorage.setItem('guest_cart', JSON.stringify(updatedCart));
+      console.log('Updated quantity in cart:', product.name, newQty);
+    } catch (error) {
+      console.error('Error updating cart quantity:', error);
+    }
   };
 
   const clearError = () => {
