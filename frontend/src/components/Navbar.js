@@ -95,18 +95,6 @@ function Navbar({ user, onLogout, onRequireLogin }) {
     setIsMenuOpen(false);
   };
 
-  // Handle protected navigation (requires login)
-  const handleProtectedNavClick = (path) => {
-    if (onRequireLogin) {
-      onRequireLogin(() => {
-        navigate(path);
-      });
-    } else {
-      navigate(path);
-    }
-    setIsMenuOpen(false);
-  };
-
   return (
     <nav className="navbar">
       <div className="nav-container">
@@ -130,14 +118,14 @@ function Navbar({ user, onLogout, onRequireLogin }) {
           </button>
 
           {/* Cart Button - Navigates to wishlist page */}
-          <button onClick={() => handleCartClick('/wishlist')} className="cart-button">
+          <button onClick={handleCartClick} className="cart-button">
             🛒 Cart
             {cartCount > 0 && <span className="cart-count-badge">{cartCount}</span>}
           </button>
 
-          {/* Returns - Requires login */}
-          <button onClick={() => handleProtectedNavClick('/return-policy')}>
-            🔄 Return Products
+          {/* Returns - Public page, no login required */}
+          <button onClick={() => handleNavClick('/return-policy')}>
+            🔄 Return Policy
           </button>
 
           {/* User-specific links */}
