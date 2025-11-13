@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import config from '../config'; 
 
-function Navbar({ user, onLogout, onRequireLogin }) {
+function Navbar({ user, onLogout }) {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [cartCount, setCartCount] = useState(0);
@@ -47,26 +47,17 @@ function Navbar({ user, onLogout, onRequireLogin }) {
       console.log('📋 Logout response:', data);
 
       if (data.success) {
-        // Clear all local storage
         localStorage.removeItem('userSession');
         sessionStorage.clear();
-        
-        // Clear any app state
         onLogout();
-        
-        // Reset cart count
         setCartCount(0);
-        
-        // Navigate to shops (public page) instead of login
         navigate('/shops');
-        
         console.log('✅ Logout successful');
       } else {
         console.error('❌ Logout failed:', data.error);
       }
     } catch (error) {
       console.error('❌ Logout error:', error);
-      // Even if API call fails, clear local state
       localStorage.removeItem('userSession');
       onLogout();
       setCartCount(0);
@@ -78,33 +69,17 @@ function Navbar({ user, onLogout, onRequireLogin }) {
     setIsMenuOpen(!isMenuOpen);
   };
 
-  const handleNavClick = (path) => {
-    navigate(path);
-    setIsMenuOpen(false);
-  };
-
-  // Handle cart click - navigates to wishlist page (which is now the cart page)
-  const handleCartClick = () => {
-    if (onRequireLogin) {
-      onRequireLogin(() => {
-        navigate('/wishlist');
-      });
-    } else {
-      navigate('/wishlist');
-    }
-    setIsMenuOpen(false);
-  };
-
   return (
     <nav className="navbar">
       <div className="nav-container">
-        {/* Logo - Always goes to shops (public page) */}
-        <img 
-          src="/myLogo2.png" 
-          alt="Locally" 
-          onClick={() => handleNavClick('/shops')} 
-          className="logo" 
-        />
+        {/* Logo/Brand */}
+        <Link to="/shops" className="nav-logo">
+          <img 
+            src="/myLogo2.png" 
+            alt="Locally" 
+            className="logo" 
+          />
+        </Link>
 
         {/* Mobile Menu Button */}
         <button className="mobile-menu-btn" onClick={toggleMenu}>
@@ -112,38 +87,35 @@ function Navbar({ user, onLogout, onRequireLogin }) {
         </button>
 
         <div className={`nav-links ${isMenuOpen ? 'active' : ''}`}>
-          {/* Always show Shops link - it's public */}
-          <button onClick={() => handleNavClick('/shops')}>
+          {/* Navigation Links using Link for reliable navigation */}
+          <Link to="/shops" className="nav-link" onClick={() => setIsMenuOpen(false)}>
             🏪 Shops
-          </button>
-
-          {/* Cart Button - Navigates to wishlist page */}
-          <button onClick={handleCartClick} className="cart-button">
+          </Link>
+          
+          <Link to="/wishlist" className="nav-link cart-button" onClick={() => setIsMenuOpen(false)}>
             🛒 Cart
             {cartCount > 0 && <span className="cart-count-badge">{cartCount}</span>}
-          </button>
-
-          {/* Returns - Public page, no login required */}
-          <button onClick={() => handleNavClick('/return-policy')}>
+          </Link>
+          
+          <Link to="/return-policy" className="nav-link" onClick={() => setIsMenuOpen(false)}>
             🔄 Return Policy
-          </button>
+          </Link>
 
-          {/* User-specific links */}
-          {user ? (
-            <div className="user-info">
-              <span className="user-mobile">👤 {user.mobile}</span>
-              <button onClick={handleLogout} className="logout-btn">
-                Logout
-              </button>
-            </div>
-          ) : (
-            <button 
-              onClick={() => handleNavClick('/login')} 
-              className="login-btn"
-            >
-              🔑 Login
-            </button>
-          )}  
+          {/* User Section */}
+          <div className="nav-user">
+            {user ? (
+              <div className="user-section">
+                <span className="user-mobile">👤 {user.mobile}</span>
+                <button onClick={handleLogout} className="logout-btn">
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <Link to="/login" className="login-link" onClick={() => setIsMenuOpen(false)}>
+                🔑 Login
+              </Link>
+            )}
+          </div>
         </div>
       </div>
     </nav>
