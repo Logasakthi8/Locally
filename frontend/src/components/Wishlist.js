@@ -17,9 +17,10 @@ function Wishlist() {
   const [error, setError] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('checking');
   const [expandedShops, setExpandedShops] = useState({});
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [selectedShop, setSelectedShop] = useState(null); // Track which shop is selected for ordering
 
   const navigate = useNavigate();
+  const YOUR_PHONE_NUMBER = '9361437687';
 
   useEffect(() => {
     testBackendConnection();
@@ -251,11 +252,22 @@ function Wishlist() {
     }));
   };
 
-  const toggleProductSelection = (productId) => {
+  const toggleProductSelection = (productId, shopId) => {
+    // If a shop is already selected and user tries to select from another shop, prevent it
+    if (selectedShop && selectedShop !== shopId) {
+      alert(`Please complete your order from ${shops[selectedShop]?.name} first, or deselect it to order from another shop.`);
+      return;
+    }
+
     setSelectedProducts(prev => ({
       ...prev,
       [productId]: !prev[productId]
     }));
+
+    // If this is the first product selected from this shop, set it as the selected shop
+    if (!selectedShop) {
+      setSelectedShop(shopId);
+    }
   };
 
   const removeFromWishlist = async (productId, isLocal = false) => {
@@ -291,6 +303,18 @@ function Wishlist() {
         const guestCart = JSON.parse(localStorage.getItem('guest_cart') || '[]');
         const updatedCart = guestCart.filter(item => item.product._id !== productId);
         localStorage.setItem('guest_cart', JSON.stringify(updatedCart));
+      }
+
+      // If no products left from the selected shop, clear the selected shop
+      if (selectedShop) {
+        const shopProducts = groupedWishlist[selectedShop] || [];
+        const selectedProductsInShop = shopProducts.filter(product => {
+          const productId = product._id || product.product?._id;
+          return newSelected[productId];
+        });
+        if (selectedProductsInShop.length === 0) {
+          setSelectedShop(null);
+        }
       }
 
     } catch (error) {
@@ -357,125 +381,98 @@ function Wishlist() {
     return userDeliveryCount < 2 ? 0 : deliveryCharge;
   };
 
-  // New checkout function
-  const handleCheckout = async () => {
-    if (getSelectedProductsCountTotal() === 0) {
-      alert('Please select at least one product to checkout');
+  // Handle checkout for a specific shop via WhatsApp
+  const handleShopCheckout = (shopId) => {
+    const shop = shops[shopId];
+    if (!shop) {
+      console.error('❌ Shop not found for ID:', shopId);
       return;
     }
 
-    // Check if any shop has minimum order amount
-    let hasValidOrder = false;
-    Object.keys(groupedWishlist).forEach(shopId => {
-      const selectedShopProducts = groupedWishlist[shopId].filter(
-        product => {
-          const productId = product._id || product.product?._id;
-          return selectedProducts[productId];
-        }
-      );
-      const subtotal = calculateShopSubtotal(selectedShopProducts);
-      
-      if (selectedShopProducts.length > 0 && subtotal >= 100) {
-        hasValidOrder = true;
+    const selectedShopProducts = groupedWishlist[shopId].filter(
+      product => {
+        const productId = product._id || product.product?._id;
+        return selectedProducts[productId];
       }
+    );
+
+    if (selectedShopProducts.length === 0) {
+      alert('Please select at least one product from this shop to checkout');
+      return;
+    }
+
+    const subtotal = calculateShopSubtotal(selectedShopProducts);
+    if (subtotal < 100) {
+      alert(`Minimum order amount is ₹100. Please add ₹${(100 - subtotal).toFixed(2)} more to proceed with checkout.`);
+      return;
+    }
+
+    // Check if shop is open
+    const shopOpen = isShopOpen(shop);
+    if (!shopOpen) {
+      alert(`Sorry! ${shop.name} is closed. Please place the order after ${shop.opening_time}.`);
+      return;
+    }
+
+    const delivery = calculateDeliveryCharge();
+    const total = subtotal + delivery;
+
+    // Create WhatsApp message
+    let message = `Hello! I would like to place an order from ${shop.name}:%0A%0A`;
+
+    selectedShopProducts.forEach((product, index) => {
+      const productName = product.name || product.product?.name;
+      const productPrice = product.price || product.product?.price;
+      const quantity = product.quantity || 1;
+      message += `${index + 1}. ${productName} - ₹${productPrice} x ${quantity}%0A`;
     });
 
-    if (!hasValidOrder) {
-      alert('Please ensure at least one shop has minimum order amount of ₹100');
-      return;
+    message += `%0ASubtotal: ₹${subtotal}%0A`;
+    message += `Delivery Charge: ${delivery === 0 ? 'FREE' : `₹${delivery}`}%0A`;
+    if (delivery === 0) {
+      message += `🎉 Free delivery applied!%0A`;
     }
+    message += `Total: ₹${total}%0A%0A`;
+    message += `Please confirm availability and proceed with the order.`;
 
-    setIsCheckingOut(true);
+    // Open WhatsApp with the order details
+    window.open(`https://wa.me/${YOUR_PHONE_NUMBER}?text=${message}`, '_blank');
 
+    // Remove ordered items from cart after successful order
+    const orderedProductIds = selectedShopProducts.map(product => 
+      product._id || product.product?._id
+    );
+    
+    setWishlist(prev => prev.filter(item => {
+      const itemId = item._id || item.product?._id;
+      return !orderedProductIds.includes(itemId);
+    }));
+    
+    setSelectedProducts(prev => {
+      const newSelected = {...prev};
+      orderedProductIds.forEach(id => delete newSelected[id]);
+      return newSelected;
+    });
+
+    // Clear localStorage for these items
     try {
-      // Process each shop's order
-      const orderPromises = Object.keys(groupedWishlist).map(async (shopId) => {
-        const selectedShopProducts = groupedWishlist[shopId].filter(
-          product => {
-            const productId = product._id || product.product?._id;
-            return selectedProducts[productId];
-          }
-        );
-        const subtotal = calculateShopSubtotal(selectedShopProducts);
-        
-        if (selectedShopProducts.length === 0 || subtotal < 100) {
-          return null; // Skip shops that don't meet minimum
-        }
-
-        const shop = shops[shopId];
-        if (!shop) return null;
-
-        // Check if shop is open
-        const shopOpen = isShopOpen(shop);
-        if (!shopOpen) {
-          alert(`Sorry! ${shop.name} is closed. Please place the order after ${shop.opening_time}.`);
-          return null;
-        }
-
-        const delivery = calculateDeliveryCharge();
-        const total = subtotal + delivery;
-
-        // Create order object
-        const order = {
-          shopId,
-          shopName: shop.name,
-          products: selectedShopProducts,
-          subtotal,
-          deliveryCharge: delivery,
-          total,
-          orderDate: new Date().toISOString()
-        };
-
-        console.log('📦 Creating order:', order);
-        
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        return order;
-      });
-
-      const orders = (await Promise.all(orderPromises)).filter(order => order !== null);
-      
-      if (orders.length > 0) {
-        // Success - show confirmation
-        alert(`🎉 Order placed successfully! ${orders.length} shop${orders.length > 1 ? 's' : ''} processed.`);
-        
-        // Remove ordered items from cart
-        const orderedProductIds = orders.flatMap(order => 
-          order.products.map(product => product._id || product.product?._id)
-        );
-        
-        setWishlist(prev => prev.filter(item => {
-          const itemId = item._id || item.product?._id;
-          return !orderedProductIds.includes(itemId);
-        }));
-        
-        setSelectedProducts(prev => {
-          const newSelected = {...prev};
-          orderedProductIds.forEach(id => delete newSelected[id]);
-          return newSelected;
-        });
-
-        // Clear localStorage
-        localStorage.removeItem('guest_cart');
-        localStorage.removeItem('pending_cart');
-
-        // Increment delivery count
-        const newCount = userDeliveryCount + 1;
-        setUserDeliveryCount(newCount);
-
-        // Navigate back to shops
-        navigate('/shops');
-      } else {
-        alert('No valid orders to process. Please check your selections.');
-      }
-
+      const guestCart = JSON.parse(localStorage.getItem('guest_cart') || '[]');
+      const updatedCart = guestCart.filter(item => 
+        !orderedProductIds.includes(item.product._id)
+      );
+      localStorage.setItem('guest_cart', JSON.stringify(updatedCart));
     } catch (error) {
-      console.error('❌ Checkout error:', error);
-      alert('Checkout failed. Please try again.');
-    } finally {
-      setIsCheckingOut(false);
+      console.error('Error updating localStorage:', error);
     }
+
+    // Reset selected shop
+    setSelectedShop(null);
+
+    // Increment delivery count
+    const newCount = userDeliveryCount + 1;
+    setUserDeliveryCount(newCount);
+
+    alert(`Order from ${shop.name} has been placed via WhatsApp!`);
   };
 
   const clearCart = async () => {
@@ -499,6 +496,7 @@ function Wishlist() {
       setGroupedWishlist({});
       setSelectedProducts({});
       setExpandedShops({});
+      setSelectedShop(null);
 
       // Clear localStorage
       localStorage.removeItem('guest_cart');
@@ -579,21 +577,6 @@ function Wishlist() {
     return wishlist.reduce((sum, item) => sum + (item.quantity || 1), 0);
   };
 
-  const getTotalCartValue = () => {
-    let total = 0;
-    Object.keys(groupedWishlist).forEach(shopId => {
-      const selectedShopProducts = groupedWishlist[shopId].filter(product => {
-        const productId = product._id || product.product?._id;
-        return selectedProducts[productId];
-      });
-      const subtotal = calculateShopSubtotal(selectedShopProducts);
-      if (subtotal >= 100) {
-        total += subtotal + calculateDeliveryCharge();
-      }
-    });
-    return total;
-  };
-
   const retryConnection = () => {
     setError(null);
     setConnectionStatus('checking');
@@ -635,8 +618,6 @@ function Wishlist() {
   const totalItems = getTotalItemsCount();
   const totalProducts = wishlist.length;
   const totalShops = Object.keys(groupedWishlist).length;
-  const selectedItemsCount = getSelectedProductsCountTotal();
-  const totalCartValue = getTotalCartValue();
 
   return (
     <div className="container">
@@ -644,7 +625,7 @@ function Wishlist() {
         <h1 className="page-title">Your Cart</h1>
         {totalItems > 0 && (
           <div className="cart-summary-badge">
-            {totalItems} item{totalItems !== 1 ? 's' : ''}
+            {totalItems} item{totalItems !== 1 ? 's' : ''} • {totalShops} shop{totalShops !== 1 ? 's' : ''}
           </div>
         )}
       </div>
@@ -663,6 +644,15 @@ function Wishlist() {
         </div>
       ) : (
         <>
+          {selectedShop && (
+            <div className="selected-shop-notice">
+              <div className="notice-content">
+                <span className="notice-icon">📝</span>
+                <span>You are currently ordering from <strong>{shops[selectedShop]?.name}</strong>. Complete this order first or deselect all items to order from another shop.</span>
+              </div>
+            </div>
+          )}
+
           {Object.keys(groupedWishlist).map(shopId => {
             const shopProducts = groupedWishlist[shopId];
             const shop = shops[shopId] || {};
@@ -678,9 +668,11 @@ function Wishlist() {
             const shopOpen = isShopOpen(shop);
             const delivery = calculateDeliveryCharge();
             const isExpanded = expandedShops[shopId];
+            const isShopSelected = selectedShop === shopId;
+            const canSelectProducts = !selectedShop || isShopSelected;
 
             return (
-              <div key={shopId} className="shop-group">
+              <div key={shopId} className={`shop-group ${isShopSelected ? 'shop-selected' : ''}`}>
                 <div className="shop-header">
                   <div className="shop-info">
                     <button 
@@ -693,7 +685,19 @@ function Wishlist() {
                       </span>
                     </button>
                     <div className="shop-details">
-                      <h3 className="shop-name">{shop.name || `Shop`}</h3>
+                      <div className="shop-name-section">
+                        <h3 className="shop-name">{shop.name || `Shop`}</h3>
+                        {shop.image_url && (
+                          <img 
+                            src={shop.image_url} 
+                            alt={shop.name}
+                            className="shop-thumbnail"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        )}
+                      </div>
                       <div className="shop-meta">
                         {shop.category && <span className="shop-category">{shop.category}</span>}
                         <span className="products-count">
@@ -707,9 +711,22 @@ function Wishlist() {
                             Add ₹{(100 - subtotal).toFixed(2)} more
                           </span>
                         )}
+                        {isShopSelected && (
+                          <span className="selected-shop-badge">🛒 Ordering</span>
+                        )}
                       </div>
                     </div>
                   </div>
+
+                  {/* Shop Checkout Button */}
+                  {selectedCount > 0 && meetsMinimum && shopOpen && (
+                    <button 
+                      onClick={() => handleShopCheckout(shopId)}
+                      className="shop-checkout-btn"
+                    >
+                      💬 Order via WhatsApp
+                    </button>
+                  )}
                 </div>
 
                 {!shopOpen && (
@@ -728,8 +745,9 @@ function Wishlist() {
                           onRemove={removeFromWishlist}
                           onQuantityChange={handleQuantityChange}
                           isSelected={selectedProducts[product._id || product.product?._id] || false}
-                          onToggleSelection={toggleProductSelection}
+                          onToggleSelection={(productId) => toggleProductSelection(productId, shopId)}
                           isLocal={product.isLocal}
+                          disabled={!canSelectProducts}
                         />
                       ))}
                     </div>
@@ -771,48 +789,14 @@ function Wishlist() {
             );
           })}
 
-          {/* Checkout Section */}
-          <div className="checkout-section">
-            <div className="checkout-summary">
-              <h3 className="summary-title">Order Summary</h3>
-              <div className="summary-grid">
-                <div className="summary-item">
-                  <span className="summary-label">Selected Items</span>
-                  <span className="summary-value">{selectedItemsCount}</span>
-                </div>
-                <div className="summary-item">
-                  <span className="summary-label">Total Shops</span>
-                  <span className="summary-value">{totalShops}</span>
-                </div>
-                <div className="summary-item">
-                  <span className="summary-label">Free Deliveries Left</span>
-                  <span className="summary-value">
-                    {userDeliveryCount < 2 ? `${2 - userDeliveryCount}` : '0'}
-                  </span>
-                </div>
-                <div className="summary-item total">
-                  <span className="summary-label">Total Amount</span>
-                  <span className="summary-value">₹{totalCartValue.toFixed(2)}</span>
-                </div>
-              </div>
-              
-              <div className="checkout-actions">
-                <button 
-                  onClick={handleCheckout}
-                  disabled={selectedItemsCount === 0 || isCheckingOut}
-                  className={`checkout-btn ${selectedItemsCount === 0 ? 'disabled' : ''}`}
-                >
-                  {isCheckingOut ? 'Processing...' : `🛒 Proceed to Checkout - ₹${totalCartValue.toFixed(2)}`}
-                </button>
-                
-                <button 
-                  onClick={clearCart}
-                  className="btn btn-secondary"
-                >
-                  Clear Cart
-                </button>
-              </div>
-            </div>
+          {/* Clear Cart Button */}
+          <div className="cart-actions">
+            <button 
+              onClick={clearCart}
+              className="btn btn-secondary"
+            >
+              🗑️ Clear Entire Cart
+            </button>
           </div>
         </>
       )}
