@@ -47,26 +47,34 @@ function App() {
 
   // Handle actions that require login (checkout, wishlist, etc.)
   const requireLogin = (actionCallback) => {
+    console.log('🔐 requireLogin called - user:', user ? 'logged in' : 'not logged in');
     if (!user) {
+      console.log('🔄 Setting pending action and showing login modal');
       setPendingAction(() => actionCallback);
       setShowLoginModal(true);
       return false;
     }
+    console.log('✅ User already logged in, proceeding with action');
     return true;
   };
 
   const handleLoginSuccess = (userData) => {
+    console.log('✅ Login successful, user:', userData);
     setUser(userData);
     setShowLoginModal(false);
     
     // Execute pending action after login
     if (pendingAction) {
+      console.log('🚀 Executing pending action after login');
       pendingAction();
       setPendingAction(null);
+    } else {
+      console.log('ℹ️ No pending action to execute');
     }
   };
 
   const handleCloseLogin = () => {
+    console.log('❌ Login modal closed');
     setShowLoginModal(false);
     setPendingAction(null);
   };
@@ -91,22 +99,17 @@ function App() {
   return (
     <Router>
       <div className="App">
-        // In your App.js, modify the Navbar usage:
-<Navbar 
-  user={user} 
-  onLogout={() => setUser(null)}
-  onRequireLogin={requireLogin}
-  onCartClick={() => {
-    // This will be handled by the current page component
-    // Each page can implement its own cart handling
-  }}
-/>
+        <Navbar 
+          user={user} 
+          onLogout={() => setUser(null)}
+          onRequireLogin={requireLogin}
+        />
         
         <Routes>
-          {/* ✅ Default route shows shops without login */}
+          {/* Default route shows shops without login */}
           <Route path="/" element={<Navigate to="/shops" replace />} />
           
-          {/* ✅ Public routes - no login required */}
+          {/* Public routes - no login required */}
           <Route path="/shops" element={<Shops onRequireLogin={requireLogin} />} />
           <Route 
             path="/products/:shopId" 
@@ -114,7 +117,7 @@ function App() {
           />
           <Route path="/return-policy" element={<ReturnPolicy />} />
           
-          {/* ✅ Login page - redirect to shops if already logged in */}
+          {/* Login page - redirect to shops if already logged in */}
           <Route
             path="/login"
             element={
@@ -122,7 +125,7 @@ function App() {
             }
           />
 
-          {/* ✅ Protected routes - require login */}
+          {/* Protected routes - require login */}
           <Route
             path="/wishlist"
             element={
@@ -133,10 +136,10 @@ function App() {
           />
         </Routes>
 
-        {/* ✅ Feedback System */}
+        {/* Feedback System */}
         <FeedbackSystem user={user} />
 
-        {/* ✅ Login Modal for checkout and other protected actions */}
+        {/* Login Modal for checkout and other protected actions */}
         {showLoginModal && (
           <div className="modal-overlay">
             <div className="modal-content">
