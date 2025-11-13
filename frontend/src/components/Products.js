@@ -118,28 +118,44 @@ function Products({ onRequireLogin }) {
       return;
     }
 
+    console.log('🛒 Checkout clicked, cart items:', cartItems.length);
+
     if (onRequireLogin) {
+      console.log('🔐 Requiring login...');
       onRequireLogin(() => {
+        console.log('✅ Login successful, navigating to wishlist');
         // After login, navigate directly to wishlist page
-        // The wishlist page will handle loading both local and server cart items
         navigateToWishlist();
       });
     } else {
+      console.log('✅ User already logged in, navigating to wishlist');
       // User is already logged in, proceed directly
       navigateToWishlist();
     }
   };
 
   const navigateToWishlist = () => {
+    console.log('🚀 Navigating to wishlist with cart items:', cartItems.length);
+    
     // Save current cart to a special key that wishlist can read
     localStorage.setItem('pending_cart', JSON.stringify(cartItems));
+    console.log('💾 Saved to pending_cart');
     
-    // Clear the guest cart
-    localStorage.removeItem('guest_cart');
+    // Clear the guest cart for this shop only
+    try {
+      const existingCart = JSON.parse(localStorage.getItem('guest_cart') || '[]');
+      const updatedCart = existingCart.filter(item => item.shopId !== shopId);
+      localStorage.setItem('guest_cart', JSON.stringify(updatedCart));
+      console.log('🗑️ Cleared guest cart for shop:', shopId);
+    } catch (error) {
+      console.error('Error clearing guest cart:', error);
+    }
+    
     setCartItems([]);
     
     // Navigate to wishlist page
     navigate('/wishlist');
+    console.log('📍 Navigated to wishlist page');
   };
 
   // Calculate total items in cart
